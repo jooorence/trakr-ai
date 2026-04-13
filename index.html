@@ -52,7 +52,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .sb-coach-btn-sub { font-size: 10px; color: #5a4800; }
 
 /* MAIN CONTENT */
-.main { flex: 1; overflow-y: auto; padding: 20px 20px 40px; }
+.main { flex: 1; overflow-y: auto; padding: 20px 20px 40px; max-width: 1280px; }
 
 /* MACRO DASHBOARD */
 .macro-section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #444; margin: 0 0 8px; }
@@ -1139,7 +1139,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 
   <!-- AI DAILY BRIEF -->
     <div id="coach" style="display:none;">
-      <div style="display:flex;gap:16px;height:calc(100vh - 100px);">
+      <div style="display:flex;gap:16px;min-height:500px;">
         <!-- LEFT: Briefing -->
         <div style="flex:1;min-width:0;overflow-y:auto;padding-right:4px;">
           <div style="margin-bottom:16px;">
@@ -1437,6 +1437,13 @@ function showSection(id, el) {
   if(id==='routines') { rtnInit(); rtnSwitch('morning'); }
   if(id==='foodlog') flUpdateDateDisplay();
   if(id==='coach') { setTimeout(briefGenerate, 50); }
+  var bubble = document.getElementById('coach-bubble');
+  var sheet = document.getElementById('coach-sheet');
+  if(bubble) bubble.style.display = id === 'coach' ? 'none' : 'flex';
+  if(sheet && id === 'coach') { sheet.classList.remove('open'); }
+  var bubble = document.getElementById('coach-bubble');
+  if(bubble) bubble.style.display = id === 'coach' ? 'none' : 'flex';
+  if(id === 'coach') { try { csClose(); } catch(e) {} }
   document.querySelectorAll('.sb-tab').forEach(function(t) { t.classList.remove('active'); });
   if(el) el.classList.add('active');
 
