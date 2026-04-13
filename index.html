@@ -1804,7 +1804,7 @@ function coachSystemPrompt(ctx) {
   p += 'When told about Apple Fitness Exercise minutes, include: LOGEXERCISE:{"min":38} ';
   p += 'When told about Apple Fitness Stand hours, include: LOGSTAND:{"hrs":10} ';
   p += 'Always include the LOG action when the user shares a number for any of these — even if they mention it casually. ';
-  p += 'When asked to clear, reset, or start fresh for the day, include: CLEARDAY:{} ';
+  p += 'When asked to clear, reset, or start fresh for the day, you MUST include exactly this on its own line: CLEARDAY:{} — this triggers the actual reset. Without it nothing clears. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
   return p;
 }
@@ -1865,10 +1865,17 @@ function processLogActions(reply) {
 function processClearDay(reply) {
   var match = reply.match(/CLEARDAY:\{[^}]*\}/);
   if (!match) return { cleared: false, cleaned: reply };
-  // Reset food log
-  var key = flDateKey(new Date());
-  var dayData = flGetDayData(new Date());
-  dayData.log = [];
+  // Reset food log for today
+  var todayDate = new Date();
+  var key = flDateKey(todayDate);
+  if (flDateStore[key]) {
+    flDateStore[key].log = [];
+  }
+  // Also clear for flCurrentDate if viewing today
+  var curKey = flDateKey(flCurrentDate);
+  if (flDateStore[curKey]) {
+    flDateStore[curKey].log = [];
+  }
   // Reset water
   waterOz = 0; waterJugs = 0; waterBottles = 0;
   waterSave(); waterRender();
@@ -1882,9 +1889,16 @@ function processClearDay(reply) {
     var el = document.getElementById(id); if(el) el.value = '';
   });
   dashUpdateRings();
-  // Save and refresh
-  flSaveAll(); flRender();
+  // Reset routines for today
+  var prefix = rtnDateKey();
+  Object.keys(rtnState).forEach(function(k) { if(k.indexOf(prefix) === 0) delete rtnState[k]; });
+  rtnSave();
+  // Save to localStorage and Supabase, re-render everything
+  flSaveAll();
+  flRender();
+  flUpdateDateDisplay();
   try { dashRefresh(); } catch(e) {}
+  try { rtnInit(); } catch(e) {}
   var cleaned = reply.replace(/CLEARDAY:\{[^}]*\}/, '').trim();
   return { cleared: true, cleaned: cleaned };
 }
