@@ -1798,6 +1798,12 @@ function coachSystemPrompt(ctx) {
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
   p += 'When asked to log food, include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0} ';
   p += 'When asked to log water or a drink, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
+  p += 'When told about steps, include: LOGSTEPS:{"steps":6000} ';
+  p += 'When told about calories burned or total burn, include: LOGCALBURN:{"cal":2800} ';
+  p += 'When told about Apple Fitness Move calories, include: LOGMOVE:{"cal":467} ';
+  p += 'When told about Apple Fitness Exercise minutes, include: LOGEXERCISE:{"min":38} ';
+  p += 'When told about Apple Fitness Stand hours, include: LOGSTAND:{"hrs":10} ';
+  p += 'Always include the LOG action when the user shares a number for any of these — even if they mention it casually. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
   return p;
 }
@@ -1826,6 +1832,33 @@ function coachShowTyping() {
   return div;
 }
 
+/* Process LOGSTEPS, LOGCALBURN, LOGMOVE, LOGEXERCISE, LOGSTAND actions */
+function processLogActions(reply) {
+  var confirmations = [];
+  var cleaned = reply;
+  var patterns = [
+    { rx: /LOGSTEPS:(\{[^}]+\})/, field: 'oura-steps', key: 'steps', label: 'steps', unit: '', update: function(){ ouraUpdate(); } },
+    { rx: /LOGCALBURN:(\{[^}]+\})/, field: 'oura-calexp', key: 'cal', label: 'cal burned', unit: ' cal', update: function(){ ouraUpdate(); } },
+    { rx: /LOGMOVE:(\{[^}]+\})/, field: 'dash-move-input', key: 'cal', label: 'Move', unit: ' cal', update: function(){ dashUpdateRings(); } },
+    { rx: /LOGEXERCISE:(\{[^}]+\})/, field: 'dash-exercise-input', key: 'min', label: 'Exercise', unit: ' min', update: function(){ dashUpdateRings(); } },
+    { rx: /LOGSTAND:(\{[^}]+\})/, field: 'dash-stand-input', key: 'hrs', label: 'Stand', unit: ' hrs', update: function(){ dashUpdateRings(); } }
+  ];
+  patterns.forEach(function(p) {
+    var match = cleaned.match(p.rx);
+    if (match) {
+      try {
+        var data = JSON.parse(match[1]);
+        var val = parseFloat(data[p.key]) || 0;
+        var el = document.getElementById(p.field);
+        if (el) { el.value = val; p.update(); }
+        confirmations.push(p.label + ': ' + val + p.unit);
+        cleaned = cleaned.replace(p.rx, '').trim();
+      } catch(e) {}
+    }
+  });
+  return { cleaned: cleaned, confirmations: confirmations };
+}
+
 async function sendCoachMsg() {
   var input = document.getElementById('coach-msg-input');
   var text = input.value.trim();
@@ -1850,6 +1883,13 @@ async function sendCoachMsg() {
     var reply = data.content.map(function(i){return i.text||'';}).join('');
     if(typing) typing.remove();
     coachHistory.push({role:'assistant', content: reply});
+
+    // Process metric LOG actions (steps, cal burn, move, exercise, stand)
+    var logResult = processLogActions(reply);
+    reply = logResult.cleaned;
+    if (logResult.confirmations.length > 0) {
+      var confHtml = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>';
+    }
 
     // Check for LOGFOOD and LOGWATER actions
     var logMatch = reply.match(/LOGFOOD:(\{[^}]+\})/);
@@ -1890,6 +1930,9 @@ async function sendCoachMsg() {
       }
     } else {
       coachAddMsg('coach', reply);
+    }
+    if (logResult.confirmations.length > 0) {
+      coachAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>');
     }
   } catch(e) {
     if(typing) typing.remove();
@@ -2456,6 +2499,11 @@ async function csSend() {
     var typing = document.getElementById('cs-typing');
     if (typing) typing.remove();
     csHistory.push({role:'assistant', content: reply});
+
+    // Process metric LOG actions (steps, cal burn, move, exercise, stand)
+    var logResult = processLogActions(reply);
+    reply = logResult.cleaned;
+
     var logMatch = reply.match(/LOGFOOD:(\{[^}]+\})/);
     var waterMatch = reply.match(/LOGWATER:(\{[^}]+\})/);
     if (waterMatch) {
@@ -2491,6 +2539,9 @@ async function csSend() {
       } catch(e) { csAddMsg('coach', reply); }
     } else {
       csAddMsg('coach', reply);
+    }
+    if (logResult.confirmations.length > 0) {
+      csAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>');
     }
   } catch(e) {
     var t2 = document.getElementById('cs-typing');
