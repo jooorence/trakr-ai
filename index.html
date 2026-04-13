@@ -1897,6 +1897,9 @@ function processClearDay(reply) {
   flSaveAll();
   flRender();
   flUpdateDateDisplay();
+  // Explicitly reset dashboard overview cards
+  var resetIds = {'dash-cal-val':'—','dash-net-val':'—','dash-water-val':'—','dash-goal-val':'—'};
+  Object.keys(resetIds).forEach(function(id) { var el = document.getElementById(id); if(el) { el.textContent = resetIds[id]; el.style.color = '#444'; } });
   try { dashRefresh(); } catch(e) {}
   try { rtnInit(); } catch(e) {}
   var cleaned = reply.replace(/CLEARDAY:\{[^}]*\}/, '').trim();
@@ -2659,9 +2662,11 @@ function dashRefresh() {
   if(expNet && calexpVal && t.cal) {
     var net = Math.round(calexpVal - t.cal);
     expNet.textContent = (net >= 0 ? '+' : '') + net + ' cal';
-    expNet.style.color = net > 0 ? '#4caf7d' : net < -200 ? '#e05050' : '#f5a623';
+    var netColor = (net >= 500 && net <= 800) ? '#4caf7d' : (net > 0 ? '#e05050' : '#e05050');
+    if (net >= 400 && net < 500 || net > 800 && net <= 900) netColor = '#f5a623'; // close to range = orange
+    expNet.style.color = netColor;
     var netStat = document.getElementById('dash-net-val');
-    if(netStat) { netStat.textContent = (net >= 0 ? '+' : '') + net; netStat.style.color = net > 0 ? '#4caf7d' : net < -200 ? '#e05050' : '#f5a623'; }
+    if(netStat) { netStat.textContent = (net >= 0 ? '+' : '') + net; netStat.style.color = netColor; }
   } else if(expNet) { expNet.textContent = '—'; expNet.style.color = '#aaa'; }
   var dowMap2 = {1:'Pull Day 1',2:'Push Day 1',3:'Rest',4:'Legs',5:'Pull Day 2',6:'Push Day 2',0:'Rest'};
   var journeyStart = new Date('2026-04-10');
