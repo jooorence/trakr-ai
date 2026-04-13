@@ -1856,6 +1856,7 @@ function processLogActions(reply) {
       } catch(e) {}
     }
   });
+  if (confirmations.length > 0) { try { dashRefresh(); } catch(e) {} }
   return { cleaned: cleaned, confirmations: confirmations };
 }
 
