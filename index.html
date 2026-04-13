@@ -1804,6 +1804,7 @@ function coachSystemPrompt(ctx) {
   p += 'When told about Apple Fitness Exercise minutes, include: LOGEXERCISE:{"min":38} ';
   p += 'When told about Apple Fitness Stand hours, include: LOGSTAND:{"hrs":10} ';
   p += 'Always include the LOG action when the user shares a number for any of these — even if they mention it casually. ';
+  p += 'When asked to clear, reset, or start fresh for the day, include: CLEARDAY:{} ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
   return p;
 }
@@ -1860,6 +1861,34 @@ function processLogActions(reply) {
   return { cleaned: cleaned, confirmations: confirmations };
 }
 
+/* Clear all data for today */
+function processClearDay(reply) {
+  var match = reply.match(/CLEARDAY:\{[^}]*\}/);
+  if (!match) return { cleared: false, cleaned: reply };
+  // Reset food log
+  var key = flDateKey(new Date());
+  var dayData = flGetDayData(new Date());
+  dayData.log = [];
+  // Reset water
+  waterOz = 0; waterJugs = 0; waterBottles = 0;
+  waterSave(); waterRender();
+  // Reset Oura fields
+  ['oura-score','oura-total','oura-eff','oura-deep','oura-rem','oura-light','oura-bed','oura-wake','oura-hrv','oura-readiness','oura-steps','oura-calexp'].forEach(function(id) {
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  ouraUpdate();
+  // Reset Apple Fitness fields
+  ['dash-move-input','dash-exercise-input','dash-stand-input'].forEach(function(id) {
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  dashUpdateRings();
+  // Save and refresh
+  flSaveAll(); flRender();
+  try { dashRefresh(); } catch(e) {}
+  var cleaned = reply.replace(/CLEARDAY:\{[^}]*\}/, '').trim();
+  return { cleared: true, cleaned: cleaned };
+}
+
 async function sendCoachMsg() {
   var input = document.getElementById('coach-msg-input');
   var text = input.value.trim();
@@ -1884,6 +1913,14 @@ async function sendCoachMsg() {
     var reply = data.content.map(function(i){return i.text||'';}).join('');
     if(typing) typing.remove();
     coachHistory.push({role:'assistant', content: reply});
+
+    // Check for CLEARDAY action first
+    var clearResult = processClearDay(reply);
+    if (clearResult.cleared) {
+      reply = clearResult.cleaned;
+      if (reply) coachAddMsg('coach', reply);
+      coachAddMsg('coach', '<div style="background:#2a1a00;border:1px solid #4a3000;border-radius:8px;padding:8px 12px;font-size:11px;color:#f5a623;">Day cleared — all logs, water, and metrics reset for today</div>');
+    } else {
 
     // Process metric LOG actions (steps, cal burn, move, exercise, stand)
     var logResult = processLogActions(reply);
@@ -1935,6 +1972,7 @@ async function sendCoachMsg() {
     if (logResult.confirmations.length > 0) {
       coachAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>');
     }
+    } // end else (not CLEARDAY)
   } catch(e) {
     if(typing) typing.remove();
     coachAddMsg('coach', 'Having trouble connecting right now. Try again in a moment.');
@@ -2501,6 +2539,14 @@ async function csSend() {
     if (typing) typing.remove();
     csHistory.push({role:'assistant', content: reply});
 
+    // Check for CLEARDAY action first
+    var clearResult = processClearDay(reply);
+    if (clearResult.cleared) {
+      reply = clearResult.cleaned;
+      if (reply) csAddMsg('coach', reply);
+      csAddMsg('coach', '<div style="background:#2a1a00;border:1px solid #4a3000;border-radius:8px;padding:8px 12px;font-size:11px;color:#f5a623;">Day cleared — all logs, water, and metrics reset for today</div>');
+    } else {
+
     // Process metric LOG actions (steps, cal burn, move, exercise, stand)
     var logResult = processLogActions(reply);
     reply = logResult.cleaned;
@@ -2544,6 +2590,7 @@ async function csSend() {
     if (logResult.confirmations.length > 0) {
       csAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>');
     }
+    } // end else (not CLEARDAY)
   } catch(e) {
     var t2 = document.getElementById('cs-typing');
     if (t2) t2.remove();
