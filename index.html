@@ -1231,6 +1231,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   <div class="coach-response" id="coach-response" style="display:none"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 var currentSection = 'td';
 var flDay = 'td';
@@ -1240,6 +1241,90 @@ var flCalViewDate = new Date();
 var flCalOpen = false;
 var flDateStore = {};
 var flSplits = ['Pull Day 1','Push Day 1','Rest','Legs','Pull Day 2','Push Day 2','Rest'];
+
+/* ── SUPABASE SYNC ── */
+var SUPABASE_URL = 'https://ztqpxwaeaknylgpvipuu.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0cXB4d2FlYWtueWxncHZpcHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNTk3OTcsImV4cCI6MjA5MTYzNTc5N30.pusi0hcRZgSzojtsNDasSi-EfBgRPHLYrdTpgK8a1Cw';
+var sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+var _dbTimers = {};
+
+function dbSaveDay(dateKey, fields) {
+  if (!sb) return;
+  clearTimeout(_dbTimers['d_' + dateKey]);
+  _dbTimers['d_' + dateKey] = setTimeout(function() {
+    var payload = Object.assign({ date: dateKey, updated_at: new Date().toISOString() }, fields);
+    sb.from('daily_logs').upsert(payload).then(function(r) { if(r.error) console.error('DB save:', r.error); });
+  }, 600);
+}
+
+function dbSaveSettings(fields) {
+  if (!sb) return;
+  clearTimeout(_dbTimers['settings']);
+  _dbTimers['settings'] = setTimeout(function() {
+    var payload = Object.assign({ id: 1, updated_at: new Date().toISOString() }, fields);
+    sb.from('user_settings').upsert(payload).then(function(r) { if(r.error) console.error('DB settings:', r.error); });
+  }, 600);
+}
+
+async function dbLoadAll() {
+  if (!sb) return;
+  try {
+    // Load all daily logs
+    var res = await sb.from('daily_logs').select('*');
+    if (res.data && res.data.length > 0) {
+      res.data.forEach(function(row) {
+        flDateStore[row.date] = {
+          split: row.split || flAutoSplit(new Date(row.date + 'T12:00:00')),
+          dayType: row.day_type || 'td',
+          log: row.food_log || []
+        };
+      });
+      // Load today's water
+      var todayKey = flDateKey(new Date());
+      var todayRow = res.data.find(function(r) { return r.date === todayKey; });
+      if (todayRow) {
+        waterOz = parseFloat(todayRow.water_oz) || 0;
+        waterJugs = parseInt(todayRow.water_jugs) || 0;
+        waterBottles = parseInt(todayRow.water_bottles) || 0;
+        // Load today's routines
+        if (todayRow.routines && typeof todayRow.routines === 'object') {
+          Object.assign(rtnState, todayRow.routines);
+        }
+        // Load today's oura data
+        if (todayRow.oura && typeof todayRow.oura === 'object') {
+          var o = todayRow.oura;
+          if(o.score) { var el = document.getElementById('oura-score'); if(el) el.value = o.score; }
+          if(o.total) { var el = document.getElementById('oura-total'); if(el) el.value = o.total; }
+          if(o.eff) { var el = document.getElementById('oura-eff'); if(el) el.value = o.eff; }
+          if(o.deep) { var el = document.getElementById('oura-deep'); if(el) el.value = o.deep; }
+          if(o.rem) { var el = document.getElementById('oura-rem'); if(el) el.value = o.rem; }
+          if(o.light) { var el = document.getElementById('oura-light'); if(el) el.value = o.light; }
+          if(o.bed) { var el = document.getElementById('oura-bed'); if(el) el.value = o.bed; }
+          if(o.wake) { var el = document.getElementById('oura-wake'); if(el) el.value = o.wake; }
+          if(o.hrv) { var el = document.getElementById('oura-hrv'); if(el) el.value = o.hrv; }
+          if(o.readiness) { var el = document.getElementById('oura-readiness'); if(el) el.value = o.readiness; }
+          if(o.steps) { var el = document.getElementById('oura-steps'); if(el) el.value = o.steps; }
+          if(o.calexp) { var el = document.getElementById('oura-calexp'); if(el) el.value = o.calexp; }
+          ouraUpdate();
+        }
+      }
+    }
+    // Load user settings (weight)
+    var sRes = await sb.from('user_settings').select('*').eq('id', 1).maybeSingle();
+    if (sRes.data) {
+      var wi = document.getElementById('dash-weight-input');
+      var gi = document.getElementById('dash-goal-input');
+      if(wi && sRes.data.weight) wi.value = sRes.data.weight;
+      if(gi && sRes.data.goal_weight) gi.value = sRes.data.goal_weight;
+      weightUpdate();
+    }
+    // Re-render everything
+    waterRender();
+    flUpdateDateDisplay();
+    rtnInit();
+    console.log('TRAKR synced from Supabase (' + (res.data ? res.data.length : 0) + ' days loaded)');
+  } catch(e) { console.error('DB load error:', e); }
+}
 
 function flDateKey(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -1635,7 +1720,12 @@ function flRenderLog() {
 
 function flRender() { flRenderLog(); flRenderBars(); }
 
-function flSaveAll() { try { localStorage.setItem('jr_fl_v2', JSON.stringify({store:flDateStore})); } catch(e) {} }
+function flSaveAll() {
+  try { localStorage.setItem('jr_fl_v2', JSON.stringify({store:flDateStore})); } catch(e) {}
+  var key = flDateKey(flCurrentDate);
+  var dayData = flDateStore[key];
+  if (dayData) { dbSaveDay(key, { food_log: dayData.log || [], split: dayData.split || '', day_type: dayData.dayType || 'td' }); }
+}
 function flLoad() {
   try {
     var saved = localStorage.getItem('jr_fl_v2');
@@ -1707,6 +1797,7 @@ function coachSystemPrompt(ctx) {
   p += "M5 sirloin+rice+broccoli (TD 430cal/41P) or salmon+rice+broccoli (RD 500cal/40P). ";
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
   p += 'When asked to log food, include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0} ';
+  p += 'When asked to log water or a drink, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
   return p;
 }
@@ -1716,11 +1807,8 @@ function coachAddMsg(role, text, isAction) {
   if(!msgs) return;
   var div = document.createElement('div');
   div.className = 'cmsg ' + (role === 'coach' ? 'coach-msg' : 'user-msg');
-  if(isAction) {
-    div.innerHTML = '<div class="cmsg-bubble">' + text + '</div>';
-  } else {
-    div.innerHTML = '<div class="cmsg-bubble">' + text + '</div>';
-  }
+  var rendered = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
+  div.innerHTML = '<div class="cmsg-bubble">' + rendered + '</div>';
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
   return div;
@@ -1763,9 +1851,22 @@ async function sendCoachMsg() {
     if(typing) typing.remove();
     coachHistory.push({role:'assistant', content: reply});
 
-    // Check for LOGFOOD action
+    // Check for LOGFOOD and LOGWATER actions
     var logMatch = reply.match(/LOGFOOD:(\{[^}]+\})/);
-    if(logMatch) {
+    var waterMatch = reply.match(/LOGWATER:(\{[^}]+\})/);
+    if(waterMatch) {
+      try {
+        var wd = JSON.parse(waterMatch[1]);
+        var cleanWater = reply.replace(/LOGWATER:\{[^}]+\}/,'').trim();
+        if(logMatch) cleanWater = cleanWater.replace(/LOGFOOD:\{[^}]+\}/,'').trim();
+        waterOz += parseFloat(wd.oz) || 0;
+        waterBottles++;
+        waterSave();
+        waterRender();
+        if(cleanWater) coachAddMsg('coach', cleanWater);
+        coachAddMsg('coach', '<div style="background:#0d1a2a;border:1px solid #1a3a5a;border-radius:8px;padding:8px 12px;font-size:11px;color:#5aabff;">Logged ' + (wd.oz||0) + ' oz water — ' + (Math.round(waterOz*10)/10) + ' oz total today</div>');
+      } catch(e) { coachAddMsg('coach', reply); }
+    } else if(logMatch) {
       try {
         var food = JSON.parse(logMatch[1]);
         var cleanText = reply.replace(/LOGFOOD:\{[^}]+\}/, '').trim();
@@ -1875,7 +1976,13 @@ function rtnDateKey() {
   return 'rtn_' + d.getFullYear() + '_' + (d.getMonth()+1) + '_' + d.getDate();
 }
 function rtnLoad() { try { var s = localStorage.getItem('jr_routines'); if(s) rtnState = JSON.parse(s); } catch(e) {} }
-function rtnSave() { try { localStorage.setItem('jr_routines', JSON.stringify(rtnState)); } catch(e) {} }
+function rtnSave() {
+  try { localStorage.setItem('jr_routines', JSON.stringify(rtnState)); } catch(e) {}
+  var prefix = rtnDateKey();
+  var todayRoutines = {};
+  Object.keys(rtnState).forEach(function(k) { if(k.indexOf(prefix) === 0) todayRoutines[k] = rtnState[k]; });
+  dbSaveDay(flDateKey(new Date()), { routines: todayRoutines });
+}
 function rtnKey(id) { return rtnDateKey() + '_' + id; }
 
 function rtnRender(type) {
@@ -2174,6 +2281,7 @@ function ouraUpdate() {
   if(calexpStatEl && calexp) calexpStatEl.textContent = calexp.toLocaleString();
 
   try { localStorage.setItem('jr_oura', JSON.stringify({score,total,eff,deep,rem,light,bed,wake,hrv,readiness,steps,calexp})); } catch(e) {}
+  dbSaveDay(flDateKey(new Date()), { oura: {score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
 }
 
 function weightUpdate() {
@@ -2206,6 +2314,7 @@ function weightUpdate() {
     }
   } else if(statusBar) { statusBar.style.display = 'none'; }
   try { localStorage.setItem('jr_weight', JSON.stringify({cur, goal})); } catch(e) {}
+  dbSaveSettings({ weight: cur, goal_weight: goal });
 }
 
 function weightLoad() {
@@ -2292,7 +2401,8 @@ function csAddMsg(role, html) {
   var msgs = document.getElementById('cs-messages');
   var div = document.createElement('div');
   div.className = 'scmsg ' + (role === 'coach' ? 'sc-coach' : 'sc-user');
-  div.innerHTML = '<div class="sc-bubble">' + html + '</div>';
+  var rendered = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
+  div.innerHTML = '<div class="sc-bubble">' + rendered + '</div>';
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
   return div;
@@ -2347,7 +2457,20 @@ async function csSend() {
     if (typing) typing.remove();
     csHistory.push({role:'assistant', content: reply});
     var logMatch = reply.match(/LOGFOOD:(\{[^}]+\})/);
-    if (logMatch) {
+    var waterMatch = reply.match(/LOGWATER:(\{[^}]+\})/);
+    if (waterMatch) {
+      try {
+        var wd = JSON.parse(waterMatch[1]);
+        var cleanWater = reply.replace(/LOGWATER:\{[^}]+\}/,'').trim();
+        if (logMatch) cleanWater = cleanWater.replace(/LOGFOOD:\{[^}]+\}/,'').trim();
+        waterOz += parseFloat(wd.oz) || 0;
+        waterBottles++;
+        waterSave();
+        waterRender();
+        if (cleanWater) csAddMsg('coach', cleanWater);
+        csAddMsg('coach', '<div style="background:#0d1a2a;border:1px solid #1a3a5a;border-radius:8px;padding:8px 12px;font-size:11px;color:#5aabff;">Logged ' + (wd.oz || 0) + ' oz water — ' + (Math.round(waterOz*10)/10) + ' oz total today</div>');
+      } catch(e) { csAddMsg('coach', reply); }
+    } else if (logMatch) {
       try {
         var food = JSON.parse(logMatch[1]);
         var cleanText = reply.replace(/LOGFOOD:\{[^}]+\}/,'').trim();
@@ -2532,6 +2655,7 @@ function waterRender() {
 
 function waterSave() {
   try { localStorage.setItem('jr_water_v2', JSON.stringify({oz:waterOz,jugs:waterJugs,bottles:waterBottles})); } catch(e) {}
+  dbSaveDay(flDateKey(new Date()), { water_oz: waterOz, water_jugs: waterJugs, water_bottles: waterBottles });
 }
 function waterLoad() {
   try {
@@ -2549,6 +2673,9 @@ function waterLoad() {
   waterRender();
 }
 waterLoad();
+
+/* Load from Supabase (overrides localStorage with cloud data) */
+setTimeout(function() { dbLoadAll(); }, 100);
 </script>
 <!-- CLICK DISMISS OVERLAY -->
 <div id="cs-click-overlay" onclick="csClose()" style="position:fixed;inset:0;z-index:9999;display:none;"></div>
