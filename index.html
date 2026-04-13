@@ -1602,7 +1602,18 @@ async function flAIAdd() {
 }
 
 function flDel(idx) { flGetDayData(flCurrentDate).log.splice(idx,1); flSaveAll(); flRender(); }
-function flReset() { flGetDayData(flCurrentDate).log=[]; flSaveAll(); flRender(); }
+function flReset() {
+  flGetDayData(flCurrentDate).log=[];
+  waterOz=0; waterJugs=0; waterBottles=0; waterSave(); waterRender();
+  ['oura-score','oura-total','oura-eff','oura-deep','oura-rem','oura-light','oura-bed','oura-wake','oura-hrv','oura-readiness','oura-steps','oura-calexp'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ouraUpdate();
+  ['dash-move-input','dash-exercise-input','dash-stand-input'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  dashUpdateRings();
+  flSaveAll(); flRender();
+  var todayKey=flDateKey(flCurrentDate);
+  dbSaveDay(todayKey,{food_log:[],water_oz:0,water_jugs:0,water_bottles:0,oura:{},routines:{}});
+  try{dashRefresh();}catch(e){}
+}
 
 function flTotals() {
   return flCurrentLog().reduce(function(acc,item) {
