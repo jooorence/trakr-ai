@@ -2699,32 +2699,29 @@ function ouraLoad() {
   } catch(e) {}
 }
 ouraLoad();
-
+weightLoad();
 function dashAppleSave() {
-  try {
-    localStorage.setItem('jr_apple', JSON.stringify({
-      move: document.getElementById('dash-move-input').value,
-      exercise: document.getElementById('dash-exercise-input').value,
-      stand: document.getElementById('dash-stand-input').value
-    }));
-  } catch(e) {}
+  var m = parseFloat((document.getElementById('dash-move-input')||{}).value)||0;
+  var e = parseFloat((document.getElementById('dash-exercise-input')||{}).value)||0;
+  var s = parseFloat((document.getElementById('dash-stand-input')||{}).value)||0;
+  try { localStorage.setItem('jr_apple', JSON.stringify({move:m,exercise:e,stand:s})); } catch(ex) {}
 }
-
 function dashAppleLoad() {
   try {
     var saved = localStorage.getItem('jr_apple');
-    if (saved) {
+    if(saved) {
       var d = JSON.parse(saved);
-      if (d.move)     document.getElementById('dash-move-input').value = d.move;
-      if (d.exercise) document.getElementById('dash-exercise-input').value = d.exercise;
-      if (d.stand)    document.getElementById('dash-stand-input').value = d.stand;
-      dashUpdateRings();
+      var mi = document.getElementById('dash-move-input');
+      var ei = document.getElementById('dash-exercise-input');
+      var si = document.getElementById('dash-stand-input');
+      if(mi && d.move) mi.value = d.move;
+      if(ei && d.exercise) ei.value = d.exercise;
+      if(si && d.stand) si.value = d.stand;
+      if(d.move||d.exercise||d.stand) dashUpdateRings();
     }
   } catch(e) {}
 }
 dashAppleLoad();
-
-weightLoad();
 
 /* ── FLOATING COACH SHEET ── */
 var csHistory = [];
