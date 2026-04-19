@@ -3083,7 +3083,7 @@ setTimeout(function() { dbLoadAll(); }, 100);
     <div class="cs-chip" onclick="csQuick('Give me a full summary of today so far.')">Today summary</div>
   </div>
   <div class="cs-input-row">
-    <input class="cs-input" id="cs-input" placeholder="Message CoachGPT..." onkeydown="if(event.key==='Enter')csSend()" />
+    <textarea class="cs-input" id="cs-input" placeholder="Message CoachGPT..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();csSend()}" rows="1" style="resize:none;overflow-y:auto;max-height:120px;line-height:1.5;"></textarea>
     <button class="cs-send" onclick="csSend()">&#8593;</button>
   </div>
 </div>
