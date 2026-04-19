@@ -1892,14 +1892,15 @@ function coachSystemPrompt(ctx) {
   p += "M4 chicken+rice+almonds (458cal/37P both days). ";
   p += "M5 sirloin+rice+broccoli (TD 430cal/41P) or salmon+rice+broccoli (RD 500cal/40P). ";
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
-  p += 'When asked to log food, include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0} ';
-  p += 'When asked to log water or a drink, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
-  p += 'When told about steps, include: LOGSTEPS:{"steps":6000} ';
-  p += 'When told about calories burned or total burn, include: LOGCALBURN:{"cal":2800} ';
-  p += 'When told about Apple Fitness Move calories, include: LOGMOVE:{"cal":467} ';
-  p += 'When told about Apple Fitness Exercise minutes, include: LOGEXERCISE:{"min":38} ';
-  p += 'When told about Apple Fitness Stand hours, include: LOGSTAND:{"hrs":10} ';
-  p += 'Always include the LOG action when the user shares a number for any of these — even if they mention it casually. ';
+  p += 'When user mentions eating anything, include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0} ';
+  p += 'When user mentions drinking water or fluids, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
+  p += 'When user mentions step count, include: LOGSTEPS:{"steps":6000} ';
+  p += 'When user mentions calories burned or total caloric expenditure, include: LOGCALBURN:{"cal":2800} ';
+  p += 'When user mentions Move ring or active calories, include: LOGMOVE:{"cal":467} ';
+  p += 'When user mentions exercise minutes, include: LOGEXERCISE:{"min":38} ';
+  p += 'When user mentions Stand ring or hours standing, include: LOGSTAND:{"hrs":10} ';
+  p += 'When user mentions sleep score, sleep quality, or Oura sleep data, include: LOGSLEEP:{"score":82} ';
+  p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
   p += 'When asked to clear, reset, or start fresh for the day, you MUST include exactly this on its own line: CLEARDAY:{} — this triggers the actual reset. Without it nothing clears. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
   return p;
@@ -1959,7 +1960,7 @@ function processLogActions(reply) {
 }
 
 function stripActionTags(text) {
-  return text.replace(/LOG\w+:\{[^}]*\}/g, '').replace(/  +/g, ' ').trim();
+  return text.replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP)\s*:\s*\{[^}]*\}/g, '').replace(/  +/g, ' ').trim();
 }
 
 /* Clear all data for today */
