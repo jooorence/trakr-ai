@@ -1929,29 +1929,30 @@ function coachShowTyping() {
   return div;
 }
 
-/* Process LOGSTEPS, LOGCALBURN, LOGMOVE, LOGEXERCISE, LOGSTAND actions */
+/* Process metric LOG actions */
 function processLogActions(reply) {
   var confirmations = [];
   var cleaned = reply;
   var patterns = [
-    { rx: /LOGSTEPS:(\{[^}]+\})/, field: 'oura-steps', key: 'steps', label: 'steps', unit: '', update: function(){ ouraUpdate(); } },
-    { rx: /LOGCALBURN:(\{[^}]+\})/, field: 'oura-calexp', key: 'cal', label: 'cal burned', unit: ' cal', update: function(){ ouraUpdate(); } },
-    { rx: /LOGMOVE:(\{[^}]+\})/, field: 'dash-move-input', key: 'cal', label: 'Move', unit: ' cal', update: function(){ dashUpdateRings(); } },
-    { rx: /LOGEXERCISE:(\{[^}]+\})/, field: 'dash-exercise-input', key: 'min', label: 'Exercise', unit: ' min', update: function(){ dashUpdateRings(); } },
-    { rx: /LOGSTAND:(\{[^}]+\})/, field: 'dash-stand-input', key: 'hrs', label: 'Stand', unit: ' hrs', update: function(){ dashUpdateRings(); } }
+    { rx: /LOGSTEPS:(\{[^}]+\})/g,    field: 'oura-steps',          key: 'steps', label: 'steps',      unit: '',     update: function(){ ouraUpdate(); dashRefresh(); } },
+    { rx: /LOGCALBURN:(\{[^}]+\})/g,  field: 'oura-calexp',         key: 'cal',   label: 'cal burned',  unit: ' cal', update: function(){ ouraUpdate(); dashRefresh(); } },
+    { rx: /LOGMOVE:(\{[^}]+\})/g,     field: 'dash-move-input',     key: 'cal',   label: 'Move',        unit: ' cal', update: function(){ dashUpdateRings(); dashAppleSave(); } },
+    { rx: /LOGEXERCISE:(\{[^}]+\})/g, field: 'dash-exercise-input', key: 'min',   label: 'Exercise',    unit: ' min', update: function(){ dashUpdateRings(); dashAppleSave(); } },
+    { rx: /LOGSTAND:(\{[^}]+\})/g,    field: 'dash-stand-input',    key: 'hrs',   label: 'Stand',       unit: ' hrs', update: function(){ dashUpdateRings(); dashAppleSave(); } },
+    { rx: /LOGSLEEP:(\{[^}]+\})/g,    field: 'oura-score',          key: 'score', label: 'sleep score', unit: '',     update: function(){ ouraUpdate(); } }
   ];
   patterns.forEach(function(p) {
-    var match = cleaned.match(p.rx);
-    if (match) {
+    var matches = Array.from(cleaned.matchAll(p.rx));
+    matches.forEach(function(match) {
       try {
         var data = JSON.parse(match[1]);
         var val = parseFloat(data[p.key]) || 0;
         var el = document.getElementById(p.field);
         if (el) { el.value = val; p.update(); }
         confirmations.push(p.label + ': ' + val + p.unit);
-        cleaned = cleaned.replace(p.rx, '').trim();
       } catch(e) {}
-    }
+    });
+    if (matches.length > 0) cleaned = cleaned.replace(p.rx, '').trim();
   });
   if (confirmations.length > 0) { try { dashRefresh(); } catch(e) {} }
   return { cleaned: cleaned, confirmations: confirmations };
@@ -2701,6 +2702,31 @@ function ouraLoad() {
   } catch(e) {}
 }
 ouraLoad();
+
+function dashAppleSave() {
+  try {
+    localStorage.setItem('jr_apple', JSON.stringify({
+      move: document.getElementById('dash-move-input').value,
+      exercise: document.getElementById('dash-exercise-input').value,
+      stand: document.getElementById('dash-stand-input').value
+    }));
+  } catch(e) {}
+}
+
+function dashAppleLoad() {
+  try {
+    var saved = localStorage.getItem('jr_apple');
+    if (saved) {
+      var d = JSON.parse(saved);
+      if (d.move)     document.getElementById('dash-move-input').value = d.move;
+      if (d.exercise) document.getElementById('dash-exercise-input').value = d.exercise;
+      if (d.stand)    document.getElementById('dash-stand-input').value = d.stand;
+      dashUpdateRings();
+    }
+  } catch(e) {}
+}
+dashAppleLoad();
+
 weightLoad();
 
 /* ── FLOATING COACH SHEET ── */
