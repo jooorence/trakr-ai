@@ -2639,10 +2639,6 @@ function weightUpdate() {
   if(!wi || !gi) return;
   var cur = parseFloat(wi.value) || 0;
   var goal = parseFloat(gi.value) || 0;
-  var curEl = document.getElementById('dash-weight-val');
-  var goalEl = document.getElementById('dash-goal-val');
-  if(curEl) curEl.textContent = cur ? cur + ' lbs' : '—';
-  if(goalEl) goalEl.textContent = goal ? goal + ' lbs' : '—';
   var statusBar = document.getElementById('weight-status-bar');
   if(cur && goal && statusBar) {
     statusBar.style.display = 'block';
@@ -2950,6 +2946,11 @@ function dashRefresh() {
   var calexpVal = parseFloat((document.getElementById('oura-calexp')||{}).value) || 0;
   if(expSteps) expSteps.textContent = stepsVal ? stepsVal.toLocaleString() + ' steps' : '—';
   if(expBurned) expBurned.textContent = calexpVal ? calexpVal.toLocaleString() + ' cal' : '—';
+  var sleepScoreVal = parseFloat((document.getElementById('oura-score')||{}).value) || 0;
+  var dashStepsEl = document.getElementById('dash-weight-val');
+  var dashSleepEl = document.getElementById('dash-goal-val');
+  if(dashStepsEl) dashStepsEl.textContent = stepsVal ? stepsVal.toLocaleString() : '—';
+  if(dashSleepEl) dashSleepEl.textContent = sleepScoreVal || '—';
   if(expNet && calexpVal && t.cal) {
     var net = Math.round(calexpVal - t.cal);
     expNet.textContent = (net >= 0 ? '+' : '') + net + ' cal';
