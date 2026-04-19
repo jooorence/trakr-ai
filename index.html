@@ -2113,6 +2113,7 @@ function coachConfirmLogAll(btn) {
   coachAddMsg('coach', (foods.length > 1 ? foods.length + ' items logged.' : names + ' is logged.') + ' Macros updated.');
   coachHistory.push({role:'assistant', content: names + ' logged.'});
   dbSaveChatMsg('main', 'assistant', names + ' logged.');
+  dashRefresh();
 }
 
 function coachQuick(prompt) {
@@ -2884,6 +2885,7 @@ function csConfirmLogAll(btn) {
   csAddMsg('coach', (foods.length > 1 ? foods.length + ' items logged.' : names + ' is logged.') + ' Macros updated.');
   csHistory.push({role:'assistant', content: names + ' logged.'});
   dbSaveChatMsg('floating', 'assistant', names + ' logged.');
+  dashRefresh();
 }
 
 function csQuick(prompt) {
