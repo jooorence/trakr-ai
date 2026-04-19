@@ -194,15 +194,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 
 
 /* FLOATING COACH BUBBLE */
-#coach-bubble { position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%; background:#40ccbb; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10002; box-shadow:0 4px 20px rgba(64,204,187,0.4); animation:bubblePulse 2.5s ease-in-out infinite; }
+#coach-bubble { position:fixed; bottom:24px; right:max(24px, calc((100vw - 1100px) / 2 + 24px)); width:56px; height:56px; border-radius:50%; background:#40ccbb; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10002; box-shadow:0 4px 20px rgba(64,204,187,0.4); animation:bubblePulse 2.5s ease-in-out infinite; }
 #coach-bubble svg { width:24px; height:24px; }
 @keyframes bubblePulse { 0%,100%{box-shadow:0 4px 20px rgba(64,204,187,0.4)} 50%{box-shadow:0 4px 32px rgba(64,204,187,0.75)} }
 #coach-bubble:active { transform:scale(0.93); }
 
 /* COACH SHEET */
-#coach-sheet { position:fixed; bottom:92px; right:20px; width:340px; height:480px; background:#0d0d0d; border-radius:16px; border:1px solid #1a4a44; z-index:10001; display:none; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.6); overflow:hidden; }
+#coach-sheet { position:fixed; bottom:92px; right:max(20px, calc((100vw - 1100px) / 2 + 20px)); width:340px; height:480px; background:#0d0d0d; border-radius:16px; border:1px solid #1a4a44; z-index:10001; display:none; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.6); overflow:hidden; }
 #coach-sheet.open { display:flex; }
-#coach-sheet.fullpage { width:420px; height:600px; bottom:92px; right:20px; }
+#coach-sheet.fullpage { width:420px; height:600px; bottom:92px; right:max(20px, calc((100vw - 1100px) / 2 + 20px)); }
 .cs-handle-row { display:flex; align-items:center; justify-content:flex-end; padding:8px 12px 0; flex-shrink:0; }
 .cs-handle { display:none; }
 .cs-expand-btn { font-size:15px; color:#40ccbb; cursor:pointer; padding:2px 6px; line-height:1; opacity:0.7; }
