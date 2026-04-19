@@ -1957,6 +1957,10 @@ function processLogActions(reply) {
   return { cleaned: cleaned, confirmations: confirmations };
 }
 
+function stripActionTags(text) {
+  return text.replace(/LOG\w+:\{[^}]*\}/g, '').replace(/  +/g, ' ').trim();
+}
+
 /* Clear all data for today */
 function processClearDay(reply) {
   var match = reply.match(/CLEARDAY:\{[^}]*\}/);
@@ -2051,45 +2055,36 @@ async function sendCoachMsg() {
       var confHtml = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>';
     }
 
-    // Check for LOGFOOD and LOGWATER actions
-    var logMatch = reply.match(/LOGFOOD:(\{[^}]+\})/);
-    var waterMatch = reply.match(/LOGWATER:(\{[^}]+\})/);
-    if(waterMatch) {
-      try {
-        var wd = JSON.parse(waterMatch[1]);
-        var cleanWater = reply.replace(/LOGWATER:\{[^}]+\}/,'').trim();
-        if(logMatch) cleanWater = cleanWater.replace(/LOGFOOD:\{[^}]+\}/,'').trim();
-        waterOz += parseFloat(wd.oz) || 0;
-        waterBottles++;
-        waterSave();
-        waterRender();
-        if(cleanWater) coachAddMsg('coach', cleanWater);
-        coachAddMsg('coach', '<div style="background:#0d1a2a;border:1px solid #1a3a5a;border-radius:8px;padding:8px 12px;font-size:11px;color:#5aabff;">Logged ' + (wd.oz||0) + ' oz water — ' + (Math.round(waterOz*10)/10) + ' oz total today</div>');
-      } catch(e) { coachAddMsg('coach', reply); }
-    } else if(logMatch) {
-      try {
-        var food = JSON.parse(logMatch[1]);
-        var cleanText = reply.replace(/LOGFOOD:\{[^}]+\}/, '').trim();
-        coachAddMsg('coach', cleanText);
+    // Bug 1: strip all LOG tags before display; Bug 2: global match for all items
+    var displayText = stripActionTags(reply);
+    var waterMatches = Array.from(reply.matchAll(/LOGWATER:(\{[^}]+\})/g));
+    var foodMatches  = Array.from(reply.matchAll(/LOGFOOD:(\{[^}]+\})/g));
+    var hasActions   = waterMatches.length > 0 || foodMatches.length > 0;
+    if (displayText || !hasActions) coachAddMsg('coach', displayText || reply);
+    if (waterMatches.length > 0) {
+      var totalOz = 0;
+      waterMatches.forEach(function(m) { try { totalOz += parseFloat(JSON.parse(m[1]).oz)||0; } catch(e){} });
+      waterOz += totalOz; waterBottles += waterMatches.length; waterSave(); waterRender();
+      coachAddMsg('coach', '<div style="background:#0d1a2a;border:1px solid #1a3a5a;border-radius:8px;padding:8px 12px;font-size:11px;color:#5aabff;">Logged ' + totalOz + ' oz water — ' + (Math.round(waterOz*10)/10) + ' oz total today</div>');
+    }
+    if (foodMatches.length > 0) {
+      var foods = [];
+      foodMatches.forEach(function(m) { try { foods.push(JSON.parse(m[1])); } catch(e){} });
+      if (foods.length > 0) {
         var actionDiv = document.createElement('div');
         actionDiv.className = 'cmsg coach-msg';
-        actionDiv.innerHTML = '<div class="action-crd"><div class="action-crd-title">Ready to log</div>' +
-          '<div class="action-crd-row"><span class="action-crd-key">Food</span><span class="action-crd-val">' + food.name + '</span></div>' +
-          '<div class="action-crd-row"><span class="action-crd-key">Calories</span><span class="action-crd-val">' + food.cal + ' cal</span></div>' +
-          '<div class="action-crd-row"><span class="action-crd-key">Protein</span><span class="action-crd-val">' + food.p + 'g</span></div>' +
-          '<div class="action-crd-row"><span class="action-crd-key">Carbs</span><span class="action-crd-val">' + food.c + 'g</span></div>' +
-          '<div class="action-crd-row"><span class="action-crd-key">Fat</span><span class="action-crd-val">' + food.f + 'g</span></div>' +
-          '<div class="action-crd-btns">' +
-          '<div class="action-crd-confirm" onclick="coachConfirmLog(\'' + food.name.replace(/'/g,"") + '\',' + food.cal + ',' + food.p + ',' + food.c + ',' + food.f + ',this)">Confirm & Log</div>' +
-          '<div class="action-crd-edit">Edit</div>' +
-          '</div></div>';
+        var rows = foods.map(function(f) {
+          return '<div class="action-crd-row"><span class="action-crd-key">' + f.name + '</span><span class="action-crd-val">' + f.cal + ' cal / ' + f.p + 'g P</span></div>';
+        }).join('');
+        actionDiv.innerHTML = '<div class="action-crd">'
+          + '<div class="action-crd-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
+          + rows
+          + '<div class="action-crd-btns"><div class="action-crd-confirm" onclick="coachConfirmLogAll(this)">Confirm &amp; Log All</div>'
+          + '<div class="action-crd-edit">Edit</div></div></div>';
+        actionDiv.dataset.foods = JSON.stringify(foods);
         document.getElementById('coach-messages').appendChild(actionDiv);
         document.getElementById('coach-messages').scrollTop = 99999;
-      } catch(e) {
-        coachAddMsg('coach', reply);
       }
-    } else {
-      coachAddMsg('coach', reply);
     }
     if (logResult.confirmations.length > 0) {
       coachAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>');
@@ -2107,6 +2102,17 @@ function coachConfirmLog(name, cal, p, c, f, btn) {
   coachAddMsg('coach', 'Done — ' + name + ' is logged. Your macros are updated.');
   coachHistory.push({role:'assistant', content: name + ' has been logged to the food log.'});
   dbSaveChatMsg('main', 'assistant', name + ' has been logged to the food log.');
+}
+
+function coachConfirmLogAll(btn) {
+  var card = btn.closest('.cmsg');
+  var foods = []; try { foods = JSON.parse(card.dataset.foods || '[]'); } catch(e){}
+  foods.forEach(function(f) { flAdd(f.name, f.cal, f.p, f.c, f.f); });
+  var names = foods.map(function(f) { return f.name; }).join(', ');
+  btn.parentNode.parentNode.innerHTML = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">&#10003; Logged — added to Food Log</div>';
+  coachAddMsg('coach', (foods.length > 1 ? foods.length + ' items logged.' : names + ' is logged.') + ' Macros updated.');
+  coachHistory.push({role:'assistant', content: names + ' logged.'});
+  dbSaveChatMsg('main', 'assistant', names + ' logged.');
 }
 
 function coachQuick(prompt) {
@@ -2250,27 +2256,24 @@ async function briefChatSend() {
     } else {
       var logResult = processLogActions(reply);
       reply = logResult.cleaned;
-      var logMatch = reply.match(/LOGFOOD:(\{[^}]+\})/);
-      var waterMatch = reply.match(/LOGWATER:(\{[^}]+\})/);
-      if(waterMatch) {
-        try {
-          var wd = JSON.parse(waterMatch[1]);
-          reply = reply.replace(/LOGWATER:\{[^}]+\}/,'').trim();
-          if(logMatch) reply = reply.replace(/LOGFOOD:\{[^}]+\}/,'').trim();
-          waterOz += parseFloat(wd.oz)||0; waterBottles++; waterSave(); waterRender();
-          if(reply) briefChatAddMsg('coach', reply);
-          briefChatAddMsg('coach', '<div style="background:#0d1a2a;border:1px solid #1a3a5a;border-radius:8px;padding:8px 12px;font-size:11px;color:#5aabff;">Logged ' + (wd.oz||0) + ' oz water</div>');
-        } catch(e) { briefChatAddMsg('coach', reply); }
-      } else if(logMatch) {
-        try {
-          var food = JSON.parse(logMatch[1]);
-          reply = reply.replace(/LOGFOOD:\{[^}]+\}/,'').trim();
-          if(reply) briefChatAddMsg('coach', reply);
-          flAdd(food.name, food.cal, food.p, food.c, food.f);
-          briefChatAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Logged: ' + food.name + ' (' + food.cal + ' cal)</div>');
-        } catch(e) { briefChatAddMsg('coach', reply); }
-      } else {
-        briefChatAddMsg('coach', reply);
+      // Bug 1: strip all LOG tags before display; Bug 2: global match, auto-log all
+      var displayText = stripActionTags(reply);
+      var waterMatches = Array.from(reply.matchAll(/LOGWATER:(\{[^}]+\})/g));
+      var foodMatches  = Array.from(reply.matchAll(/LOGFOOD:(\{[^}]+\})/g));
+      var hasActions   = waterMatches.length > 0 || foodMatches.length > 0;
+      if (displayText || !hasActions) briefChatAddMsg('coach', displayText || reply);
+      if (waterMatches.length > 0) {
+        var totalOz = 0;
+        waterMatches.forEach(function(m) { try { totalOz += parseFloat(JSON.parse(m[1]).oz)||0; } catch(e){} });
+        waterOz += totalOz; waterBottles += waterMatches.length; waterSave(); waterRender();
+        briefChatAddMsg('coach', '<div style="background:#0d1a2a;border:1px solid #1a3a5a;border-radius:8px;padding:8px 12px;font-size:11px;color:#5aabff;">Logged ' + totalOz + ' oz water</div>');
+      }
+      if (foodMatches.length > 0) {
+        var loggedFoods = [];
+        foodMatches.forEach(function(m) { try { var f = JSON.parse(m[1]); flAdd(f.name, f.cal, f.p, f.c, f.f); loggedFoods.push(f); } catch(e){} });
+        if (loggedFoods.length > 0) {
+          briefChatAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Logged: ' + loggedFoods.map(function(f) { return f.name + ' (' + f.cal + ' cal)'; }).join(', ') + '</div>');
+        }
       }
       if(logResult.confirmations.length > 0) {
         briefChatAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>');
@@ -2821,41 +2824,36 @@ async function csSend() {
     var logResult = processLogActions(reply);
     reply = logResult.cleaned;
 
-    var logMatch = reply.match(/LOGFOOD:(\{[^}]+\})/);
-    var waterMatch = reply.match(/LOGWATER:(\{[^}]+\})/);
-    if (waterMatch) {
-      try {
-        var wd = JSON.parse(waterMatch[1]);
-        var cleanWater = reply.replace(/LOGWATER:\{[^}]+\}/,'').trim();
-        if (logMatch) cleanWater = cleanWater.replace(/LOGFOOD:\{[^}]+\}/,'').trim();
-        waterOz += parseFloat(wd.oz) || 0;
-        waterBottles++;
-        waterSave();
-        waterRender();
-        if (cleanWater) csAddMsg('coach', cleanWater);
-        csAddMsg('coach', '<div style="background:#0d1a2a;border:1px solid #1a3a5a;border-radius:8px;padding:8px 12px;font-size:11px;color:#5aabff;">Logged ' + (wd.oz || 0) + ' oz water — ' + (Math.round(waterOz*10)/10) + ' oz total today</div>');
-      } catch(e) { csAddMsg('coach', reply); }
-    } else if (logMatch) {
-      try {
-        var food = JSON.parse(logMatch[1]);
-        var cleanText = reply.replace(/LOGFOOD:\{[^}]+\}/,'').trim();
-        csAddMsg('coach', cleanText);
+    // Bug 1: strip all LOG tags before display; Bug 2: global match for all items
+    var displayText = stripActionTags(reply);
+    var waterMatches = Array.from(reply.matchAll(/LOGWATER:(\{[^}]+\})/g));
+    var foodMatches  = Array.from(reply.matchAll(/LOGFOOD:(\{[^}]+\})/g));
+    var hasActions   = waterMatches.length > 0 || foodMatches.length > 0;
+    if (displayText || !hasActions) csAddMsg('coach', displayText || reply);
+    if (waterMatches.length > 0) {
+      var totalOz = 0;
+      waterMatches.forEach(function(m) { try { totalOz += parseFloat(JSON.parse(m[1]).oz)||0; } catch(e){} });
+      waterOz += totalOz; waterBottles += waterMatches.length; waterSave(); waterRender();
+      csAddMsg('coach', '<div style="background:#0d1a2a;border:1px solid #1a3a5a;border-radius:8px;padding:8px 12px;font-size:11px;color:#5aabff;">Logged ' + totalOz + ' oz water — ' + (Math.round(waterOz*10)/10) + ' oz total today</div>');
+    }
+    if (foodMatches.length > 0) {
+      var foods = [];
+      foodMatches.forEach(function(m) { try { foods.push(JSON.parse(m[1])); } catch(e){} });
+      if (foods.length > 0) {
         var ac = document.createElement('div');
         ac.className = 'scmsg sc-coach';
-        ac.innerHTML = '<div class="sc-action-card" data-name="' + food.name.replace(/"/g, '') + '"><div class="sc-action-title">Ready to log</div>' +
-          '<div class="sc-action-row"><span class="sc-action-key">Food</span><span class="sc-action-val">'+food.name+'</span></div>' +
-          '<div class="sc-action-row"><span class="sc-action-key">Calories</span><span class="sc-action-val">'+food.cal+' cal</span></div>' +
-          '<div class="sc-action-row"><span class="sc-action-key">Protein</span><span class="sc-action-val">'+food.p+'g</span></div>' +
-          '<div class="sc-action-row"><span class="sc-action-key">Carbs</span><span class="sc-action-val">'+food.c+'g</span></div>' +
-          '<div class="sc-action-row"><span class="sc-action-key">Fat</span><span class="sc-action-val">'+food.f+'g</span></div>' +
-          '<div class="sc-action-btns">' +
-          '<div class="sc-confirm-btn" onclick="csConfirmLog(this,' + food.cal + ',' + food.p + ',' + food.c + ',' + food.f + ')">Confirm &amp; Log</div>' +
-          '<div class="sc-edit-btn">Edit</div></div></div>';
+        var rows = foods.map(function(f) {
+          return '<div class="sc-action-row"><span class="sc-action-key">' + f.name + '</span><span class="sc-action-val">' + f.cal + ' cal / ' + f.p + 'g P</span></div>';
+        }).join('');
+        ac.innerHTML = '<div class="sc-action-card">'
+          + '<div class="sc-action-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
+          + rows
+          + '<div class="sc-action-btns"><div class="sc-confirm-btn" onclick="csConfirmLogAll(this)">Confirm &amp; Log All</div>'
+          + '<div class="sc-edit-btn">Edit</div></div></div>';
+        ac.dataset.foods = JSON.stringify(foods);
         document.getElementById('cs-messages').appendChild(ac);
         document.getElementById('cs-messages').scrollTop = 99999;
-      } catch(e) { csAddMsg('coach', reply); }
-    } else {
-      csAddMsg('coach', reply);
+      }
     }
     if (logResult.confirmations.length > 0) {
       csAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>');
@@ -2875,6 +2873,17 @@ function csConfirmLog(btn, cal, p, c, f) {
   csAddMsg('coach', name + ' is logged. Your macros are updated.');
   csHistory.push({role:'assistant', content: name + ' has been logged.'});
   dbSaveChatMsg('floating', 'assistant', name + ' has been logged.');
+}
+
+function csConfirmLogAll(btn) {
+  var card = btn.closest('.scmsg');
+  var foods = []; try { foods = JSON.parse(card.dataset.foods || '[]'); } catch(e){}
+  foods.forEach(function(f) { flAdd(f.name, f.cal, f.p, f.c, f.f); });
+  var names = foods.map(function(f) { return f.name; }).join(', ');
+  btn.parentNode.parentNode.innerHTML = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">&#10003; Logged &#8212; added to Food Log</div>';
+  csAddMsg('coach', (foods.length > 1 ? foods.length + ' items logged.' : names + ' is logged.') + ' Macros updated.');
+  csHistory.push({role:'assistant', content: names + ' logged.'});
+  dbSaveChatMsg('floating', 'assistant', names + ' logged.');
 }
 
 function csQuick(prompt) {
