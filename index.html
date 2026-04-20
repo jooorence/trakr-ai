@@ -243,14 +243,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .cs-dsel-split { font-size:10px; color:#40ccbb; margin-top:2px; }
 .cs-dsel-stats { font-size:10px; color:#555; text-align:right; }
 .cs-dsel-cal { color:#4caf7d; font-weight:600; }
-/* Pinned day summary card */
-#cs-day-card { display:none; padding:10px 14px; background:#0d1f1e; border-bottom:1px solid #1a4a44; flex-shrink:0; }
-#cs-day-card.visible { display:block; }
-.cs-day-card-date { font-size:11px; font-weight:700; color:#40ccbb; margin-bottom:6px; letter-spacing:0.3px; }
-.cs-day-card-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
-.cs-day-card-item { background:#0a1a18; border-radius:6px; padding:5px 8px; }
-.cs-day-card-val { font-size:12px; font-weight:700; color:#ddd; }
-.cs-day-card-lbl { font-size:9px; color:#40ccbb; margin-top:1px; }
 /* Read-only banner */
 #cs-readonly-banner { display:none; padding:7px 16px; background:#1a1500; border-bottom:1px solid #3a3000; font-size:11px; color:#f5a623; cursor:pointer; text-align:center; flex-shrink:0; }
 #cs-readonly-banner:hover { background:#221c00; }
@@ -1289,7 +1281,9 @@ var chatRestored = { main: false, brief: false, floating: false };
 
 function getTodayKey() {
   var d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  console.log('[TRAKR] getTodayKey:', key);
+  return key;
 }
 
 function dbSaveChatMsg(surface, role, content) {
@@ -1304,13 +1298,16 @@ function dbSaveChatMsg(surface, role, content) {
 async function dbLoadChatHistory(date) {
   if (!sb) return {};
   var targetDate = date || getTodayKey();
+  console.log('[TRAKR] dbLoadChatHistory: querying chat_date =', targetDate);
   try {
     var res = await sb.from('chat_history')
       .select('surface,role,content,created_at')
       .eq('chat_date', targetDate)
+      .not('chat_date', 'is', null)
       .order('created_at', { ascending: true })
       .limit(200);
     if (res.error) { console.error('DB chat load:', res.error); return {}; }
+    console.log('[TRAKR] dbLoadChatHistory: got', (res.data||[]).length, 'rows for', targetDate);
     var bySurface = {};
     (res.data || []).forEach(function(row) {
       var s = row.surface || 'main';
@@ -1344,6 +1341,7 @@ function restoreChatSurfaces() {
 
   // Floating coach sheet (csHistory)
   var floating = loadedChatHistory['floating'] || [];
+  console.log('[TRAKR] restoreChatSurfaces: floating=' + floating.length + ' brief=' + (loadedChatHistory['brief']||[]).length + ' main=' + (loadedChatHistory['main']||[]).length);
   if (floating.length > 0 && !chatRestored.floating) {
     csHistory = floating.slice();
     chatRestored.floating = true;
@@ -1441,7 +1439,7 @@ async function dbLoadAll() {
     console.log('TRAKR synced from Supabase (' + (res.data ? res.data.length : 0) + ' days loaded)');
     // Load + restore chat history (cross-device CoachGPT persistence)
     try {
-      loadedChatHistory = await dbLoadChatHistory();
+      loadedChatHistory = await dbLoadChatHistory(getTodayKey());
       var totalMsgs = Object.keys(loadedChatHistory).reduce(function(n,k){ return n + loadedChatHistory[k].length; }, 0);
       console.log('TRAKR chat history loaded (' + totalMsgs + ' messages)');
       restoreChatSurfaces();
@@ -2787,7 +2785,6 @@ function csOpen() {
   var overlay = document.getElementById('cs-click-overlay');
   if(overlay) overlay.style.display = 'block';
   if (!csViewingDate) csViewingDate = getTodayKey();
-  csRenderDaySummaryCard(csViewingDate);
   if (!csInitialized) { csInitialized = true; if (csHistory.length === 0) csMorningBrief(); }
 }
 
@@ -2874,25 +2871,6 @@ function csGetDaySummaryData(date) {
     water:Math.round(water*10)/10, sleepScore:sleepScore };
 }
 
-function csRenderDaySummaryCard(date) {
-  var card = document.getElementById('cs-day-card');
-  if (!card) return;
-  var d = csGetDaySummaryData(date);
-  var items = [
-    {val: d.split || '—',                               lbl:'Split'},
-    {val: d.cal ? d.cal.toLocaleString()+' cal' : '—',  lbl:'Calories'},
-    {val: d.protein ? d.protein+'g' : '—',              lbl:'Protein'},
-    {val: d.water ? d.water+' oz' : '—',                lbl:'Water'},
-    {val: d.sleepScore || '—',                          lbl:'Sleep'},
-    {val: d.isToday ? 'Live' : 'Logged',                lbl:'Status'}
-  ];
-  card.innerHTML = '<div class="cs-day-card-date">' + d.label + '</div>'
-    + '<div class="cs-day-card-grid">'
-    + items.map(function(i){ return '<div class="cs-day-card-item"><div class="cs-day-card-val">'+i.val+'</div><div class="cs-day-card-lbl">'+i.lbl+'</div></div>'; }).join('')
-    + '</div>';
-  card.classList.add('visible');
-}
-
 async function csDaySelectorOpen() {
   var panel = document.getElementById('cs-day-selector');
   if (!panel || !sb) return;
@@ -2933,7 +2911,6 @@ async function csViewDay(date) {
   var todayKey = getTodayKey();
   csViewingDate = date;
   await loadChatForDate(date);
-  csRenderDaySummaryCard(date);
   var inputRow = document.querySelector('.cs-input-row');
   var chips    = document.querySelector('.cs-chips');
   var qa       = document.getElementById('cs-quick-actions');
@@ -3307,7 +3284,6 @@ setTimeout(function() { dbLoadAll(); }, 100);
     </div>
     <div class="cs-ctx" id="cs-ctx-pill">Loading...</div>
   </div>
-  <div id="cs-day-card"></div>
   <div id="cs-readonly-banner" onclick="csReturnToToday()"></div>
   <div class="cs-messages" id="cs-messages"></div>
   <div class="cs-quick-actions" id="cs-quick-actions">
