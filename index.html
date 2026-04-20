@@ -1407,19 +1407,21 @@ async function dbLoadAll() {
         // Load today's oura data
         if (todayRow.oura && typeof todayRow.oura === 'object') {
           var o = todayRow.oura;
-          if(o.score) { var el = document.getElementById('oura-score'); if(el) el.value = o.score; }
-          if(o.total) { var el = document.getElementById('oura-total'); if(el) el.value = o.total; }
-          if(o.eff) { var el = document.getElementById('oura-eff'); if(el) el.value = o.eff; }
-          if(o.deep) { var el = document.getElementById('oura-deep'); if(el) el.value = o.deep; }
-          if(o.rem) { var el = document.getElementById('oura-rem'); if(el) el.value = o.rem; }
-          if(o.light) { var el = document.getElementById('oura-light'); if(el) el.value = o.light; }
-          if(o.bed) { var el = document.getElementById('oura-bed'); if(el) el.value = o.bed; }
-          if(o.wake) { var el = document.getElementById('oura-wake'); if(el) el.value = o.wake; }
-          if(o.hrv) { var el = document.getElementById('oura-hrv'); if(el) el.value = o.hrv; }
-          if(o.readiness) { var el = document.getElementById('oura-readiness'); if(el) el.value = o.readiness; }
-          if(o.steps) { var el = document.getElementById('oura-steps'); if(el) el.value = o.steps; }
-          if(o.calexp) { var el = document.getElementById('oura-calexp'); if(el) el.value = o.calexp; }
-          ouraUpdate();
+          if (o.date && o.date === flDateKey(new Date())) {
+            if(o.score) { var el = document.getElementById('oura-score'); if(el) el.value = o.score; }
+            if(o.total) { var el = document.getElementById('oura-total'); if(el) el.value = o.total; }
+            if(o.eff) { var el = document.getElementById('oura-eff'); if(el) el.value = o.eff; }
+            if(o.deep) { var el = document.getElementById('oura-deep'); if(el) el.value = o.deep; }
+            if(o.rem) { var el = document.getElementById('oura-rem'); if(el) el.value = o.rem; }
+            if(o.light) { var el = document.getElementById('oura-light'); if(el) el.value = o.light; }
+            if(o.bed) { var el = document.getElementById('oura-bed'); if(el) el.value = o.bed; }
+            if(o.wake) { var el = document.getElementById('oura-wake'); if(el) el.value = o.wake; }
+            if(o.hrv) { var el = document.getElementById('oura-hrv'); if(el) el.value = o.hrv; }
+            if(o.readiness) { var el = document.getElementById('oura-readiness'); if(el) el.value = o.readiness; }
+            if(o.steps) { var el = document.getElementById('oura-steps'); if(el) el.value = o.steps; }
+            if(o.calexp) { var el = document.getElementById('oura-calexp'); if(el) el.value = o.calexp; }
+            ouraUpdate();
+          }
         }
       }
     }
@@ -2673,8 +2675,8 @@ function ouraUpdate() {
   if(stepsStatEl && steps) stepsStatEl.textContent = steps.toLocaleString();
   if(calexpStatEl && calexp) calexpStatEl.textContent = calexp.toLocaleString();
 
-  try { localStorage.setItem('jr_oura', JSON.stringify({score,total,eff,deep,rem,light,bed,wake,hrv,readiness,steps,calexp})); } catch(e) {}
-  dbSaveDay(flDateKey(new Date()), { oura: {score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
+  try { localStorage.setItem('jr_oura', JSON.stringify({date:getTodayKey(),score,total,eff,deep,rem,light,bed,wake,hrv,readiness,steps,calexp})); } catch(e) {}
+  dbSaveDay(flDateKey(new Date()), { oura: {date:flDateKey(new Date()),score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
 }
 
 function weightUpdate() {
@@ -2725,6 +2727,7 @@ function ouraLoad() {
     var saved = localStorage.getItem('jr_oura');
     if(saved) {
       var d = JSON.parse(saved);
+      if(!d.date || d.date !== getTodayKey()) { localStorage.removeItem('jr_oura'); return; }
       if(d.score) document.getElementById('oura-score').value = d.score;
       if(d.total) document.getElementById('oura-total').value = d.total;
       if(d.eff) document.getElementById('oura-eff').value = d.eff;
@@ -2747,13 +2750,14 @@ function dashAppleSave() {
   var m = parseFloat((document.getElementById('dash-move-input')||{}).value)||0;
   var e = parseFloat((document.getElementById('dash-exercise-input')||{}).value)||0;
   var s = parseFloat((document.getElementById('dash-stand-input')||{}).value)||0;
-  try { localStorage.setItem('jr_apple', JSON.stringify({move:m,exercise:e,stand:s})); } catch(ex) {}
+  try { localStorage.setItem('jr_apple', JSON.stringify({date:getTodayKey(),move:m,exercise:e,stand:s})); } catch(ex) {}
 }
 function dashAppleLoad() {
   try {
     var saved = localStorage.getItem('jr_apple');
     if(saved) {
       var d = JSON.parse(saved);
+      if(!d.date || d.date !== getTodayKey()) { localStorage.removeItem('jr_apple'); return; }
       var mi = document.getElementById('dash-move-input');
       var ei = document.getElementById('dash-exercise-input');
       var si = document.getElementById('dash-stand-input');
@@ -2785,7 +2789,7 @@ function csOpen() {
   var overlay = document.getElementById('cs-click-overlay');
   if(overlay) overlay.style.display = 'block';
   if (!csViewingDate) csViewingDate = getTodayKey();
-  if (!csInitialized) { csInitialized = true; if (csHistory.length === 0) csMorningBrief(); }
+  if (!csInitialized) { csInitialized = true; if (localStorage.getItem('jr_brief_date') !== getTodayKey()) csMorningBrief(); }
 }
 
 function csClose() {
@@ -2959,6 +2963,7 @@ function csMorningBrief() {
   var pill = document.getElementById('cs-ctx-pill');
   if (pill) pill.textContent = ctx.split + ' · Day ' + ctx.dayNum;
   csHistory = [{role:'assistant', content: brief}];
+  try { localStorage.setItem('jr_brief_date', getTodayKey()); } catch(e) {}
   dbSaveChatMsg('floating', 'assistant', brief);
 }
 
@@ -3219,7 +3224,7 @@ function waterRender() {
 }
 
 function waterSave() {
-  try { localStorage.setItem('jr_water_v2', JSON.stringify({oz:waterOz,jugs:waterJugs,bottles:waterBottles})); } catch(e) {}
+  try { localStorage.setItem('jr_water_v2', JSON.stringify({date:getTodayKey(),oz:waterOz,jugs:waterJugs,bottles:waterBottles})); } catch(e) {}
   dbSaveDay(flDateKey(new Date()), { water_oz: waterOz, water_jugs: waterJugs, water_bottles: waterBottles });
 }
 function waterLoad() {
@@ -3228,6 +3233,7 @@ function waterLoad() {
     var saved = localStorage.getItem('jr_water_v2');
     if(saved) {
       var d = JSON.parse(saved);
+      if(!d.date || d.date !== getTodayKey()) { localStorage.removeItem('jr_water_v2'); waterOz=0; waterJugs=0; waterBottles=0; waterRender(); return; }
       waterOz = parseFloat(d.oz) || 0;
       waterJugs = parseInt(d.jugs) || 0;
       waterBottles = parseInt(d.bottles) || 0;
