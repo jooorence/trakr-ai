@@ -226,6 +226,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .cs-input { flex:1; background:#111e1c; border:1px solid #1a4a44; border-radius:22px; padding:10px 16px; font-size:13px; color:#ddd; outline:none; min-height:60px; max-height:200px; }
 .cs-input::placeholder { color:#444; }
 .cs-send { background:#40ccbb; border:none; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:700; color:#080f0e; cursor:pointer; flex-shrink:0; flex-shrink:0; }
+/* Day selector panel */
+#cs-day-selector { position:absolute; inset:0; background:#0a0a0a; border-radius:16px; z-index:20; display:none; flex-direction:column; overflow:hidden; }
+#cs-day-selector.open { display:flex; }
+.cs-dsel-header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px; border-bottom:1px solid #1a1a1a; flex-shrink:0; }
+.cs-dsel-title { font-size:14px; font-weight:700; color:#ddd; }
+.cs-dsel-close { font-size:20px; color:#555; cursor:pointer; line-height:1; padding:2px 6px; }
+.cs-dsel-close:hover { color:#ddd; }
+.cs-dsel-list { flex:1; overflow-y:auto; }
+.cs-dsel-row { display:flex; align-items:center; justify-content:space-between; padding:11px 16px; border-bottom:1px solid #111; cursor:pointer; }
+.cs-dsel-row:hover { background:#111; }
+.cs-dsel-row.today { background:#0a2a26; border-left:3px solid #40ccbb; }
+.cs-dsel-row.cs-dsel-active { background:#0d2a26; }
+.cs-dsel-left { flex:1; }
+.cs-dsel-date { font-size:13px; font-weight:600; color:#ddd; }
+.cs-dsel-split { font-size:10px; color:#40ccbb; margin-top:2px; }
+.cs-dsel-stats { font-size:10px; color:#555; text-align:right; }
+.cs-dsel-cal { color:#4caf7d; font-weight:600; }
+/* Pinned day summary card */
+#cs-day-card { display:none; padding:10px 14px; background:#0d1f1e; border-bottom:1px solid #1a4a44; flex-shrink:0; }
+#cs-day-card.visible { display:block; }
+.cs-day-card-date { font-size:11px; font-weight:700; color:#40ccbb; margin-bottom:6px; letter-spacing:0.3px; }
+.cs-day-card-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+.cs-day-card-item { background:#0a1a18; border-radius:6px; padding:5px 8px; }
+.cs-day-card-val { font-size:12px; font-weight:700; color:#ddd; }
+.cs-day-card-lbl { font-size:9px; color:#40ccbb; margin-top:1px; }
+/* Read-only banner */
+#cs-readonly-banner { display:none; padding:7px 16px; background:#1a1500; border-bottom:1px solid #3a3000; font-size:11px; color:#f5a623; cursor:pointer; text-align:center; flex-shrink:0; }
+#cs-readonly-banner:hover { background:#221c00; }
+#cs-readonly-banner.visible { display:block; }
+/* History icon button */
+.cs-history-btn { font-size:14px; cursor:pointer; padding:2px 6px; color:#40ccbb; opacity:0.7; line-height:1; }
+.cs-history-btn:hover { opacity:1; }
 
 /* SHEET CHAT BUBBLES */
 .scmsg { display:flex; flex-direction:column; gap:2px; }
@@ -1255,27 +1287,32 @@ function dbSaveSettings(fields) {
 var loadedChatHistory = null; // { surface: [{role, content}, ...] } once dbLoadAll resolves
 var chatRestored = { main: false, brief: false, floating: false };
 
+function getTodayKey() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 function dbSaveChatMsg(surface, role, content) {
   if (!sb || !role || !content) return;
   // Normalize role to API form ('user' | 'assistant') so the table matches what we feed Claude.
   var apiRole = (role === 'assistant' || role === 'coach') ? 'assistant' : 'user';
   sb.from('chat_history')
-    .insert({ surface: surface, role: apiRole, content: String(content) })
+    .insert({ surface: surface, role: apiRole, content: String(content), chat_date: getTodayKey() })
     .then(function(r) { if (r && r.error) console.error('DB chat save:', r.error); });
 }
 
-async function dbLoadChatHistory() {
+async function dbLoadChatHistory(date) {
   if (!sb) return {};
+  var targetDate = date || getTodayKey();
   try {
-    // Load most recent ~200 messages, then re-sort ascending so they render in order.
     var res = await sb.from('chat_history')
       .select('surface,role,content,created_at')
-      .order('created_at', { ascending: false })
+      .eq('chat_date', targetDate)
+      .order('created_at', { ascending: true })
       .limit(200);
     if (res.error) { console.error('DB chat load:', res.error); return {}; }
-    var rows = (res.data || []).slice().reverse();
     var bySurface = {};
-    rows.forEach(function(row) {
+    (res.data || []).forEach(function(row) {
       var s = row.surface || 'main';
       if (!bySurface[s]) bySurface[s] = [];
       bySurface[s].push({ role: row.role, content: row.content });
@@ -1337,6 +1374,12 @@ function restoreChatSurfaces() {
   }
 }
 
+async function loadChatForDate(date) {
+  loadedChatHistory = await dbLoadChatHistory(date);
+  chatRestored = { main: false, brief: false, floating: false };
+  restoreChatSurfaces();
+}
+
 async function dbLoadAll() {
   if (!sb) return;
   try {
@@ -1347,7 +1390,9 @@ async function dbLoadAll() {
         flDateStore[row.date] = {
           split: row.split || flAutoSplit(new Date(row.date + 'T12:00:00')),
           dayType: row.day_type || 'td',
-          log: row.food_log || []
+          log: row.food_log || [],
+          water: parseFloat(row.water_oz) || 0,
+          sleepScore: (row.oura && row.oura.score) ? row.oura.score : null
         };
       });
       // Load today's water
@@ -2727,6 +2772,7 @@ dashAppleLoad();
 var csHistory = [];
 var csExpanded = false;
 var csInitialized = false;
+var csViewingDate = null;
 
 function csOpen() {
   var sheet = document.getElementById('coach-sheet');
@@ -2740,7 +2786,9 @@ function csOpen() {
   }
   var overlay = document.getElementById('cs-click-overlay');
   if(overlay) overlay.style.display = 'block';
-  if (!csInitialized) { csInitialized = true; csGreet(); }
+  if (!csViewingDate) csViewingDate = getTodayKey();
+  csRenderDaySummaryCard(csViewingDate);
+  if (!csInitialized) { csInitialized = true; if (csHistory.length === 0) csMorningBrief(); }
 }
 
 function csClose() {
@@ -2803,6 +2851,138 @@ function csGreet() {
   var pill = document.getElementById('cs-ctx-pill');
   if (pill) pill.textContent = ctx.split + ' · Day ' + ctx.dayNum;
   csHistory = [{role:'assistant', content: greeting}];
+}
+
+function csGetDaySummaryData(date) {
+  var isToday = (date === getTodayKey());
+  var day = flDateStore[date] || {};
+  var log = day.log || [];
+  var totals = log.reduce(function(a,i){ a.cal+=(i.cal||0); a.p+=(i.p||0); return a; }, {cal:0,p:0});
+  var d = new Date(date + 'T12:00:00');
+  var split = day.split || flAutoSplit(d);
+  var water = isToday ? waterOz : (day.water || 0);
+  var sleepScore = isToday
+    ? (parseFloat((document.getElementById('oura-score')||{}).value) || null)
+    : (day.sleepScore || null);
+  var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var monNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var label = isToday
+    ? 'Today · ' + dayNames[d.getDay()] + ' ' + monNames[d.getMonth()] + ' ' + d.getDate()
+    : dayNames[d.getDay()] + ' ' + monNames[d.getMonth()] + ' ' + d.getDate() + ' ' + d.getFullYear();
+  return { date:date, isToday:isToday, label:label, split:split,
+    cal:Math.round(totals.cal), protein:Math.round(totals.p),
+    water:Math.round(water*10)/10, sleepScore:sleepScore };
+}
+
+function csRenderDaySummaryCard(date) {
+  var card = document.getElementById('cs-day-card');
+  if (!card) return;
+  var d = csGetDaySummaryData(date);
+  var items = [
+    {val: d.split || '—',                               lbl:'Split'},
+    {val: d.cal ? d.cal.toLocaleString()+' cal' : '—',  lbl:'Calories'},
+    {val: d.protein ? d.protein+'g' : '—',              lbl:'Protein'},
+    {val: d.water ? d.water+' oz' : '—',                lbl:'Water'},
+    {val: d.sleepScore || '—',                          lbl:'Sleep'},
+    {val: d.isToday ? 'Live' : 'Logged',                lbl:'Status'}
+  ];
+  card.innerHTML = '<div class="cs-day-card-date">' + d.label + '</div>'
+    + '<div class="cs-day-card-grid">'
+    + items.map(function(i){ return '<div class="cs-day-card-item"><div class="cs-day-card-val">'+i.val+'</div><div class="cs-day-card-lbl">'+i.lbl+'</div></div>'; }).join('')
+    + '</div>';
+  card.classList.add('visible');
+}
+
+async function csDaySelectorOpen() {
+  var panel = document.getElementById('cs-day-selector');
+  if (!panel || !sb) return;
+  panel.classList.add('open');
+  var list = document.getElementById('cs-dsel-list');
+  list.innerHTML = '<div style="padding:24px;text-align:center;color:#444;font-size:12px;">Loading...</div>';
+  try {
+    var res = await sb.from('chat_history').select('chat_date').order('chat_date', {ascending:false});
+    if (res.error || !res.data) { list.innerHTML = '<div style="padding:24px;text-align:center;color:#e05050;font-size:12px;">Failed to load</div>'; return; }
+    var seen = {}, dates = [];
+    res.data.forEach(function(r){ if(r.chat_date && !seen[r.chat_date]){ seen[r.chat_date]=true; dates.push(r.chat_date); } });
+    var todayKey = getTodayKey();
+    if (!seen[todayKey]) dates.unshift(todayKey);
+    list.innerHTML = '';
+    var activeDate = csViewingDate || todayKey;
+    dates.forEach(function(date) {
+      var d = csGetDaySummaryData(date);
+      var row = document.createElement('div');
+      row.className = 'cs-dsel-row' + (d.isToday ? ' today' : '') + (date === activeDate ? ' cs-dsel-active' : '');
+      row.innerHTML = '<div class="cs-dsel-left">'
+        + '<div class="cs-dsel-date">' + d.label
+        + (d.isToday ? ' <span style="background:#40ccbb;color:#040f0e;border-radius:10px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:4px;">LIVE</span>' : '')
+        + '</div><div class="cs-dsel-split">' + d.split + '</div></div>'
+        + '<div class="cs-dsel-stats"><div class="cs-dsel-cal">' + (d.cal ? d.cal.toLocaleString()+' cal' : '—') + '</div>'
+        + '<div>' + (d.water ? d.water+' oz' : '') + '</div></div>';
+      row.onclick = function(){ csDaySelectorClose(); csViewDay(date); };
+      list.appendChild(row);
+    });
+  } catch(e) { list.innerHTML = '<div style="padding:24px;text-align:center;color:#e05050;font-size:12px;">Error loading history</div>'; }
+}
+
+function csDaySelectorClose() {
+  var panel = document.getElementById('cs-day-selector');
+  if (panel) panel.classList.remove('open');
+}
+
+async function csViewDay(date) {
+  var todayKey = getTodayKey();
+  csViewingDate = date;
+  await loadChatForDate(date);
+  csRenderDaySummaryCard(date);
+  var inputRow = document.querySelector('.cs-input-row');
+  var chips    = document.querySelector('.cs-chips');
+  var qa       = document.getElementById('cs-quick-actions');
+  var banner   = document.getElementById('cs-readonly-banner');
+  if (date !== todayKey) {
+    if (inputRow) inputRow.style.display = 'none';
+    if (chips) chips.style.display = 'none';
+    if (qa) qa.style.display = 'none';
+    if (banner) {
+      var d = new Date(date + 'T12:00:00');
+      var mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      banner.textContent = 'Viewing ' + mon[d.getMonth()] + ' ' + d.getDate() + ' — tap to return to today';
+      banner.classList.add('visible');
+    }
+  } else {
+    if (inputRow) inputRow.style.display = '';
+    if (chips) chips.style.display = '';
+    if (qa && csExpanded) qa.classList.add('visible');
+    if (banner) banner.classList.remove('visible');
+  }
+}
+
+function csReturnToToday() { csViewDay(getTodayKey()); }
+
+function csMorningBrief() {
+  var ctx = coachBuildContext();
+  var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var monNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var now = new Date();
+  var dateStr = dayNames[now.getDay()] + ', ' + monNames[now.getMonth()] + ' ' + now.getDate();
+  var yd = new Date(); yd.setDate(yd.getDate()-1);
+  var ydKey = yd.getFullYear()+'-'+String(yd.getMonth()+1).padStart(2,'0')+'-'+String(yd.getDate()).padStart(2,'0');
+  var ydDay = flDateStore[ydKey] || {};
+  var ydLog = ydDay.log || [];
+  var ydT = ydLog.reduce(function(a,i){ a.cal+=(i.cal||0); a.p+=(i.p||0); return a; }, {cal:0,p:0});
+  var intensity = ctx.isRest ? 'recovery — rest, walk, hit nutrition' : ctx.splitFocus;
+  var brief = 'Good morning JR! Today is **' + dateStr + '**. You\'re on **' + ctx.split + '**.\n\n';
+  if (ydT.cal || ydT.p) {
+    brief += 'Yesterday: **' + Math.round(ydT.cal) + ' cal** / **' + Math.round(ydT.p) + 'g protein**';
+    if (ydDay.water) brief += ' / **' + Math.round(ydDay.water*10)/10 + ' oz water**';
+    if (ydDay.sleepScore) brief += '. Sleep score: **' + ydDay.sleepScore + '**';
+    brief += '.\n\n';
+  }
+  brief += 'Today\'s focus: **' + intensity + '**. Let\'s get it — Philippians 4:13. What do you need?';
+  csAddMsg('coach', brief);
+  var pill = document.getElementById('cs-ctx-pill');
+  if (pill) pill.textContent = ctx.split + ' · Day ' + ctx.dayNum;
+  csHistory = [{role:'assistant', content: brief}];
+  dbSaveChatMsg('floating', 'assistant', brief);
 }
 
 async function csSend() {
@@ -3110,10 +3290,14 @@ setTimeout(function() { dbLoadAll(); }, 100);
 <!-- SHEET OVERLAY -->
 <!-- COACH SHEET -->
 <div id="coach-sheet">
+  <div id="cs-day-selector">
+    <div class="cs-dsel-header"><div class="cs-dsel-title">&#128197; Chat History</div><div class="cs-dsel-close" onclick="csDaySelectorClose()">&times;</div></div>
+    <div class="cs-dsel-list" id="cs-dsel-list"></div>
+  </div>
   <div class="cs-handle-row">
     <div style="width:32px;"></div>
     <div class="cs-handle"></div>
-    <div style="display:flex;align-items:center;gap:8px;"><div class="cs-expand-btn" id="cs-expand-btn" onclick="csToggleExpand()">&#x26F6;</div><div onclick="csClose()" style="font-size:16px;color:#555;cursor:pointer;padding:2px 6px;line-height:1;" title="Close">&times;</div></div>
+    <div style="display:flex;align-items:center;gap:8px;"><div class="cs-history-btn" id="cs-history-btn" onclick="csDaySelectorOpen()" title="Chat history">&#128197;</div><div class="cs-expand-btn" id="cs-expand-btn" onclick="csToggleExpand()">&#x26F6;</div><div onclick="csClose()" style="font-size:16px;color:#555;cursor:pointer;padding:2px 6px;line-height:1;" title="Close">&times;</div></div>
   </div>
   <div class="cs-header">
     <div class="cs-avatar">C</div>
@@ -3123,6 +3307,8 @@ setTimeout(function() { dbLoadAll(); }, 100);
     </div>
     <div class="cs-ctx" id="cs-ctx-pill">Loading...</div>
   </div>
+  <div id="cs-day-card"></div>
+  <div id="cs-readonly-banner" onclick="csReturnToToday()"></div>
   <div class="cs-messages" id="cs-messages"></div>
   <div class="cs-quick-actions" id="cs-quick-actions">
     <div class="cs-action-btn" onclick="csQuick('Adjust my meals for today')">&#127374; Adjust Meals</div>
