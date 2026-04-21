@@ -1991,7 +1991,7 @@ function coachSystemPrompt(ctx) {
   p += 'When user mentions Stand ring or hours standing, include: LOGSTAND:{"hrs":10} ';
   p += 'When user mentions sleep score, sleep quality, or Oura sleep data, include: LOGSLEEP:{"score":82} ';
   p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
-  p += 'When asked to clear, reset, or start fresh for the day, you MUST include exactly this on its own line: CLEARDAY:{} — this triggers the actual reset. Without it nothing clears. ';
+  p += 'CLEARDAY:{} must ONLY be included when the user explicitly asks to wipe or reset their ENTIRE day (e.g. "clear my day", "reset everything", "start my day over"). NEVER include CLEARDAY for fixing duplicates, correcting a single entry, adjusting water, editing food items, or any partial change. When in doubt, do not include CLEARDAY. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
   return p;
 }
@@ -2874,7 +2874,8 @@ function csAddMsg(role, html) {
   var msgs = document.getElementById('cs-messages');
   var div = document.createElement('div');
   div.className = 'scmsg ' + (role === 'coach' ? 'sc-coach' : 'sc-user');
-  var rendered = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
+  var clean = role === 'coach' ? stripActionTags(html) : html;
+  var rendered = clean.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
   div.innerHTML = '<div class="sc-bubble">' + rendered + '</div>';
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
