@@ -419,7 +419,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
         <div class="macro-card"><div class="macro-val" style="color:#f5a623;" id="dash-training-val">—</div><div class="macro-lbl" id="dash-training-lbl">Training</div></div>
         <div class="macro-card"><div class="macro-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="macro-lbl">Cal Logged</div></div>
-        <div class="macro-card"><div class="macro-val" style="color:#e05050;" id="dash-net-val">—</div><div class="macro-lbl">Net Cal</div></div>
+        <div class="macro-card"><div class="macro-val" style="color:#e05050;" id="dash-net-val">—</div><div class="macro-lbl">Net Cal Burned</div></div>
         <div class="macro-card"><div class="macro-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="macro-lbl">Steps</div></div>
         <div class="macro-card"><div class="macro-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="macro-lbl">Water (oz)</div></div>
         <div class="macro-card"><div class="macro-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="macro-lbl">Sleep Score</div></div>
@@ -439,7 +439,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
           <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1c1c1c;font-size:11px;"><span style="color:#555;">Steps</span><span style="color:#aaa;" id="exp-steps">—</span></div>
           <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1c1c1c;font-size:11px;"><span style="color:#555;">Steady state</span><span style="color:#aaa;">30 min</span></div>
           <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1c1c1c;font-size:11px;"><span style="color:#555;">Cal burned</span><span style="color:#f5a623;font-weight:500;" id="exp-burned">—</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:11px;"><span style="color:#555;font-weight:500;">Net cal</span><span style="font-weight:600;" id="exp-net">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:11px;"><span style="color:#555;font-weight:500;">Net cal burned</span><span style="font-weight:600;" id="exp-net">—</span></div>
         </div>
       </div>
 
@@ -2727,10 +2727,6 @@ function ouraUpdate() {
     }
   } else if(intensityEl) { intensityEl.style.display = 'none'; }
 
-  var stepsStatEl = document.getElementById('dash-steps-val');
-  var calexpStatEl = document.getElementById('dash-calexp-val');
-  if(stepsStatEl && steps) stepsStatEl.textContent = steps.toLocaleString();
-  if(calexpStatEl && calexp) calexpStatEl.textContent = calexp.toLocaleString();
 
   try { localStorage.setItem('jr_oura', JSON.stringify({date:getTodayKey(),score,total,eff,deep,rem,light,bed,wake,hrv,readiness,steps,calexp})); } catch(e) {}
   dbSaveDay(flDateKey(new Date()), { oura: {date:flDateKey(new Date()),score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
@@ -3241,11 +3237,9 @@ function dashRefresh() {
     if(sleepScoreVal) dashSleepEl.style.color = sleepScoreVal >= 85 ? '#4caf7d' : sleepScoreVal >= 70 ? '#f5a623' : '#e05050';
   }
   var netStat = document.getElementById('dash-net-val');
-  if(calexpVal && t.cal) {
-    var net = Math.round(t.cal - calexpVal);
-    var netColor = (net <= -500 && net >= -800) ? '#4caf7d'
-      : ((net <= -400 && net > -500) || (net < -800 && net >= -900)) ? '#f5a623'
-      : '#e05050';
+  if(calexpVal) {
+    var net = Math.round(calexpVal - (t.cal || 0));
+    var netColor = net > 0 ? '#4caf7d' : net < 0 ? '#e05050' : '#aaa';
     if(expNet) { expNet.textContent = (net >= 0 ? '+' : '') + net + ' cal'; expNet.style.color = netColor; }
     if(netStat) { netStat.textContent = (net >= 0 ? '+' : '') + net; netStat.style.color = netColor; }
   } else {
