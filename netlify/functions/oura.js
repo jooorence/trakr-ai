@@ -31,7 +31,7 @@ exports.handler = async function(event) {
   const action = params.action;
   const CLIENT_ID = process.env.OURA_CLIENT_ID;
   const CLIENT_SECRET = process.env.OURA_CLIENT_SECRET;
-  const REDIRECT_URI = 'https://trakros.com';
+  const REDIRECT_URI = 'https://trakros.com/oura-callback';
 
   try {
     // --- auth_url: return the Oura OAuth authorization URL ---
@@ -40,7 +40,7 @@ exports.handler = async function(event) {
         + '?response_type=code'
         + '&client_id=' + encodeURIComponent(CLIENT_ID)
         + '&redirect_uri=' + encodeURIComponent(REDIRECT_URI)
-        + '&scope=daily';
+        + '&scope=daily+personal+heartrate+session+workout';
       return {
         statusCode: 200,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
