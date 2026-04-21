@@ -2688,6 +2688,8 @@ function ouraUpdate() {
     document.getElementById('dash-sleep-total').textContent = total ? total.toFixed(1) + 'h' : '—';
     document.getElementById('dash-sleep-deep').textContent = deep ? deep.toFixed(1) + 'h' : '—';
     document.getElementById('dash-sleep-rem').textContent = rem ? rem.toFixed(1) + 'h' : '—';
+    var dashGoalEl = document.getElementById('dash-goal-val');
+    if(dashGoalEl) { dashGoalEl.textContent = score; dashGoalEl.style.color = scoreColor; }
   }
 
   var hrvEl = document.getElementById('oura-hrv-display');
@@ -3229,15 +3231,18 @@ function dashRefresh() {
   var dashSleepEl = document.getElementById('dash-goal-val');
   if(dashStepsEl) dashStepsEl.textContent = stepsVal ? stepsVal.toLocaleString() : '—';
   if(dashSleepEl) dashSleepEl.textContent = sleepScoreVal || '—';
-  if(expNet && calexpVal && t.cal) {
-    var net = Math.round(calexpVal - t.cal);
-    expNet.textContent = (net >= 0 ? '+' : '') + net + ' cal';
-    var netColor = (net >= 500 && net <= 800) ? '#4caf7d' : (net > 0 ? '#e05050' : '#e05050');
-    if (net >= 400 && net < 500 || net > 800 && net <= 900) netColor = '#f5a623'; // close to range = orange
-    expNet.style.color = netColor;
-    var netStat = document.getElementById('dash-net-val');
+  var netStat = document.getElementById('dash-net-val');
+  if(calexpVal && t.cal) {
+    var net = Math.round(t.cal - calexpVal);
+    var netColor = (net <= -500 && net >= -800) ? '#4caf7d'
+      : ((net <= -400 && net > -500) || (net < -800 && net >= -900)) ? '#f5a623'
+      : '#e05050';
+    if(expNet) { expNet.textContent = (net >= 0 ? '+' : '') + net + ' cal'; expNet.style.color = netColor; }
     if(netStat) { netStat.textContent = (net >= 0 ? '+' : '') + net; netStat.style.color = netColor; }
-  } else if(expNet) { expNet.textContent = '—'; expNet.style.color = '#aaa'; }
+  } else {
+    if(expNet) { expNet.textContent = '—'; expNet.style.color = '#aaa'; }
+    if(netStat) { netStat.textContent = '—'; netStat.style.color = '#aaa'; }
+  }
   var dowMap2 = {1:'Pull Day 1',2:'Push Day 1',3:'Rest',4:'Legs',5:'Pull Day 2',6:'Push Day 2',0:'Rest'};
   var journeyStart = new Date('2026-04-10');
   var today = new Date();
