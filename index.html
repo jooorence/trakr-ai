@@ -1981,6 +1981,7 @@ function coachSystemPrompt(ctx) {
   p += "M4 chicken+rice+almonds (458cal/37P both days). ";
   p += "M5 sirloin+rice+broccoli (TD 430cal/41P) or salmon+rice+broccoli (RD 500cal/40P). ";
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
+  p += 'CRITICAL INSTRUCTION: When the user mentions any loggable data, you MUST output ALL LOG action lines at the very beginning of your reply, before any other text. This is required — never put LOG actions after your response text. ';
   p += 'When user mentions eating anything, include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0} ';
   p += 'When user mentions drinking water or fluids, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
   p += 'When user mentions step count, include: LOGSTEPS:{"steps":6000} ';
@@ -3032,7 +3033,7 @@ async function csSend() {
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         model:'claude-sonnet-4-20250514',
-        max_tokens:600,
+        max_tokens:1500,
         system: coachSystemPrompt(ctx),
         messages: csHistory
       })
