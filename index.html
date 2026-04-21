@@ -495,7 +495,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
             <div style="width:18px;height:18px;background:#1a1a2d;border-radius:4px;display:flex;align-items:center;justify-content:center;"><div style="width:10px;height:10px;border-radius:50%;background:#8899ff;"></div></div>
             <span style="font-size:13px;font-weight:600;color:#ddd;">Oura Ring</span>
           </div>
-          <span style="font-size:10px;color:#444;">Manual entry · last night</span>
+          <span id="oura-sync-status" style="font-size:10px;color:#444;">Manual entry · last night</span>
         </div>
         <div style="display:flex;gap:12px;margin-bottom:14px;">
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:80px;flex-shrink:0;">
@@ -1483,6 +1483,7 @@ async function dbLoadAll() {
     waterRender();
     flUpdateDateDisplay();
     rtnInit();
+    try { dashRefresh(); } catch(e) {}
     console.log('TRAKR synced from Supabase (' + (res.data ? res.data.length : 0) + ' days loaded)');
     // Load + restore chat history (cross-device CoachGPT persistence)
     try {
@@ -2681,13 +2682,16 @@ function ouraUpdate() {
   }
 
   if(score) {
-    document.getElementById('dash-sleep-val').textContent = score;
-    document.getElementById('dash-sleep-val').style.color = scoreColor;
-    document.getElementById('dash-sleep-detail').textContent = score + ' · ' + (score>=85?'Excellent':score>=70?'Good':'Fair');
-    document.getElementById('dash-sleep-detail').style.color = scoreColor;
-    document.getElementById('dash-sleep-total').textContent = total ? total.toFixed(1) + 'h' : '—';
-    document.getElementById('dash-sleep-deep').textContent = deep ? deep.toFixed(1) + 'h' : '—';
-    document.getElementById('dash-sleep-rem').textContent = rem ? rem.toFixed(1) + 'h' : '—';
+    var _dsv = document.getElementById('dash-sleep-val');
+    if(_dsv) { _dsv.textContent = score; _dsv.style.color = scoreColor; }
+    var _dsd = document.getElementById('dash-sleep-detail');
+    if(_dsd) { _dsd.textContent = score + ' · ' + (score>=85?'Excellent':score>=70?'Good':'Fair'); _dsd.style.color = scoreColor; }
+    var _dst = document.getElementById('dash-sleep-total');
+    if(_dst) _dst.textContent = total ? total.toFixed(1) + 'h' : '—';
+    var _dsdp = document.getElementById('dash-sleep-deep');
+    if(_dsdp) _dsdp.textContent = deep ? deep.toFixed(1) + 'h' : '—';
+    var _dsr = document.getElementById('dash-sleep-rem');
+    if(_dsr) _dsr.textContent = rem ? rem.toFixed(1) + 'h' : '—';
     var dashGoalEl = document.getElementById('dash-goal-val');
     if(dashGoalEl) { dashGoalEl.textContent = score; dashGoalEl.style.color = scoreColor; }
   }
@@ -2845,6 +2849,8 @@ async function ouraSyncFetch() {
     setField('oura-calexp', activity.total_calories);
     ouraUpdate();
     dashRefresh();
+    var syncStatus = document.getElementById('oura-sync-status');
+    if(syncStatus) { syncStatus.textContent = 'Synced · today'; syncStatus.style.color = '#4caf7d'; }
   } catch(e) { console.error('Oura sync fetch failed:', e); }
 }
 
@@ -3230,7 +3236,10 @@ function dashRefresh() {
   var dashStepsEl = document.getElementById('dash-weight-val');
   var dashSleepEl = document.getElementById('dash-goal-val');
   if(dashStepsEl) dashStepsEl.textContent = stepsVal ? stepsVal.toLocaleString() : '—';
-  if(dashSleepEl) dashSleepEl.textContent = sleepScoreVal || '—';
+  if(dashSleepEl) {
+    dashSleepEl.textContent = sleepScoreVal || '—';
+    if(sleepScoreVal) dashSleepEl.style.color = sleepScoreVal >= 85 ? '#4caf7d' : sleepScoreVal >= 70 ? '#f5a623' : '#e05050';
+  }
   var netStat = document.getElementById('dash-net-val');
   if(calexpVal && t.cal) {
     var net = Math.round(t.cal - calexpVal);
