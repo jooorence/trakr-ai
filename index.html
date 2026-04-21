@@ -1369,7 +1369,7 @@ function _renderRestoredMessages(msgsEl, msgs, bubbleClass, userBubbleClass, coa
     var div = document.createElement('div');
     var isCoach = m.role === 'assistant';
     div.className = bubbleClass + ' ' + (isCoach ? coachBubbleClass : userBubbleClass);
-    var rendered = String(m.content || '')
+    var rendered = stripActionTags(String(m.content || ''))
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/\n/g, '<br>');
@@ -3037,12 +3037,12 @@ async function csSend() {
     var typing = document.getElementById('cs-typing');
     if (typing) typing.remove();
     csHistory.push({role:'assistant', content: reply});
-    dbSaveChatMsg('floating', 'assistant', reply);
 
     // Check for CLEARDAY action first
     var clearResult = processClearDay(reply);
     if (clearResult.cleared) {
       reply = clearResult.cleaned;
+      dbSaveChatMsg('floating', 'assistant', stripActionTags(reply));
       if (reply) csAddMsg('coach', reply);
       csAddMsg('coach', '<div style="background:#2a1a00;border:1px solid #4a3000;border-radius:8px;padding:8px 12px;font-size:11px;color:#f5a623;">Day cleared — all logs, water, and metrics reset for today</div>');
     } else {
@@ -3053,6 +3053,7 @@ async function csSend() {
 
     // Bug 1: strip all LOG tags before display; Bug 2: global match for all items
     var displayText = stripActionTags(reply);
+    dbSaveChatMsg('floating', 'assistant', displayText || reply);
     var waterMatches = Array.from(reply.matchAll(/LOGWATER:(\{[^}]+\})/g));
     var foodMatches  = Array.from(reply.matchAll(/LOGFOOD:(\{[^}]+\})/g));
     var hasActions   = waterMatches.length > 0 || foodMatches.length > 0;
