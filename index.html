@@ -3238,7 +3238,7 @@ function dashRefresh() {
   }
   var netStat = document.getElementById('dash-net-val');
   if(calexpVal) {
-    var net = Math.round(calexpVal - (t.cal || 0));
+    var net = Math.round((t.cal || 0) - calexpVal);
     var netColor = net > 0 ? '#4caf7d' : net < 0 ? '#e05050' : '#aaa';
     if(expNet) { expNet.textContent = (net >= 0 ? '+' : '') + net + ' cal'; expNet.style.color = netColor; }
     if(netStat) { netStat.textContent = (net >= 0 ? '+' : '') + net; netStat.style.color = netColor; }
