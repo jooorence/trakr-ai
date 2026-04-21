@@ -2049,7 +2049,12 @@ function processLogActions(reply) {
 }
 
 function stripActionTags(text) {
-  return text.replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP)\s*:\s*\{[^}]*\}/g, '').replace(/  +/g, ' ').trim();
+  return text
+    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP)\s*:\s*\{[^}]*\}/g, '')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/\n{2,}/g, '\n')
+    .replace(/  +/g, ' ')
+    .trim();
 }
 
 /* Clear all data for today */
