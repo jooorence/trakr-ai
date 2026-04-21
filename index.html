@@ -556,6 +556,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Bedtime</div><input id="oura-bed" type="text" placeholder="10:52 PM" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Wake time</div><input id="oura-wake" type="text" placeholder="6:18 AM" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
         </div>
+        <button onclick="ouraSyncStart()" style="margin-top:10px;width:100%;background:#0a2a26;border:1px solid #1a4a44;border-radius:10px;padding:10px 0;font-size:12px;font-weight:600;color:#40ccbb;cursor:pointer;letter-spacing:0.04em;">&#8635; Sync Oura</button>
       </div>
 
       <div style="background:#141414;border:1px solid #222;border-radius:14px;padding:14px 16px;margin-bottom:12px;">
@@ -2795,6 +2796,71 @@ function ouraLoad() {
   } catch(e) {}
 }
 ouraLoad();
+
+/* OURA OAUTH SYNC */
+async function ouraSyncStart() {
+  try {
+    var res = await fetch('/.netlify/functions/oura?action=auth_url');
+    var data = await res.json();
+    if (data.url) window.location.href = data.url;
+  } catch(e) { console.error('Oura sync start failed:', e); }
+}
+
+function ouraFormatTime(isoString) {
+  try {
+    var d = new Date(isoString);
+    var h = d.getHours(), m = d.getMinutes();
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return h + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+  } catch(e) { return ''; }
+}
+
+async function ouraSyncFetch() {
+  var token = localStorage.getItem('jr_oura_token');
+  if (!token) return;
+  try {
+    var res = await fetch('/.netlify/functions/oura?action=fetch&token=' + encodeURIComponent(token));
+    var data = await res.json();
+    var sleep    = (data.sleep    && data.sleep.data    && data.sleep.data[0])    || {};
+    var activity = (data.activity && data.activity.data && data.activity.data[0]) || {};
+    var ready    = (data.readiness && data.readiness.data && data.readiness.data[0]) || {};
+    function setField(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; }
+    // Sleep
+    setField('oura-score', sleep.score);
+    setField('oura-total', sleep.total_sleep_duration ? Math.round(sleep.total_sleep_duration / 360) / 10 : null);
+    setField('oura-eff',   sleep.sleep_efficiency     ? Math.round(sleep.sleep_efficiency * 100)          : null);
+    setField('oura-deep',  sleep.deep_sleep_duration  ? Math.round(sleep.deep_sleep_duration / 360) / 10  : null);
+    setField('oura-rem',   sleep.rem_sleep_duration   ? Math.round(sleep.rem_sleep_duration / 360) / 10   : null);
+    setField('oura-light', sleep.light_sleep_duration ? Math.round(sleep.light_sleep_duration / 360) / 10 : null);
+    setField('oura-hrv',   sleep.average_hrv          ? Math.round(sleep.average_hrv)                     : null);
+    setField('oura-bed',   sleep.bedtime_start        ? ouraFormatTime(sleep.bedtime_start)               : null);
+    setField('oura-wake',  sleep.bedtime_end          ? ouraFormatTime(sleep.bedtime_end)                 : null);
+    // Readiness
+    setField('oura-readiness', ready.score);
+    // Activity
+    setField('oura-steps',  activity.steps);
+    setField('oura-calexp', activity.total_calories);
+    ouraUpdate();
+    dashRefresh();
+  } catch(e) { console.error('Oura sync fetch failed:', e); }
+}
+
+async function ouraCallback() {
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('code');
+  if (!code) return;
+  try {
+    var res = await fetch('/.netlify/functions/oura?action=callback&code=' + encodeURIComponent(code));
+    var data = await res.json();
+    if (data.access_token) {
+      try { localStorage.setItem('jr_oura_token', data.access_token); } catch(e) {}
+      window.history.replaceState({}, document.title, window.location.pathname);
+      ouraSyncFetch();
+    }
+  } catch(e) { console.error('Oura callback failed:', e); }
+}
+
 weightLoad();
 function dashAppleSave() {
   var m = parseFloat((document.getElementById('dash-move-input')||{}).value)||0;
@@ -3296,6 +3362,7 @@ function waterLoad() {
   waterRender();
 }
 waterLoad();
+ouraCallback();
 
 /* Load from Supabase (overrides localStorage with cloud data) */
 setTimeout(function() { dbLoadAll(); }, 100);
