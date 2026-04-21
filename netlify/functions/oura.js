@@ -31,7 +31,7 @@ exports.handler = async function(event) {
   const action = params.action;
   const CLIENT_ID = process.env.OURA_CLIENT_ID;
   const CLIENT_SECRET = process.env.OURA_CLIENT_SECRET;
-  const REDIRECT_URI = 'https://trakros.com/oura-callback';
+  const REDIRECT_URI = 'https://trakros.com';
 
   try {
     // --- auth_url: return the Oura OAuth authorization URL ---
