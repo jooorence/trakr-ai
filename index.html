@@ -1251,9 +1251,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = 'https://ztqpxwaeaknylgpvipuu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_sKRmZBiHO0quGaBo8XqS2w_fCRm9yya';
-const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const AUTH_SUPABASE_URL = 'https://ztqpxwaeaknylgpvipuu.supabase.co';
+const AUTH_SUPABASE_KEY = 'sb_publishable_sKRmZBiHO0quGaBo8XqS2w_fCRm9yya';
+const _sb = supabase.createClient(AUTH_SUPABASE_URL, AUTH_SUPABASE_KEY);
 
 async function initAuth() {
   const { data: { session } } = await _sb.auth.getSession();
