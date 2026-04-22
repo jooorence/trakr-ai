@@ -1470,7 +1470,7 @@ async function dbLoadAll() {
         }
       }
     }
-    // Load user settings (weight)
+    // Load user settings (weight, oura token)
     var sRes = await sb.from('user_settings').select('*').eq('id', 1).maybeSingle();
     if (sRes.data) {
       var wi = document.getElementById('dash-weight-input');
@@ -1478,6 +1478,11 @@ async function dbLoadAll() {
       if(wi && sRes.data.weight) wi.value = sRes.data.weight;
       if(gi && sRes.data.goal_weight) gi.value = sRes.data.goal_weight;
       weightUpdate();
+      // Restore Oura token cross-device — only fetch if token found and not already synced this load
+      if (sRes.data.oura_token) {
+        try { localStorage.setItem('jr_oura_token', sRes.data.oura_token); } catch(e) {}
+        ouraSyncFetch();
+      }
     }
     // Re-render everything
     waterRender();
@@ -1742,7 +1747,10 @@ function flCurrentLog() {
 }
 
 function flAdd(name, cal, p, c, f) {
-  flGetDayData(flCurrentDate).log.push({name:name, cal:cal, p:p, c:c, f:f});
+  var log = flGetDayData(flCurrentDate).log;
+  var idx = log.findIndex(function(e) { return e.name === name; });
+  if (idx !== -1) { log[idx] = {name:name, cal:cal, p:p, c:c, f:f}; }
+  else { log.push({name:name, cal:cal, p:p, c:c, f:f}); }
   flSaveAll(); flRender();
 }
 
@@ -1977,15 +1985,14 @@ function coachSystemPrompt(ctx) {
   p += ctx.isRest ? "REST DAY macros: 2086 cal / 187g P / 213g C / 55g F. " : "TRAINING DAY macros: 2227 cal / 190g P / 266g C / 47g F. ";
   p += "Logged so far: " + ctx.itemsLogged + " meals, " + ctx.cals + " cal / " + ctx.protein + "g P / " + ctx.carbs + "g C / " + ctx.fat + "g F. ";
   p += "Water: " + ctx.waterOz + " oz (min 135, ideal 169). Sleep score: " + ctx.sleepScore + ". Sleep: " + ctx.sleepTotal + " hrs. ";
-  p += "MEAL PLAN: M1 eggs+spinach+rice+blueberries (TD 565cal/43P) or eggs+spinach+rice (RD 505cal/42P). ";
-  p += "M2 chicken+rice+broccoli (397cal/36P both days). ";
-  p += "M3 Oikos+banana+PB (TD 277cal/33P) or Oikos+PB (RD 226cal/32P). ";
-  p += "M4 chicken+rice+almonds (458cal/37P both days). ";
-  p += "M5 sirloin+rice+broccoli (TD 430cal/41P) or salmon+rice+broccoli (RD 500cal/40P). ";
+  p += "MEAL PLAN — Training Day: Morning Coffee (135cal/0.5P/20.5C/7.25F), Gut Drink (35cal/0P/4C/0F/+16.9oz water), Meal 1 Breakfast (565cal/43P/69C/11F), Meal 2 Lunch (397cal/36P/51C/5F), Meal 3 Midday (277cal/33P/25C/9F), Meal 4 Pre Workout (458cal/37P/49C/13F), Intra Workout (100cal/0P/25C/0F/+16.9oz water), Meal 5 Post Workout (430cal/41P/47C/9F). ";
+  p += "Rest Day variants: Meal 1 (505cal/42P/54C/11F), Meal 3 (226cal/32P/12C/9F), Meal 5 (500cal/40P/47C/17F). Morning Coffee, Gut Drink, Meal 2, Meal 4 are the same on both days. ";
+  p += "When user mentions any meal by name or alias (M1/M2/M3/M4/M5, gut drink, morning coffee, breakfast, lunch, midday, pre workout, intra, post workout, etc.), ALWAYS use the EXACT macros from this meal plan — never estimate or use partial macros. ";
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
   p += 'CRITICAL INSTRUCTION: When the user mentions any loggable data, you MUST output ALL LOG action lines at the very beginning of your reply, before any other text. This is required — never put LOG actions after your response text. ';
-  p += 'When user mentions eating anything, include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0} ';
-  p += 'When user mentions drinking water or fluids, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
+  p += 'When user mentions eating anything (including named meals, morning coffee, gut drink), include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0} — use exact macros from the meal plan for any named meal. ';
+  p += 'When user mentions Gut Drink or Intra Workout, ALWAYS emit both LOGFOOD with exact macros AND LOGWATER:{"oz":16.9,"label":"Gut Drink"} (or Intra Workout) since they include 16.9oz water. ';
+  p += 'When user mentions drinking plain water or other fluids, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
   p += 'When user mentions step count, include: LOGSTEPS:{"steps":6000} ';
   p += 'When user mentions calories burned or total caloric expenditure, include: LOGCALBURN:{"cal":2800} ';
   p += 'When user mentions Move ring or active calories, include: LOGMOVE:{"cal":467} ';
@@ -2395,6 +2402,7 @@ function briefChatQuick(prompt) {
 function coachInit() { briefGenerate(); }
 
 flLoad();
+try { dashRefresh(); } catch(e) {}
 
 /* ROUTINES */
 var rtnMorningItems = [
@@ -2827,7 +2835,7 @@ async function ouraSyncFetch() {
     var sleep    = (data.sleep    && data.sleep.data    && data.sleep.data[0])    || {};
     var activity = (data.activity && data.activity.data && data.activity.data[0]) || {};
     var ready    = (data.readiness && data.readiness.data && data.readiness.data[0]) || {};
-    function setField(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; }
+    function setField(id, val) { var el = document.getElementById(id); if (el && val != null && val !== '') { el.value = val; el.dispatchEvent(new Event('input')); } }
     // Sleep
     setField('oura-score', sleep.score);
     setField('oura-total', sleep.total_sleep_duration ? Math.round(sleep.total_sleep_duration / 360) / 10 : null);
@@ -2859,6 +2867,7 @@ async function ouraCallback() {
     var data = await res.json();
     if (data.access_token) {
       try { localStorage.setItem('jr_oura_token', data.access_token); } catch(e) {}
+      dbSaveSettings({ oura_token: data.access_token });
       window.history.replaceState({}, document.title, window.location.pathname);
       ouraSyncFetch();
     }
