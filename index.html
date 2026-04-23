@@ -2180,7 +2180,7 @@ async function sendCoachMsg() {
         var actionDiv = document.createElement('div');
         actionDiv.className = 'cmsg coach-msg';
         var rows = foods.map(function(f) {
-          return '<div class="action-crd-row"><span class="action-crd-key">' + f.name + '</span><span class="action-crd-val">' + f.cal + ' cal / ' + f.p + 'g P</span></div>';
+          return '<div class="action-crd-row"><span class="action-crd-key">' + f.name + '</span><span class="action-crd-val">' + f.cal + ' cal · ' + f.p + 'g P · ' + (f.c||0) + 'g C · ' + (f.f||0) + 'g F</span></div>';
         }).join('');
         actionDiv.innerHTML = '<div class="action-crd">'
           + '<div class="action-crd-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
@@ -2204,6 +2204,8 @@ async function sendCoachMsg() {
 
 function coachConfirmLog(name, cal, p, c, f, btn) {
   flAdd(name, cal, p, c, f);
+  try { dashRefresh(); } catch(e) {}
+  try { flRender(); } catch(e) {}
   btn.parentNode.parentNode.innerHTML = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Logged &#8212; added to Food Log</div>';
   coachAddMsg('coach', 'Done — ' + name + ' is logged. Your macros are updated.');
   coachHistory.push({role:'assistant', content: name + ' has been logged to the food log.'});
@@ -2219,7 +2221,8 @@ function coachConfirmLogAll(btn) {
   coachAddMsg('coach', (foods.length > 1 ? foods.length + ' items logged.' : names + ' is logged.') + ' Macros updated.');
   coachHistory.push({role:'assistant', content: names + ' logged.'});
   dbSaveChatMsg('main', 'assistant', names + ' logged.');
-  dashRefresh();
+  try { dashRefresh(); } catch(e) {}
+  try { flRender(); } catch(e) {}
 }
 
 function coachQuick(prompt) {
@@ -3157,7 +3160,7 @@ async function csSend() {
         var ac = document.createElement('div');
         ac.className = 'scmsg sc-coach';
         var rows = foods.map(function(f) {
-          return '<div class="sc-action-row"><span class="sc-action-key">' + f.name + '</span><span class="sc-action-val">' + f.cal + ' cal / ' + f.p + 'g P</span></div>';
+          return '<div class="sc-action-row"><span class="sc-action-key">' + f.name + '</span><span class="sc-action-val">' + f.cal + ' cal · ' + f.p + 'g P · ' + (f.c||0) + 'g C · ' + (f.f||0) + 'g F</span></div>';
         }).join('');
         ac.innerHTML = '<div class="sc-action-card">'
           + '<div class="sc-action-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
@@ -3183,6 +3186,8 @@ async function csSend() {
 function csConfirmLog(btn, cal, p, c, f) {
   var name = btn.closest('.sc-action-card').getAttribute('data-name') || 'Food';
   flAdd(name, cal, p, c, f);
+  try { dashRefresh(); } catch(e) {}
+  try { flRender(); } catch(e) {}
   btn.parentNode.parentNode.innerHTML = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">&#10003; Logged &#8212; added to Food Log</div>';
   csAddMsg('coach', name + ' is logged. Your macros are updated.');
   csHistory.push({role:'assistant', content: name + ' has been logged.'});
@@ -3198,7 +3203,8 @@ function csConfirmLogAll(btn) {
   csAddMsg('coach', (foods.length > 1 ? foods.length + ' items logged.' : names + ' is logged.') + ' Macros updated.');
   csHistory.push({role:'assistant', content: names + ' logged.'});
   dbSaveChatMsg('floating', 'assistant', names + ' logged.');
-  dashRefresh();
+  try { dashRefresh(); } catch(e) {}
+  try { flRender(); } catch(e) {}
 }
 
 function csQuick(prompt) {
