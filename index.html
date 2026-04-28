@@ -2447,7 +2447,7 @@ function rtnSave() {
   var prefix = rtnDateKey();
   var todayRoutines = {};
   Object.keys(rtnState).forEach(function(k) { if(k.indexOf(prefix) === 0) todayRoutines[k] = rtnState[k]; });
-  dbSaveDay(flDateKey(new Date()), { routines: todayRoutines });
+  dbSaveDay(_sessionDate, { routines: todayRoutines });
 }
 function rtnKey(id) { return rtnDateKey() + '_' + id; }
 
@@ -2748,7 +2748,7 @@ function ouraUpdate() {
 
 
   try { localStorage.setItem('jr_oura', JSON.stringify({date:getTodayKey(),score,total,eff,deep,rem,light,bed,wake,hrv,readiness,steps,calexp})); } catch(e) {}
-  dbSaveDay(flDateKey(new Date()), { oura: {date:flDateKey(new Date()),score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
+  dbSaveDay(_sessionDate, { oura: {date:_sessionDate,score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
 }
 
 function weightUpdate() {
@@ -2891,7 +2891,7 @@ function dashAppleSave() {
   var e = parseFloat((document.getElementById('dash-exercise-input')||{}).value)||0;
   var s = parseFloat((document.getElementById('dash-stand-input')||{}).value)||0;
   try { localStorage.setItem('jr_apple', JSON.stringify({date:getTodayKey(),move:m,exercise:e,stand:s})); } catch(ex) {}
-  dbSaveDay(flDateKey(new Date()), { apple_fitness: {move:m, exercise:e, stand:s} });
+  dbSaveDay(_sessionDate, { apple_fitness: {move:m, exercise:e, stand:s} });
 }
 function dashAppleLoad() {
   try {
@@ -3309,6 +3309,8 @@ function dashRefresh() {
 var waterOz = 0;
 var waterJugs = 0;
 var waterBottles = 0;
+/* Session date — locked at page load so a session crossing midnight never writes to the next day's row */
+var _sessionDate = getTodayKey();
 
 function waterAddJug() { waterJugs++; waterOz += 70; waterSave(); waterRender(); }
 function waterAddBottle() { waterBottles++; waterOz += 16.9; waterSave(); waterRender(); }
@@ -3373,8 +3375,8 @@ function waterRender() {
 }
 
 function waterSave() {
-  try { localStorage.setItem('jr_water_v2', JSON.stringify({date:getTodayKey(),oz:waterOz,jugs:waterJugs,bottles:waterBottles})); } catch(e) {}
-  dbSaveDay(flDateKey(new Date()), { water_oz: waterOz, water_jugs: waterJugs, water_bottles: waterBottles });
+  try { localStorage.setItem('jr_water_v2', JSON.stringify({date:_sessionDate,oz:waterOz,jugs:waterJugs,bottles:waterBottles})); } catch(e) {}
+  dbSaveDay(_sessionDate, { water_oz: waterOz, water_jugs: waterJugs, water_bottles: waterBottles });
 }
 function waterLoad() {
   try {
