@@ -461,7 +461,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
               <div style="flex:1;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#ccc;">Move</span><span style="font-size:11px;color:#ff375f;font-weight:600;" id="dash-move-pct">—</span></div>
                 <div style="background:#1e1e1e;border-radius:3px;height:4px;overflow:hidden;"><div id="dash-move-bar" style="height:100%;border-radius:3px;background:#ff375f;width:0%;"></div></div>
-                <div style="font-size:10px;color:#555;margin-top:2px;" id="dash-move-sub">— / 600 cal</div>
+                <div style="font-size:10px;color:#555;margin-top:2px;" id="dash-move-sub">— / 750 cal</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
@@ -469,7 +469,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
               <div style="flex:1;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#ccc;">Exercise</span><span style="font-size:11px;color:#a8ff3e;font-weight:600;" id="dash-exercise-pct">—</span></div>
                 <div style="background:#1e1e1e;border-radius:3px;height:4px;overflow:hidden;"><div id="dash-exercise-bar" style="height:100%;border-radius:3px;background:#a8ff3e;width:0%;"></div></div>
-                <div style="font-size:10px;color:#555;margin-top:2px;" id="dash-exercise-sub">— / 30 min</div>
+                <div style="font-size:10px;color:#555;margin-top:2px;" id="dash-exercise-sub">— / 45 min</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
@@ -1996,7 +1996,7 @@ function coachSystemPrompt(ctx) {
   p += ctx.isRest ? "REST DAY macros: 2086 cal / 187g P / 213g C / 55g F. " : "TRAINING DAY macros: 2227 cal / 190g P / 266g C / 47g F. ";
   p += "Logged so far: " + ctx.itemsLogged + " meals, " + ctx.cals + " cal / " + ctx.protein + "g P / " + ctx.carbs + "g C / " + ctx.fat + "g F. ";
   p += "Water: " + ctx.waterOz + " oz (min 135, ideal 169). Sleep score: " + ctx.sleepScore + ". Sleep: " + ctx.sleepTotal + " hrs. ";
-  p += "MEAL PLAN — Training Day: Morning Coffee (135cal/0.5P/20.5C/7.25F), Gut Drink (35cal/0P/4C/0F/+16.9oz water), Meal 1 Breakfast (565cal/43P/69C/11F), Meal 2 Lunch (397cal/36P/51C/5F), Meal 3 Midday (277cal/33P/25C/9F), Meal 4 Pre Workout (458cal/37P/49C/13F), Intra Workout (100cal/0P/25C/0F/+16.9oz water), Meal 5 Post Workout (430cal/41P/47C/9F). ";
+  p += "MEAL PLAN — Training Day: Morning Coffee (135cal/0.5P/20.5C/7.25F), Gut Drink (0cal/0P/0C/0F/+16.9oz water — negligible, not tracked), Meal 1 Breakfast (565cal/43P/69C/11F), Meal 2 Lunch (397cal/36P/51C/5F), Meal 3 Midday (277cal/33P/25C/9F), Meal 4 Pre Workout (458cal/37P/49C/13F), Intra Workout (100cal/0P/25C/0F/+16.9oz water), Meal 5 Post Workout (430cal/41P/47C/9F). ";
   p += "Rest Day variants: Meal 1 (505cal/42P/54C/11F), Meal 3 (226cal/32P/12C/9F), Meal 5 (500cal/40P/47C/17F). Morning Coffee, Gut Drink, Meal 2, Meal 4 are the same on both days. ";
   p += "When user mentions any meal by name or alias (M1/M2/M3/M4/M5, gut drink, morning coffee, breakfast, lunch, midday, pre workout, intra, post workout, etc.), ALWAYS use the EXACT macros from this meal plan — never estimate or use partial macros. ";
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
@@ -2633,8 +2633,8 @@ function dashUpdateRings() {
   var moveVal = parseFloat(document.getElementById('dash-move-input').value) || 0;
   var exVal = parseFloat(document.getElementById('dash-exercise-input').value) || 0;
   var standVal = parseFloat(document.getElementById('dash-stand-input').value) || 0;
-  var movePct = Math.min(Math.round((moveVal/600)*100),100);
-  var exPct = Math.min(Math.round((exVal/30)*100),100);
+  var movePct = Math.min(Math.round((moveVal/750)*100),100);
+  var exPct = Math.min(Math.round((exVal/45)*100),100);
   var standPct = Math.min(Math.round((standVal/12)*100),100);
   document.getElementById('dash-move-pct').textContent = movePct + '%';
   document.getElementById('dash-exercise-pct').textContent = exPct + '%';
@@ -2642,8 +2642,8 @@ function dashUpdateRings() {
   document.getElementById('dash-move-bar').style.width = movePct + '%';
   document.getElementById('dash-exercise-bar').style.width = exPct + '%';
   document.getElementById('dash-stand-bar').style.width = standPct + '%';
-  document.getElementById('dash-move-sub').textContent = moveVal + ' / 600 cal';
-  document.getElementById('dash-exercise-sub').textContent = exVal + ' / 30 min';
+  document.getElementById('dash-move-sub').textContent = moveVal + ' / 750 cal';
+  document.getElementById('dash-exercise-sub').textContent = exVal + ' / 45 min';
   document.getElementById('dash-stand-sub').textContent = standVal + ' / 12 hrs';
   var canvas = document.getElementById('dash-rings');
   if(!canvas) return;
