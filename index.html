@@ -1468,16 +1468,25 @@ async function dbLoadAll() {
             ouraUpdate();
           }
         }
-        // Load today's Apple Fitness rings
-        if (todayRow.apple_fitness && typeof todayRow.apple_fitness === 'object') {
+        // Load today's Apple Fitness rings + steps (move/exercise/stand/steps)
+        // Stale check: only populate if the apple_fitness blob's date matches today.
+        if (todayRow.apple_fitness && typeof todayRow.apple_fitness === 'object' && todayRow.apple_fitness.date === todayKey) {
           var af = todayRow.apple_fitness;
-          var mi = document.getElementById('dash-move-input');
-          var ei = document.getElementById('dash-exercise-input');
-          var si = document.getElementById('dash-stand-input');
-          if(mi && af.move) mi.value = af.move;
-          if(ei && af.exercise) ei.value = af.exercise;
-          if(si && af.stand) si.value = af.stand;
-          if(af.move || af.exercise || af.stand) dashUpdateRings();
+          var afFields = [
+            {id: 'dash-move-input',     val: af.move},
+            {id: 'dash-exercise-input', val: af.exercise},
+            {id: 'dash-stand-input',    val: af.stand},
+            {id: 'oura-steps',          val: af.steps}
+          ];
+          afFields.forEach(function(f) {
+            var el = document.getElementById(f.id);
+            if (el && f.val != null && f.val !== '') {
+              el.value = f.val;
+              el.dispatchEvent(new Event('input'));
+            }
+          });
+          dashUpdateRings();
+          dashAppleSave();
         }
       }
     }
