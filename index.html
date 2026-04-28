@@ -1336,7 +1336,7 @@ function dbSaveChatMsg(surface, role, content) {
   // Normalize role to API form ('user' | 'assistant') so the table matches what we feed Claude.
   var apiRole = (role === 'assistant' || role === 'coach') ? 'assistant' : 'user';
   sb.from('chat_history')
-    .insert({ surface: surface, role: apiRole, content: String(content), chat_date: getTodayKey() })
+    .insert({ surface: surface, role: apiRole, content: String(content), chat_date: _sessionDate })
     .then(function(r) { if (r && r.error) console.error('DB chat save:', r.error); });
 }
 
@@ -3108,7 +3108,7 @@ function csMorningBrief() {
   var pill = document.getElementById('cs-ctx-pill');
   if (pill) pill.textContent = ctx.split + ' · Day ' + ctx.dayNum;
   csHistory = [{role:'assistant', content: brief}];
-  try { localStorage.setItem('jr_brief_date', getTodayKey()); } catch(e) {}
+  try { localStorage.setItem('jr_brief_date', _sessionDate); } catch(e) {}
   dbSaveChatMsg('floating', 'assistant', brief);
 }
 
