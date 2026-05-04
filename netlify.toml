@@ -1,0 +1,29 @@
+# TRAKR — branch-scoped Netlify config for the React migration.
+#
+# This file lives on the `react-migration` branch (and worktree branches off
+# of it). Branches without this file (including `main` until cutover) keep
+# Netlify's auto-detection, which serves the legacy root index.html.
+#
+# When the migration is merged to main, this config takes over and trakros.com
+# flips to the React build automatically.
+
+[build]
+  command = "cd web && npm install && npm run build"
+  publish = "web/dist"
+
+[functions]
+  directory = "netlify/functions"
+
+# SPA fallback — every non-asset request goes to index.html so React Router can
+# handle routing client-side.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Local `netlify dev` orchestration: runs the Vite dev server and proxies the
+# Netlify Functions through port 8888.
+[dev]
+  command = "cd web && npm run dev"
+  port = 8888
+  targetPort = 5173

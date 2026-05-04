@@ -1,0 +1,5 @@
+# Machine-specific or local-only files (any *.local, .env.local, settings.local.json, etc.)
+*.local
+
+# macOS
+.DS_Store
