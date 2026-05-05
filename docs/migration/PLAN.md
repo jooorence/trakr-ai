@@ -41,32 +41,50 @@ This means **at no point during the migration is the live app broken**.
 
 ---
 
-## Phase 1 — Layout shell + navigation + design primitives (~half day)
+## Phase 1 — Layout shell + navigation ✅ DONE (2026-05-05)
 
-**Goal:** the visual chrome of the app — sidebar, top bar, floating coach bubble, routing — *plus* the shared component primitives every later phase will reuse.
+**Goal:** the visual chrome of the app — sidebar, top bar, floating coach bubble, routing.
 
-**Tasks:**
-1. `<AppShell>` with sidebar + main content area, matching legacy layout.
-2. React Router routes for every top-level section (`/dashboard`, `/food-log`, `/training`, `/routines`, `/longevity`, `/insights`, `/covenant`, `/coach`).
-3. Sidebar links highlight active route.
-4. Floating coach bubble component (visual only, no chat yet).
-5. Install shadcn/ui and copy in: `Button`, `Input`, `Card`, `Dialog`, `Sheet`, `Tabs`, `Toast`. Configure with TRAKR palette.
-6. Extract TRAKR-specific primitives wrapping shadcn: `<Pill>`, `<SectionLabel>`, `<NumberInput>` (number input with label, used for Oura/Apple/macros).
+**Tasks completed:**
+1. ✅ `<AppShell>` with hero (full-width) + 1100px-centered app-body (sidebar + main outlet).
+2. ✅ React Router routes for all 10 top-level sections matching legacy nav: `/dashboard`, `/food-log`, `/meal-plans`, `/training`, `/routines`, `/rules`, `/longevity`, `/creed`, `/insights`, `/coach`. (10 routes, not 8 — legacy nav has Meal Plans + Rules as separate items.)
+3. ✅ `<Sidebar>` with 6 nav groups, color-coded active states per legacy palette (10 distinct color themes).
+4. ✅ `<CoachBubble>` (visual only, pulsing teal, positioned per legacy `right: max(24px, calc((100vw - 1100px) / 2 + 24px))`).
+5. ⏭️ **Moved to Phase 2 start:** shadcn/ui install + TRAKR primitives. Reasoning: build primitives when first consuming them, not speculatively. Phase 2's Oura section is the first place we'll need `<NumberInput>`, `<Card>`, etc.
 
-**Exit criteria:** every route renders an empty placeholder with consistent shell. Sidebar nav works. Primitives ready to consume in Phase 2+.
+**Exit criteria met:** every route renders the placeholder with consistent shell; sidebar nav works; URL changes per route; floating coach bubble in place.
+
+**Tribal knowledge captured:**
+- Tailwind v4's preflight sets `html { line-height: 1.5 }`. Legacy uses browser default (~1.2). Override applied in `web/src/index.css`. **Do not remove** — sidebar/tight UI will look loose if you do.
+- App-body centering uses an explicit flex-row wrapper around the `mx-auto max-w-[1100px]` container. Direct `mx-auto` on a flex-col child with `align-items: stretch` did not center reliably.
 
 ---
 
-## Phase 2 — Data layer + first feature (Oura) (~1 day)
+## Phase 2 — shadcn setup + first feature (Oura) (~1 day)
 
 **Goal:** prove the end-to-end pattern with one self-contained feature. Oura is ideal because it's data-heavy but isolated.
 
 **Tasks:**
-1. Build `useDailyLog(date)` hook — fetches/caches daily_logs row via React Query, returns `{ data, update, isLoading }`.
-2. Build `<OuraSection date={date} />` component — renders 12 fields from a `FIELDS` config array, single source of truth.
-3. Build `<OuraSummary data={...} />` — the summary tiles (sleep score, deep/REM/light, readiness).
-4. Wire `useDailyLog.update(field, value)` to debounced Supabase upsert.
-5. Verify against legacy: enter values in legacy app, confirm React version reads same row; enter in React, confirm legacy reads it.
+1. **shadcn/ui setup (relocated from Phase 1):**
+   - From `web/`: `npx shadcn@latest init` — pick New York style, dark, CSS variables, components in `src/components/ui`
+   - Add components: `npx shadcn@latest add button input card`
+   - Verify the `cn()` helper compiles in `lib/utils.ts`
+2. Build TRAKR-specific primitives wrapping shadcn:
+   - `<Pill>`, `<SectionLabel>`, `<NumberInput>` (label + number input with min/max/step)
+3. Build `useDailyLog(date)` hook — fetches/caches daily_logs row via React Query, returns `{ data, update, isLoading }`.
+4. Generate Supabase types: `supabase gen types typescript --project-id ztqpxwaeaknylgpvipuu > web/src/lib/database.types.ts`
+5. Build `<OuraSection date={date} />` component — renders 12 fields from a `FIELDS` config array, single source of truth.
+6. Build `<OuraSummary data={...} />` — the summary tiles (sleep score, deep/REM/light, readiness).
+7. Wire `useDailyLog.update(field, value)` to debounced Supabase upsert.
+8. Verify against legacy: enter values in legacy app, confirm React version reads same row; enter in React, confirm legacy reads it.
+
+**Reference points in legacy `index.html`:**
+- Lines 544-555: Input HTML (12 fields) — the `FIELDS` array template
+- Lines 1456-1467: Load from DB — what `useDailyLog` replaces
+- Line 1821: Clear form — config-driven loop
+- Lines 1976-1977: Read values for save — replaced by reactive state
+- Line 2109: Per-field listeners — replaced by single `onChange`
+- Lines 2677-2690: Compute display — `<OuraSummary>` consumes the same state
 
 **Exit criteria:** Oura section is fully functional in React, reads/writes the same Supabase row as legacy. Side-by-side test passes.
 

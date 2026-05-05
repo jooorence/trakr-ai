@@ -1,16 +1,57 @@
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AppShell } from './components/AppShell'
 import { AuthGate } from './components/AuthGate'
+import { SectionPlaceholder } from './components/SectionPlaceholder'
 
 export default function App() {
   return (
     <AuthGate>
-      <div className="flex h-full flex-col items-center justify-center gap-3">
-        <div className="text-3xl font-extrabold tracking-[0.16em] text-fg">
-          TRAKR
-        </div>
-        <div className="text-sm text-fg-dim">
-          React migration · Phase 0 shell
-        </div>
-      </div>
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/dashboard"
+            element={<SectionPlaceholder title="Dashboard" />}
+          />
+          <Route
+            path="/food-log"
+            element={<SectionPlaceholder title="Food Log" />}
+          />
+          <Route
+            path="/meal-plans"
+            element={<SectionPlaceholder title="Meal Plans" />}
+          />
+          <Route
+            path="/training"
+            element={<SectionPlaceholder title="Training Split" />}
+          />
+          <Route
+            path="/routines"
+            element={<SectionPlaceholder title="Routines" />}
+          />
+          <Route
+            path="/rules"
+            element={<SectionPlaceholder title="Rules" />}
+          />
+          <Route
+            path="/longevity"
+            element={<SectionPlaceholder title="Longevity" />}
+          />
+          <Route
+            path="/creed"
+            element={<SectionPlaceholder title="Creed" />}
+          />
+          <Route
+            path="/insights"
+            element={<SectionPlaceholder title="Insights" />}
+          />
+          <Route
+            path="/coach"
+            element={<SectionPlaceholder title="CoachGPT" />}
+          />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+      </Routes>
     </AuthGate>
   )
 }
