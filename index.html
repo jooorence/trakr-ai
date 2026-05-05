@@ -269,6 +269,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .sc-action-btns { display:flex; gap:6px; margin-top:10px; }
 .sc-confirm-btn { flex:1; background:#40ccbb; border-radius:8px; padding:8px; text-align:center; font-size:12px; font-weight:700; color:#050f0e; cursor:pointer; }
 .sc-edit-btn { flex:1; background:#141414; border:1px solid #2a2a2a; border-radius:8px; padding:8px; text-align:center; font-size:12px; color:#666; cursor:pointer; }
+.sc-edit-row { padding:6px 0; border-bottom:1px solid #1a2a28; }
+.sc-edit-row:last-of-type { border-bottom:none; }
+.sc-edit-name { width:100%; background:#0a0a0a; border:1px solid #2a2a2a; border-radius:5px; padding:4px 6px; font-size:12px; color:#ccc; margin-bottom:4px; box-sizing:border-box; }
+.sc-edit-nums { display:flex; gap:4px; }
+.sc-edit-num-wrap { display:flex; flex-direction:column; flex:1; }
+.sc-edit-num-label { font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px; }
+.sc-edit-num { width:100%; background:#0a0a0a; border:1px solid #2a2a2a; border-radius:5px; padding:4px; font-size:12px; color:#ccc; box-sizing:border-box; text-align:center; }
 
 /* BRIEF */
 .brief-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #0d2a24; }
@@ -3187,7 +3194,7 @@ async function csSend() {
           + '<div class="sc-action-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
           + rows
           + '<div class="sc-action-btns"><div class="sc-confirm-btn" onclick="csConfirmLogAll(this)">Confirm &amp; Log All</div>'
-          + '<div class="sc-edit-btn">Edit</div></div></div>';
+          + '<div class="sc-edit-btn" onclick="csEditEntry(this)">Edit</div></div></div>';
         ac.dataset.foods = JSON.stringify(foods);
         document.getElementById('cs-messages').appendChild(ac);
         document.getElementById('cs-messages').scrollTop = 99999;
@@ -3226,6 +3233,51 @@ function csConfirmLogAll(btn) {
   dbSaveChatMsg('floating', 'assistant', names + ' logged.');
   try { dashRefresh(); } catch(e) {}
   try { flRender(); } catch(e) {}
+}
+
+function csEditEntry(btn) {
+  var card = btn.closest('.scmsg');
+  var foods = []; try { foods = JSON.parse(card.dataset.foods || '[]'); } catch(e){}
+  var ac = card.querySelector('.sc-action-card');
+  var fieldsHtml = foods.map(function(f, i) {
+    var safeName = (f.name||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return '<div class="sc-edit-row">'
+      + '<input class="sc-edit-name" data-idx="' + i + '" value="' + safeName + '" placeholder="Name" />'
+      + '<div class="sc-edit-nums">'
+      + '<div class="sc-edit-num-wrap"><div class="sc-edit-num-label">Cal</div><input class="sc-edit-num" data-idx="' + i + '" data-field="cal" type="number" min="0" value="' + (f.cal||0) + '" /></div>'
+      + '<div class="sc-edit-num-wrap"><div class="sc-edit-num-label">Protein</div><input class="sc-edit-num" data-idx="' + i + '" data-field="p" type="number" min="0" value="' + (f.p||0) + '" /></div>'
+      + '<div class="sc-edit-num-wrap"><div class="sc-edit-num-label">Carbs</div><input class="sc-edit-num" data-idx="' + i + '" data-field="c" type="number" min="0" value="' + (f.c||0) + '" /></div>'
+      + '<div class="sc-edit-num-wrap"><div class="sc-edit-num-label">Fat</div><input class="sc-edit-num" data-idx="' + i + '" data-field="f" type="number" min="0" value="' + (f.f||0) + '" /></div>'
+      + '</div></div>';
+  }).join('');
+  ac.innerHTML = '<div class="sc-action-title">Edit Entry</div>'
+    + fieldsHtml
+    + '<div class="sc-action-btns"><div class="sc-confirm-btn" onclick="csSaveEdit(this)">Save &amp; Review</div></div>';
+}
+
+function csSaveEdit(btn) {
+  var card = btn.closest('.scmsg');
+  var ac = card.querySelector('.sc-action-card');
+  var editRows = ac.querySelectorAll('.sc-edit-row');
+  var foods = [];
+  editRows.forEach(function(row) {
+    foods.push({
+      name: row.querySelector('.sc-edit-name').value || 'Food',
+      cal: parseFloat(row.querySelector('[data-field="cal"]').value) || 0,
+      p: parseFloat(row.querySelector('[data-field="p"]').value) || 0,
+      c: parseFloat(row.querySelector('[data-field="c"]').value) || 0,
+      f: parseFloat(row.querySelector('[data-field="f"]').value) || 0
+    });
+  });
+  card.dataset.foods = JSON.stringify(foods);
+  var rowsHtml = foods.map(function(f) {
+    var safeName = f.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return '<div class="sc-action-row"><span class="sc-action-key">' + safeName + '</span><span class="sc-action-val">' + f.cal + ' cal · ' + f.p + 'g P · ' + (f.c||0) + 'g C · ' + (f.f||0) + 'g F</span></div>';
+  }).join('');
+  ac.innerHTML = '<div class="sc-action-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
+    + rowsHtml
+    + '<div class="sc-action-btns"><div class="sc-confirm-btn" onclick="csConfirmLogAll(this)">Confirm &amp; Log All</div>'
+    + '<div class="sc-edit-btn" onclick="csEditEntry(this)">Edit</div></div>';
 }
 
 function csQuick(prompt) {
