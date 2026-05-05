@@ -6,6 +6,32 @@ This document is for picking up the migration in a fresh Claude Code session wit
 
 ---
 
+## Step 0 — Are you in the right worktree? (read this FIRST)
+
+Claude Code spawns a fresh worktree per session by default. **The TRAKR migration is a single long-running branch — all phases must stay on `claude/romantic-dhawan-9a22e4`.** If you're reading this from a worktree at any other path, switch before doing anything else:
+
+**Check current worktree:**
+```bash
+pwd     # must end in /.claude/worktrees/romantic-dhawan-9a22e4
+git branch --show-current     # must be claude/romantic-dhawan-9a22e4
+```
+
+**If you're in the wrong worktree:** use the `EnterWorktree` tool to switch to `/Users/jrsm5pro/Desktop/trakr-ai/.claude/worktrees/romantic-dhawan-9a22e4`. (Load it via `ToolSearch` with `select:EnterWorktree` if it isn't already available.)
+
+**If that worktree path doesn't exist on disk** (e.g., it got cleaned up between sessions), recreate it from origin:
+```bash
+cd /Users/jrsm5pro/Desktop/trakr-ai
+git fetch origin
+git worktree add .claude/worktrees/romantic-dhawan-9a22e4 claude/romantic-dhawan-9a22e4
+```
+Then switch into it.
+
+**Do NOT** create a new worktree off `main` and start Phase 2 there — that would either build against missing Phase 0+1 code or fork the migration into two branches, both of which violate the workflow rules in §"Critical workflow rules" below.
+
+Only continue past this step once `git branch --show-current` returns `claude/romantic-dhawan-9a22e4`.
+
+---
+
 ## TL;DR
 
 - **Phases 0 (foundation) and 1 (layout shell) are complete** and committed in the worktree.
