@@ -9,8 +9,8 @@
     },
     {
       "name": "trakr-preview",
-      "runtimeExecutable": "ruby",
-      "runtimeArgs": ["-run", "-e", "httpd", "/tmp", "-p", "8080"],
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/tmp/serve_trakr.py"],
       "port": 8080
     }
   ]
