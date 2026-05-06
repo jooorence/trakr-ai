@@ -2057,6 +2057,7 @@ function coachSystemPrompt(ctx) {
   p += 'When user mentions exercise minutes, include: LOGEXERCISE:{"min":38} ';
   p += 'When user mentions Stand ring or hours standing, include: LOGSTAND:{"hrs":10} ';
   p += 'When user mentions sleep score, sleep quality, or Oura sleep data, include: LOGSLEEP:{"score":82} ';
+  p += 'When user wants to change today\'s training day (e.g. "change to push day 1", "make today a training day", "switch to rest day"), include on its own line: LOGSPLIT:{"split":"Push Day 1"} — valid values: Push Day 1, Push Day 2, Pull Day 1, Pull Day 2, Legs, Rest. ';
   p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
   p += 'CLEARDAY:{} must ONLY be included when the user explicitly asks to wipe or reset their ENTIRE day (e.g. "clear my day", "reset everything", "start my day over"). NEVER include CLEARDAY for fixing duplicates, correcting a single entry, adjusting water, editing food items, or any partial change. When in doubt, do not include CLEARDAY. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
@@ -2112,13 +2113,34 @@ function processLogActions(reply) {
     });
     if (matches.length > 0) cleaned = cleaned.replace(p.rx, '').trim();
   });
+  // Handle LOGSPLIT — override today's training day
+  var splitMatches = Array.from(cleaned.matchAll(/LOGSPLIT:\{"split":"([^"]+)"\}/g));
+  splitMatches.forEach(function(match) {
+    var splitName = match[1];
+    var todayKey = getTodayKey();
+    localStorage.setItem('jr_split_override_' + todayKey, splitName);
+    var data = flGetDayData(new Date());
+    data.split = splitName;
+    data.dayType = splitName === 'Rest' ? 'rd' : 'td';
+    flDay = data.dayType;
+    dbSaveDay(todayKey, { split: splitName, day_type: data.dayType });
+    var trainingEl = document.getElementById('dash-training-val');
+    if (trainingEl) {
+      trainingEl.textContent = splitName;
+      trainingEl.style.color = splitName === 'Rest' ? '#555' : '#f5a623';
+      trainingEl.nextElementSibling.textContent = splitName === 'Rest' ? 'Rest Day' : 'Training Day';
+    }
+    confirmations.push('Training day → ' + splitName);
+  });
+  if (splitMatches.length > 0) cleaned = cleaned.replace(/LOGSPLIT:\{"split":"[^"]+"\}/g, '').trim();
+
   if (confirmations.length > 0) { try { dashRefresh(); } catch(e) {} }
   return { cleaned: cleaned, confirmations: confirmations };
 }
 
 function stripActionTags(text) {
   return text
-    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP)\s*:\s*\{[^}]*\}/g, '')
+    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT)\s*:\s*\{[^}]*\}/g, '')
     .replace(/[ \t]+$/gm, '')
     .replace(/\n{2,}/g, '\n')
     .replace(/  +/g, ' ')
@@ -3374,7 +3396,8 @@ function dashRefresh() {
   today.setHours(0,0,0,0);
   journeyStart.setHours(0,0,0,0);
   var dayNum = Math.floor((today - journeyStart) / 86400000);
-  var splitDay = dowMap2[today.getDay()];
+  var splitOverride = localStorage.getItem('jr_split_override_' + getTodayKey());
+  var splitDay = splitOverride || dowMap2[today.getDay()];
   var trainingEl = document.getElementById('dash-training-val');
   trainingEl.textContent = splitDay;
   trainingEl.style.color = splitDay === 'Rest' ? '#555' : '#f5a623';
