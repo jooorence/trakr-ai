@@ -1500,8 +1500,7 @@ async function dbLoadAll() {
             if(o.wake) { var el = document.getElementById('oura-wake'); if(el) el.value = o.wake; }
             if(o.hrv) { var el = document.getElementById('oura-hrv'); if(el) el.value = o.hrv; }
             if(o.readiness) { var el = document.getElementById('oura-readiness'); if(el) el.value = o.readiness; }
-            if(o.steps) { var el = document.getElementById('oura-steps'); if(el) el.value = o.steps; }
-            if(o.calexp) { var el = document.getElementById('oura-calexp'); if(el) el.value = o.calexp; }
+            // steps/calexp come from Apple Fitness (date-checked) — don't load from Oura blob which may contain yesterday's activity
             ouraUpdate();
           }
         }
@@ -2882,8 +2881,7 @@ function ouraLoad() {
       if(d.wake) document.getElementById('oura-wake').value = d.wake;
       if(d.hrv) document.getElementById('oura-hrv').value = d.hrv;
       if(d.readiness) document.getElementById('oura-readiness').value = d.readiness;
-      if(d.steps) document.getElementById('oura-steps').value = d.steps;
-      if(d.calexp) document.getElementById('oura-calexp').value = d.calexp;
+      // steps/calexp loaded from Apple Fitness only — skip from Oura localStorage blob
       ouraUpdate();
     }
   } catch(e) {}
@@ -2931,9 +2929,11 @@ async function ouraSyncFetch() {
     setField('oura-wake',  sleep.bedtime_end          ? ouraFormatTime(sleep.bedtime_end)                 : null);
     // Readiness
     setField('oura-readiness', ready.score);
-    // Activity
-    setField('oura-steps',  activity.steps);
-    setField('oura-calexp', activity.total_calories);
+    // Activity — only load if the data is actually for today (Oura returns yesterday's completed activity in the morning)
+    if (activity.day && activity.day === getTodayKey()) {
+      setField('oura-steps',  activity.steps);
+      setField('oura-calexp', activity.total_calories);
+    }
     ouraUpdate();
     dashRefresh();
     var syncStatus = document.getElementById('oura-sync-status');
