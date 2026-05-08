@@ -513,17 +513,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   /* Keep main content from being hidden behind the bottom dock */
   .main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 
-  /* Body-text font bumps (~+3pt). Titles + tile values left at their existing
-     larger sizes; only the "non-header" running text gets bigger. */
-  .dash-train-list li { font-size: 18px; padding: 9px 0; }
-  .dash-train-list .lift-reps { font-size: 16px; }
-  .dash-train-row { font-size: 18px; padding: 8px 0; }
-  .dash-train-row b { font-size: 18px; }
-  .dash-train-sub { font-size: 17px; margin-bottom: 18px; }
-  .dash-mb-row { font-size: 17px; grid-template-columns: 80px 1fr 145px; }
-  .dash-mb-val { font-size: 16px; }
-  .dash-macro-status { font-size: 17px; }
-  .dash-tile-lbl { font-size: 13px; }
+  /* Body-text font sizes — middle ground between the original (too small) and
+     the previous bump (too crammed). Titles + tile values left at their larger
+     sizes. */
+  .dash-train-list li { font-size: 16px; padding: 8px 0; }
+  .dash-train-list .lift-reps { font-size: 14px; }
+  .dash-train-row { font-size: 16px; padding: 7px 0; }
+  .dash-train-row b { font-size: 16px; }
+  .dash-train-sub { font-size: 15px; margin-bottom: 16px; }
+  .dash-mb-row { font-size: 15px; grid-template-columns: 70px 1fr 130px; }
+  .dash-mb-val { font-size: 14px; }
+  .dash-macro-status { font-size: 15px; }
+  .dash-tile-lbl { font-size: 12px; }
+
+  /* Prevent iOS Safari auto-zoom on input focus: any input < 16px font-size
+     triggers Safari to zoom in. Bumping the chat input to 16px fixes it. */
+  .cs-input { font-size: 16px; }
 
   /* Bigger CoachGPT chat sheet on mobile — near full screen with margin around. */
   #coach-sheet {
@@ -540,11 +545,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
     left: 12px; right: 12px;
   }
 
-  /* APPLE FITNESS — hide manual inputs, bump ring labels/percentages/subs */
+  /* APPLE FITNESS — hide manual inputs, modestly larger ring labels/percentages/subs.
+     Dialed back from the previous bigger pass — was feeling too crammed. */
   .apple-inputs { display: none; }
-  .ring-label { font-size: 16px !important; }
-  #dash-move-pct, #dash-exercise-pct, #dash-stand-pct { font-size: 18px !important; }
-  #dash-move-sub, #dash-exercise-sub, #dash-stand-sub { font-size: 13px !important; margin-top: 5px !important; }
+  .ring-label { font-size: 14px !important; }
+  #dash-move-pct, #dash-exercise-pct, #dash-stand-pct { font-size: 16px !important; }
+  #dash-move-sub, #dash-exercise-sub, #dash-stand-sub { font-size: 12px !important; margin-top: 4px !important; }
 
   /* OURA — swap desktop top quadrant for mobile (Total Sleep / Steps / Cal Burned / VO2 max) */
   .oura-top-desktop { display: none !important; }
@@ -554,8 +560,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   .oura-bottom-mobile { display: grid !important; }
   /* Hide all Oura input fields on mobile (CoachGPT handles edits there) */
   .oura-inputs { display: none !important; }
-  /* Bump Deep / REM / Light / Awake tile values too — they sit between the two row swaps */
-  #oura-deep-display, #oura-rem-display, #oura-light-display, #oura-awake-display { font-size: 17px !important; }
+  /* Deep / REM / Light / Awake tile values — modest bump, not too big */
+  #oura-deep-display, #oura-rem-display, #oura-light-display, #oura-awake-display { font-size: 15px !important; }
 }
 /* PULL TO REFRESH */
 #ptr-indicator { position:fixed; top:0; left:0; right:0; height:56px; display:flex; align-items:center; justify-content:center; z-index:99998; pointer-events:none; opacity:0; transform:translateY(-100%); }
