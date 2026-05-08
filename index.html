@@ -1642,7 +1642,13 @@ async function dbLoadAll() {
             if(o.wake) { var el = document.getElementById('oura-wake'); if(el) el.value = o.wake; }
             if(o.hrv) { var el = document.getElementById('oura-hrv'); if(el) el.value = o.hrv; }
             if(o.readiness) { var el = document.getElementById('oura-readiness'); if(el) el.value = o.readiness; }
-            // steps/calexp come from Apple Fitness (date-checked) — don't load from Oura blob which may contain yesterday's activity
+            // Restore steps + calexp from the oura blob (date is already verified
+            // above, so no risk of pulling yesterday's activity). calexp lives
+            // ONLY on the oura blob — apple_fitness has no cal-burned field —
+            // so skipping these here was destructive: ouraUpdate would later
+            // run with calexp=0 and overwrite the saved value to 0.
+            if(o.steps)  { var el = document.getElementById('oura-steps');  if(el) el.value = o.steps; }
+            if(o.calexp) { var el = document.getElementById('oura-calexp'); if(el) el.value = o.calexp; }
             ouraUpdate();
           }
         }
