@@ -3139,7 +3139,10 @@ async function ouraSyncFetch() {
   var token = localStorage.getItem('jr_oura_token');
   if (!token) return;
   try {
-    var res = await fetch('/.netlify/functions/oura?action=fetch&token=' + encodeURIComponent(token));
+    // Pass local date so the proxy queries Oura for the right day. Without
+    // this, after ~5pm Pacific, UTC has rolled to tomorrow and Oura returns
+    // no data → sleep score stays empty.
+    var res = await fetch('/.netlify/functions/oura?action=fetch&token=' + encodeURIComponent(token) + '&date=' + getTodayKey());
     var data = await res.json();
     var sleep    = (data.sleep    && data.sleep.data    && data.sleep.data[0])    || {};
     var activity = (data.activity && data.activity.data && data.activity.data[0]) || {};
