@@ -374,9 +374,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .dash-train-name { font-size: 18px; font-weight: 700; color: #f5a623; margin-bottom: 1px; }
 .dash-train-sub { font-size: 10px; color: #888; margin-bottom: 10px; }
 .dash-train-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+.dash-train-list-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.dash-train-list-header .dash-train-lbl { margin-bottom: 0; }
 .dash-train-list { list-style: none; padding: 0; margin: 0 0 4px; }
-.dash-train-list li { font-size: 11px; color: #ddd; padding: 3px 0; border-bottom: 1px solid #1a1a1a; }
-.dash-train-list li::before { content: '·'; color: #f5a623; margin-right: 5px; }
+.dash-train-list li { font-size: 11px; color: #ddd; padding: 3px 0; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.dash-train-list .lift-name::before { content: '·'; color: #f5a623; margin-right: 5px; }
+.dash-train-list .lift-reps { font-size: 10px; color: #777; flex-shrink: 0; white-space: nowrap; }
 .dash-train-list li:last-child { border-bottom: none; }
 .dash-train-divider { height: 1px; background: #2a2a2a; margin: 10px 0 8px; }
 .dash-train-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #888; border-bottom: 1px solid #1a1a1a; }
@@ -482,7 +485,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
         <div class="dash-train">
           <div class="dash-train-name" id="dash-train-name">—</div>
           <div class="dash-train-sub" id="dash-train-sub">—</div>
-          <div class="dash-train-lbl">Today's Lifts</div>
+          <div class="dash-train-list-header">
+            <div class="dash-train-lbl">Today's Lifts</div>
+            <div class="dash-train-lbl">Top Sets</div>
+          </div>
           <ul class="dash-train-list" id="dash-train-lifts"></ul>
           <div class="dash-train-divider"></div>
           <div class="dash-train-lbl">Expenditure</div>
@@ -1775,12 +1781,43 @@ function getTodaySplit() {
 
 // Single source for split → focus/exercises mapping. Used by coachBuildContext + dashboard.
 // topLifts is the short bulleted summary shown on the dashboard's training card.
+// Each entry is {name, sets} — sets is the top-set rep scheme rendered in the right column.
 var SPLIT_INFO = {
-  'Pull Day 1': {focus:'Heavy Back',        detail:'barbell rows, deadlifts, lat pulldowns, chest-supported rows, pullups',                              topLifts:['Standing Cable Pullover','Single Arm Lat Pulldown','Bent Over Row','Chest Supported Row','Deadlifts']},
-  'Push Day 1': {focus:'Heavy Chest',       detail:'incline DB press, machine chest press, pec dec, cable lateral raises',                                topLifts:['Standing Cable Chest Press','Incline Dumbbell Press','Incline Machine Press','Pec Deck Flies','Cable Lateral Raises']},
-  'Legs':       {focus:'Heavy Legs',        detail:'leg press, smith machine squats or hack squats, walking lunges, hamstring curls',                     topLifts:['Seated Hamstring Curls','Adductors','Hack or Smith Squats','Leg Press','Walking Lunges']},
-  'Pull Day 2': {focus:'Medium Back',       detail:'lat pulldowns, seated cable rows, T-bar row, bent over DB row, pullups',                              topLifts:['Traditional Lat Pulldown','Seated Wide Grip Row','Chest Supported T-Bar Row','Bent Over DB Row','Bodyweight Pullups']},
-  'Push Day 2': {focus:'Medium Shoulders',  detail:'heavy shoulder press, DB lateral raises with drop sets, cable laterals, smith machine incline press', topLifts:['Reverse Pec Dec — Rear Delt','Seated Shoulder Press','DB Lateral Raise','Incline Chest Press','Cable Lateral Raise + Face Pulls']},
+  'Pull Day 1': {focus:'Heavy Back',        detail:'barbell rows, deadlifts, lat pulldowns, chest-supported rows, pullups',                              topLifts:[
+    {name:'Standing Cable Pullover',     sets:'3 × 12–15'},
+    {name:'Single Arm Lat Pulldown',     sets:'10–12 reps'},
+    {name:'Bent Over Row',               sets:'8–12 reps'},
+    {name:'Chest Supported Row',         sets:'8–10 reps'},
+    {name:'Deadlifts',                   sets:'2 × 10–12'}
+  ]},
+  'Push Day 1': {focus:'Heavy Chest',       detail:'incline DB press, machine chest press, pec dec, cable lateral raises',                                topLifts:[
+    {name:'Standing Cable Chest Press',  sets:'2 × 12–15'},
+    {name:'Incline Dumbbell Press',      sets:'8–12 reps'},
+    {name:'Incline Machine Press',       sets:'10–12 reps'},
+    {name:'Pec Deck Flies',              sets:'3 × 12–15'},
+    {name:'Cable Lateral Raises',        sets:'2 × 15–20'}
+  ]},
+  'Legs':       {focus:'Heavy Legs',        detail:'leg press, smith machine squats or hack squats, walking lunges, hamstring curls',                     topLifts:[
+    {name:'Seated Hamstring Curls',      sets:'10–12 reps'},
+    {name:'Adductors',                   sets:'2 × 15–18'},
+    {name:'Hack or Smith Squats',        sets:'8–12 reps'},
+    {name:'Leg Press',                   sets:'3 × 15–20'},
+    {name:'Walking Lunges',              sets:'2 × 10–15'}
+  ]},
+  'Pull Day 2': {focus:'Medium Back',       detail:'lat pulldowns, seated cable rows, T-bar row, bent over DB row, pullups',                              topLifts:[
+    {name:'Traditional Lat Pulldown',    sets:'10–12 reps'},
+    {name:'Seated Wide Grip Row',        sets:'3 × 10–15'},
+    {name:'Chest Supported T-Bar Row',   sets:'10–15 reps'},
+    {name:'Bent Over DB Row',            sets:'10–12 reps'},
+    {name:'Bodyweight Pullups',          sets:'3 × failure'}
+  ]},
+  'Push Day 2': {focus:'Medium Shoulders',  detail:'heavy shoulder press, DB lateral raises with drop sets, cable laterals, smith machine incline press', topLifts:[
+    {name:'Reverse Pec Dec — Rear Delt', sets:'3 × 12–15'},
+    {name:'Seated Shoulder Press',       sets:'8–12 reps'},
+    {name:'DB Lateral Raise',            sets:'drop sets'},
+    {name:'Incline Chest Press',         sets:'10–12 reps'},
+    {name:'Cable Lateral + Face Pulls',  sets:'3 × 15'}
+  ]},
   'Rest':       {focus:'Rest Day',          detail:'recovery, walk, hit nutrition targets',                                                                topLifts:[]}
 };
 
@@ -2982,15 +3019,18 @@ function dashUpdateRings() {
   var moveVal = parseFloat(document.getElementById('dash-move-input').value) || 0;
   var exVal = parseFloat(document.getElementById('dash-exercise-input').value) || 0;
   var standVal = parseFloat(document.getElementById('dash-stand-input').value) || 0;
-  var movePct = Math.min(Math.round((moveVal/750)*100),100);
-  var exPct = Math.min(Math.round((exVal/45)*100),100);
-  var standPct = Math.min(Math.round((standVal/12)*100),100);
+  // True percentages — uncapped — so over-goal days show the real number
+  // (e.g. 216% for exercise). Bar widths still clamp at 100% so they don't
+  // visually overflow the track. Same pattern as the macro bars below.
+  var movePct = Math.round((moveVal/750)*100);
+  var exPct = Math.round((exVal/45)*100);
+  var standPct = Math.round((standVal/12)*100);
   document.getElementById('dash-move-pct').textContent = movePct + '%';
   document.getElementById('dash-exercise-pct').textContent = exPct + '%';
   document.getElementById('dash-stand-pct').textContent = standPct + '%';
-  document.getElementById('dash-move-bar').style.width = movePct + '%';
-  document.getElementById('dash-exercise-bar').style.width = exPct + '%';
-  document.getElementById('dash-stand-bar').style.width = standPct + '%';
+  document.getElementById('dash-move-bar').style.width = Math.min(movePct,100) + '%';
+  document.getElementById('dash-exercise-bar').style.width = Math.min(exPct,100) + '%';
+  document.getElementById('dash-stand-bar').style.width = Math.min(standPct,100) + '%';
   document.getElementById('dash-move-sub').textContent = moveVal + ' / 750 cal';
   document.getElementById('dash-exercise-sub').textContent = exVal + ' / 45 min';
   document.getElementById('dash-stand-sub').textContent = standVal + ' / 12 hrs';
@@ -2999,9 +3039,9 @@ function dashUpdateRings() {
   var ctx = canvas.getContext('2d');
   ctx.clearRect(0,0,110,110);
   var rings = [
-    {r:48, pct:movePct/100, color:'#ff375f', bg:'#3a0a0f'},
-    {r:36, pct:exPct/100, color:'#a8ff3e', bg:'#1a3a00'},
-    {r:24, pct:standPct/100, color:'#1de9e9', bg:'#003a3a'}
+    {r:48, pct:Math.min(movePct,100)/100, color:'#ff375f', bg:'#3a0a0f'},
+    {r:36, pct:Math.min(exPct,100)/100,   color:'#a8ff3e', bg:'#1a3a00'},
+    {r:24, pct:Math.min(standPct,100)/100,color:'#1de9e9', bg:'#003a3a'}
   ];
   rings.forEach(function(ring) {
     ctx.beginPath(); ctx.arc(55,55,ring.r,0,2*Math.PI);
@@ -3740,9 +3780,14 @@ function dashRefresh() {
   if (liftsEl) {
     var lifts = info.topLifts || [];
     if (lifts.length === 0) {
-      liftsEl.innerHTML = '<li style="color:#888;border-bottom:none;">Recovery, walk, hit nutrition</li>';
+      liftsEl.innerHTML = '<li style="color:#888;border-bottom:none;display:block;"><span class="lift-name" style="color:#888;">Recovery, walk, hit nutrition</span></li>';
     } else {
-      liftsEl.innerHTML = lifts.map(function(l){ return '<li>' + l + '</li>'; }).join('');
+      liftsEl.innerHTML = lifts.map(function(l){
+        // Accept either the new {name,sets} shape or a legacy plain string.
+        var name = (typeof l === 'string') ? l : l.name;
+        var sets = (typeof l === 'string') ? '' : (l.sets || '');
+        return '<li><span class="lift-name">' + name + '</span><span class="lift-reps">' + sets + '</span></li>';
+      }).join('');
     }
   }
   // Legacy mirror so any other code reading dash-training-val keeps working
