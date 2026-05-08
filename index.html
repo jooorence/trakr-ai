@@ -1923,10 +1923,10 @@ function flCurrentLog() {
 }
 
 function flAdd(name, cal, p, c, f) {
+  // Always append. Two cups of coffee count as two entries — name collisions
+  // don't dedupe. Use the X button on a row to remove a specific entry.
   var log = flGetDayData(flCurrentDate).log;
-  var idx = log.findIndex(function(e) { return e.name === name; });
-  if (idx !== -1) { log[idx] = {name:name, cal:cal, p:p, c:c, f:f}; }
-  else { log.push({name:name, cal:cal, p:p, c:c, f:f}); }
+  log.push({name:name, cal:cal, p:p, c:c, f:f});
   flSaveAll(); flRender();
 }
 
