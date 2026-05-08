@@ -54,6 +54,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .dock-item:active { background: rgba(255,255,255,0.08); }
 .dock-item.active { color: #40ccbb; }
 .dock-item.active svg { stroke-width: 2.2; }
+body.cs-open .dock-item.active { color: #cfcfcf; }
+body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 
 /* LAYOUT */
 .app-body { display: flex; flex: 1; overflow: hidden; width: 100%; }
@@ -3594,6 +3596,7 @@ function csOpen() {
   var sheet = document.getElementById('coach-sheet');
   if(sheet.classList.contains('open')) { csClose(); return; }
   sheet.classList.add('open');
+  document.body.classList.add('cs-open');
   if(window.innerWidth >= 768) {
     sheet.classList.add('fullpage');
     document.getElementById('cs-quick-actions').classList.add('visible');
@@ -3608,6 +3611,7 @@ function csOpen() {
 
 function csClose() {
   document.getElementById('coach-sheet').classList.remove('open','fullpage');
+  document.body.classList.remove('cs-open');
   document.getElementById('cs-quick-actions').classList.remove('visible');
   csExpanded = false;
   document.getElementById('cs-expand-btn').innerHTML = '&#x26F6;';
