@@ -365,43 +365,45 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .coach-loading { font-size: 13px; color: #555; text-align: center; padding: 16px; font-style: italic; }
 .coach-error { font-size: 12px; color: #cc5555; padding: 8px; }
 
+/* Dashboard restructure: training+expenditure+longevity card on the left,
+   6 square-ish tiles on the right, macro bar strip below tiles.
+   These rules apply at ALL viewport widths — earlier they were accidentally
+   placed inside the mobile @media block and silently never matched. */
+.dash-grid { display: grid; grid-template-columns: 2.4fr 1fr 1fr 1fr; grid-template-rows: 95px 95px auto; gap: 10px; margin-bottom: 14px; }
+.dash-train { grid-row: 1 / span 3; grid-column: 1; background: #141414; border: 1px solid #2d2000; border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; }
+.dash-train-name { font-size: 18px; font-weight: 700; color: #f5a623; margin-bottom: 1px; }
+.dash-train-sub { font-size: 10px; color: #888; margin-bottom: 10px; }
+.dash-train-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+.dash-train-list { list-style: none; padding: 0; margin: 0 0 4px; }
+.dash-train-list li { font-size: 11px; color: #ddd; padding: 3px 0; border-bottom: 1px solid #1a1a1a; }
+.dash-train-list li::before { content: '·'; color: #f5a623; margin-right: 5px; }
+.dash-train-list li:last-child { border-bottom: none; }
+.dash-train-divider { height: 1px; background: #2a2a2a; margin: 10px 0 8px; }
+.dash-train-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #888; border-bottom: 1px solid #1a1a1a; }
+.dash-train-row:last-child { border-bottom: none; }
+.dash-train-row b { color: #ddd; font-weight: 600; }
+
+.dash-tile { background: #1a1a1a; border: 1px solid #252525; border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.dash-tile-val { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.dash-tile-lbl { font-size: 10px; color: #888; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+
+.dash-macro { grid-row: 3; grid-column: 2 / span 3; background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
+.dash-macro-lbl { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.dash-mb-row { display: grid; grid-template-columns: 56px 1fr 115px; align-items: center; gap: 10px; padding: 4px 0; font-size: 11px; }
+.dash-mb-row .dash-mb-val { white-space: nowrap; }
+.dash-mb-label { font-weight: 600; }
+.dash-mb-track { height: 6px; background: #1e1e1e; border-radius: 3px; overflow: hidden; }
+.dash-mb-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+.dash-mb-val { color: #888; text-align: right; font-size: 10px; }
+.dash-mb-val b { color: #ddd; font-weight: 600; }
+.dash-macro-status { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e1e1e; font-size: 11px; color: #888; text-align: center; }
+.dash-macro-status b { color: #f5a623; font-weight: 600; }
+
 @media (max-width: 500px) {
   .sidebar { width: 120px; }
   .sb-tab { font-size: 12px; padding: 8px 10px; }
   .macro-val { font-size: 15px; }
   #dash-training-val { font-size: 13px; }
-
-  /* Dashboard restructure: training+expenditure+longevity card on the left,
-     6 square-ish tiles on the right, macro bar strip below tiles */
-  .dash-grid { display: grid; grid-template-columns: 2.4fr 1fr 1fr 1fr; grid-template-rows: 95px 95px auto; gap: 10px; margin-bottom: 14px; }
-  .dash-train { grid-row: 1 / span 3; grid-column: 1; background: #141414; border: 1px solid #2d2000; border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; }
-  .dash-train-name { font-size: 18px; font-weight: 700; color: #f5a623; margin-bottom: 1px; }
-  .dash-train-sub { font-size: 10px; color: #888; margin-bottom: 10px; }
-  .dash-train-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
-  .dash-train-list { list-style: none; padding: 0; margin: 0 0 4px; }
-  .dash-train-list li { font-size: 11px; color: #ddd; padding: 3px 0; border-bottom: 1px solid #1a1a1a; }
-  .dash-train-list li::before { content: '·'; color: #f5a623; margin-right: 5px; }
-  .dash-train-list li:last-child { border-bottom: none; }
-  .dash-train-divider { height: 1px; background: #2a2a2a; margin: 10px 0 8px; }
-  .dash-train-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #888; border-bottom: 1px solid #1a1a1a; }
-  .dash-train-row:last-child { border-bottom: none; }
-  .dash-train-row b { color: #ddd; font-weight: 600; }
-
-  .dash-tile { background: #1a1a1a; border: 1px solid #252525; border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .dash-tile-val { font-size: 22px; font-weight: 700; line-height: 1.1; }
-  .dash-tile-lbl { font-size: 10px; color: #888; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
-
-  .dash-macro { grid-row: 3; grid-column: 2 / span 3; background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
-  .dash-macro-lbl { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
-  .dash-mb-row { display: grid; grid-template-columns: 56px 1fr 115px; align-items: center; gap: 10px; padding: 4px 0; font-size: 11px; }
-  .dash-mb-row .dash-mb-val { white-space: nowrap; }
-  .dash-mb-label { font-weight: 600; }
-  .dash-mb-track { height: 6px; background: #1e1e1e; border-radius: 3px; overflow: hidden; }
-  .dash-mb-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
-  .dash-mb-val { color: #888; text-align: right; font-size: 10px; }
-  .dash-mb-val b { color: #ddd; font-weight: 600; }
-  .dash-macro-status { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e1e1e; font-size: 11px; color: #888; text-align: center; }
-  .dash-macro-status b { color: #f5a623; font-weight: 600; }
   .coach-split { grid-template-columns: 1fr; }
   .fl-input-row { grid-template-columns: 1fr 1fr 1fr; }
   .fl-input-row .fl-input:first-child { grid-column: span 3; }
