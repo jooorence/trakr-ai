@@ -529,7 +529,8 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
   .dash-tile-lbl { font-size: 12px; }
 
   /* Prevent iOS Safari auto-zoom on input focus: any input < 16px font-size
-     triggers Safari to zoom in. Bumping the chat input to 16px fixes it. */
+     triggers Safari to zoom in. Bump every form control to 16px on mobile. */
+  input, textarea, select { font-size: 16px; }
   .cs-input { font-size: 16px; }
 
   /* Bigger CoachGPT chat sheet on mobile — near full screen with margin around. */
