@@ -539,6 +539,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
     bottom: calc(100px + env(safe-area-inset-bottom));
     left: 12px; right: 12px;
   }
+
+  /* APPLE FITNESS — hide manual inputs, bump ring labels/percentages/subs */
+  .apple-inputs { display: none; }
+  .ring-label { font-size: 16px !important; }
+  #dash-move-pct, #dash-exercise-pct, #dash-stand-pct { font-size: 18px !important; }
+  #dash-move-sub, #dash-exercise-sub, #dash-stand-sub { font-size: 13px !important; margin-top: 5px !important; }
+
+  /* OURA — swap desktop top quadrant for mobile (Total Sleep / Steps / Cal Burned / VO2 max) */
+  .oura-top-desktop { display: none !important; }
+  .oura-top-mobile { display: grid !important; }
+  /* Swap desktop bottom row (HRV / Readiness / Steps) for mobile (HRV / Readiness / Bedtime) */
+  .oura-bottom-desktop { display: none !important; }
+  .oura-bottom-mobile { display: grid !important; }
+  /* Hide all Oura input fields on mobile (CoachGPT handles edits there) */
+  .oura-inputs { display: none !important; }
+  /* Bump Deep / REM / Light / Awake tile values too — they sit between the two row swaps */
+  #oura-deep-display, #oura-rem-display, #oura-light-display, #oura-awake-display { font-size: 17px !important; }
 }
 /* PULL TO REFRESH */
 #ptr-indicator { position:fixed; top:0; left:0; right:0; height:56px; display:flex; align-items:center; justify-content:center; z-index:99998; pointer-events:none; opacity:0; transform:translateY(-100%); }
@@ -671,7 +688,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
             <div style="display:flex;align-items:center;gap:10px;">
               <div style="width:10px;height:10px;border-radius:50%;background:#ff375f;flex-shrink:0;"></div>
               <div style="flex:1;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#ccc;">Move</span><span style="font-size:11px;color:#ff375f;font-weight:600;" id="dash-move-pct">—</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span class="ring-label" style="font-size:11px;font-weight:600;color:#ccc;">Move</span><span style="font-size:11px;color:#ff375f;font-weight:600;" id="dash-move-pct">—</span></div>
                 <div style="background:#1e1e1e;border-radius:3px;height:4px;overflow:hidden;"><div id="dash-move-bar" style="height:100%;border-radius:3px;background:#ff375f;width:0%;"></div></div>
                 <div style="font-size:10px;color:#555;margin-top:2px;" id="dash-move-sub">— / 750 cal</div>
               </div>
@@ -679,7 +696,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
             <div style="display:flex;align-items:center;gap:10px;">
               <div style="width:10px;height:10px;border-radius:50%;background:#a8ff3e;flex-shrink:0;"></div>
               <div style="flex:1;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#ccc;">Exercise</span><span style="font-size:11px;color:#a8ff3e;font-weight:600;" id="dash-exercise-pct">—</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span class="ring-label" style="font-size:11px;font-weight:600;color:#ccc;">Exercise</span><span style="font-size:11px;color:#a8ff3e;font-weight:600;" id="dash-exercise-pct">—</span></div>
                 <div style="background:#1e1e1e;border-radius:3px;height:4px;overflow:hidden;"><div id="dash-exercise-bar" style="height:100%;border-radius:3px;background:#a8ff3e;width:0%;"></div></div>
                 <div style="font-size:10px;color:#555;margin-top:2px;" id="dash-exercise-sub">— / 45 min</div>
               </div>
@@ -687,14 +704,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
             <div style="display:flex;align-items:center;gap:10px;">
               <div style="width:10px;height:10px;border-radius:50%;background:#1de9e9;flex-shrink:0;"></div>
               <div style="flex:1;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#ccc;">Stand</span><span style="font-size:11px;color:#1de9e9;font-weight:600;" id="dash-stand-pct">—</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span class="ring-label" style="font-size:11px;font-weight:600;color:#ccc;">Stand</span><span style="font-size:11px;color:#1de9e9;font-weight:600;" id="dash-stand-pct">—</span></div>
                 <div style="background:#1e1e1e;border-radius:3px;height:4px;overflow:hidden;"><div id="dash-stand-bar" style="height:100%;border-radius:3px;background:#1de9e9;width:0%;"></div></div>
                 <div style="font-size:10px;color:#555;margin-top:2px;" id="dash-stand-sub">— / 12 hrs</div>
               </div>
             </div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">
+        <div class="apple-inputs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Move (cal)</div><input id="dash-move-input" type="number" min="0" max="1500" placeholder="467" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setMove(this.value,'user')"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Exercise (min)</div><input id="dash-exercise-input" type="number" min="0" max="180" placeholder="38" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setExercise(this.value,'user')"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Stand (hrs)</div><input id="dash-stand-input" type="number" min="0" max="16" placeholder="10" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setStand(this.value,'user')"></div>
@@ -719,11 +736,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
               </div>
             </div>
           </div>
-          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div class="oura-top-desktop" style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
             <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:2px;">Total Sleep</div><div style="font-size:13px;font-weight:600;color:#ddd;" id="oura-total-display">—</div></div>
             <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:2px;">Efficiency</div><div style="font-size:13px;font-weight:600;color:#ddd;" id="oura-eff-display">—</div></div>
             <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:2px;">Bedtime</div><div style="font-size:13px;font-weight:600;color:#ddd;" id="oura-bed-display">—</div></div>
             <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:2px;">Wake</div><div style="font-size:13px;font-weight:600;color:#ddd;" id="oura-wake-display">—</div></div>
+          </div>
+          <!-- Mobile-only top quadrant: simplified to Total Sleep, Steps, Cal Burned, VO2 max.
+               display:none by default; the @media (max-width: 600px) block flips it on. -->
+          <div class="oura-top-mobile" style="flex:1;display:none;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:#1a1a1a;border-radius:10px;padding:12px;"><div style="font-size:11px;color:#666;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">Total Sleep</div><div style="font-size:22px;font-weight:700;color:#ddd;" id="m-oura-total-display">—</div></div>
+            <div style="background:#1a1a1a;border-radius:10px;padding:12px;"><div style="font-size:11px;color:#666;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">Steps</div><div style="font-size:22px;font-weight:700;color:#f5a623;" id="m-oura-steps-display">—</div></div>
+            <div style="background:#1a1a1a;border-radius:10px;padding:12px;"><div style="font-size:11px;color:#666;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">Cal Burned</div><div style="font-size:22px;font-weight:700;color:#f5a623;" id="m-oura-calexp-display">—</div></div>
+            <div style="background:#1a1a1a;border-radius:10px;padding:12px;"><div style="font-size:11px;color:#666;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">VO₂ max</div><div style="font-size:22px;font-weight:700;color:#4caf7d;" id="m-oura-vo2-display">—</div></div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;">
@@ -733,7 +758,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
           <div style="background:#2a1a1a;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:12px;font-weight:600;color:#e05050;" id="oura-awake-display">—</div><div style="font-size:9px;color:#444;margin-top:2px;">Awake</div></div>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0;">
+        <div class="oura-bottom-desktop" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0;">
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;text-align:center;">
             <div style="font-size:14px;font-weight:700;color:#40ccbb;" id="oura-hrv-display">—</div>
             <div style="font-size:9px;color:#444;margin-top:2px;">HRV (ms)</div>
@@ -747,12 +772,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
             <div style="font-size:9px;color:#444;margin-top:2px;">Steps</div>
           </div>
         </div>
+        <!-- Mobile-only bottom row: HRV / Readiness / Bedtime (Steps was promoted to top quadrant on mobile). -->
+        <div class="oura-bottom-mobile" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0;">
+          <div style="background:#1a1a1a;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:20px;font-weight:700;color:#40ccbb;" id="m-oura-hrv-display">—</div>
+            <div style="font-size:11px;color:#666;margin-top:4px;text-transform:uppercase;letter-spacing:0.05em;">HRV (ms)</div>
+          </div>
+          <div style="background:#1a1a1a;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:20px;font-weight:700;color:#4caf7d;" id="m-oura-readiness-display">—</div>
+            <div style="font-size:11px;color:#666;margin-top:4px;text-transform:uppercase;letter-spacing:0.05em;">Readiness</div>
+          </div>
+          <div style="background:#1a1a1a;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:18px;font-weight:700;color:#8899ff;" id="m-oura-bed-display">—</div>
+            <div style="font-size:11px;color:#666;margin-top:4px;text-transform:uppercase;letter-spacing:0.05em;">Bedtime</div>
+          </div>
+        </div>
 
         <div id="oura-intensity-rec" style="display:none;border-radius:8px;padding:10px 12px;margin-bottom:8px;">
           <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;" id="oura-intensity-label">Recommended intensity</div>
           <div style="font-size:12px;line-height:1.5;" id="oura-intensity-text">—</div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
+        <div class="oura-inputs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Sleep score</div><input id="oura-score" type="number" min="0" max="100" placeholder="82" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Total sleep (hrs)</div><input id="oura-total" type="number" min="0" max="12" step="0.1" placeholder="7.4" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Efficiency (%)</div><input id="oura-eff" type="number" min="0" max="100" placeholder="94" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
@@ -765,7 +805,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Cal Burned (total)</div><input id="oura-calexp" type="number" min="0" max="5000" placeholder="2840" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setCalExp(this.value,'user')"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">VO₂ max</div><input id="oura-vo2" type="number" min="0" max="100" step="0.1" placeholder="47.2" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="vo2Update()"></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div class="oura-inputs" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Bedtime</div><input id="oura-bed" type="text" placeholder="10:52 PM" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Wake time</div><input id="oura-wake" type="text" placeholder="6:18 AM" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
         </div>
@@ -3273,6 +3313,29 @@ function ouraUpdate() {
   }
   if(stepsEl) stepsEl.textContent = steps ? steps.toLocaleString() : '—';
 
+  // Mobile-only mirror tiles (Total Sleep / Steps / Cal Burned / VO2 max in the
+  // top quadrant; HRV / Readiness / Bedtime in the bottom row). These exist only
+  // in the simplified mobile layout — populated alongside the desktop displays
+  // so both stay in sync.
+  var vo2Val = parseFloat((document.getElementById('oura-vo2')||{}).value) || 0;
+  var mTotal = document.getElementById('m-oura-total-display');
+  var mSteps = document.getElementById('m-oura-steps-display');
+  var mCal   = document.getElementById('m-oura-calexp-display');
+  var mVo2   = document.getElementById('m-oura-vo2-display');
+  var mHrv   = document.getElementById('m-oura-hrv-display');
+  var mRead  = document.getElementById('m-oura-readiness-display');
+  var mBed   = document.getElementById('m-oura-bed-display');
+  if (mTotal) mTotal.textContent = total ? total.toFixed(1) + 'h' : '—';
+  if (mSteps) mSteps.textContent = steps ? steps.toLocaleString() : '—';
+  if (mCal)   mCal.textContent   = calexp ? calexp.toLocaleString() : '—';
+  if (mVo2)   mVo2.textContent   = vo2Val ? vo2Val.toFixed(1) : '—';
+  if (mHrv)   mHrv.textContent   = hrv ? hrv : '—';
+  if (mRead) {
+    mRead.textContent = readiness || '—';
+    mRead.style.color = readiness >= 85 ? '#4caf7d' : readiness >= 70 ? '#f5a623' : readiness > 0 ? '#e05050' : '#aaa';
+  }
+  if (mBed)   mBed.textContent   = bed && bed !== '—' ? bed : '—';
+
   var intensityEl = document.getElementById('oura-intensity-rec');
   var intensityLbl = document.getElementById('oura-intensity-label');
   var intensityTxt = document.getElementById('oura-intensity-text');
@@ -3315,6 +3378,7 @@ function vo2Update() {
   var v = parseFloat(el.value) || 0;
   try { localStorage.setItem('jr_vo2_max', v); } catch(e) {}
   try { dashRefresh(); } catch(e) {}
+  try { ouraUpdate(); } catch(e) {}  // also refreshes the mobile-only VO2 tile in Oura section
 }
 function vo2Load() {
   try {
