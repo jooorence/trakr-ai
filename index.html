@@ -20,7 +20,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .app-body { display: flex; flex: 1; overflow: hidden; max-width: 1100px; margin: 0 auto; width: 100%; }
 
 /* SIDEBAR */
-.sidebar { width: 156px; flex-shrink: 0; background: #1a1a1a; border-right: 1px solid #2a2a2a; padding: 16px 8px 0; display: flex; flex-direction: column; overflow-y: hidden; }
+.sidebar { width: 171px; flex-shrink: 0; background: #1a1a1a; border-right: 1px solid #2a2a2a; padding: 16px 8px 0; display: flex; flex-direction: column; overflow-y: hidden; }
 .sb-nav-items { flex: 1; overflow-y: auto; }
 .sb-group-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #444; padding: 6px 10px 4px; }
 .sb-tab { padding: 9px 12px; border-radius: 7px; font-size: 13px; font-weight: 400; cursor: pointer; color: #d0d0d0; transition: all 0.12s; margin-bottom: 1px; }
@@ -312,6 +312,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .fl-item-name { font-size: 13px; color: #ccc; flex: 1; }
 .fl-item-macros { font-size: 11px; color: #444; text-align: right; white-space: nowrap; }
 .fl-item-del { font-size: 18px; color: #333; cursor: pointer; padding: 0 4px; flex-shrink: 0; line-height: 1; }
+.fl-item-mult { font-size: 11px; color: #f5a623; font-weight: 600; }
+.fl-item-stepper { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.fl-step-btn { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 6px; color: #aaa; font-size: 14px; cursor: pointer; user-select: none; line-height: 1; }
+.fl-step-btn:hover { background: #2a2a2a; color: #fff; }
+.fl-step-val { font-size: 11px; color: #888; min-width: 22px; text-align: center; }
+.fl-item-edit { font-size: 13px; color: #444; cursor: pointer; padding: 0 4px; flex-shrink: 0; line-height: 1; }
+.fl-item-edit:hover { color: #aaa; }
+.fl-edit-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99998; display: none; align-items: center; justify-content: center; }
+.fl-edit-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 14px; padding: 20px; width: 320px; max-width: 90vw; }
+.fl-edit-title { font-size: 14px; font-weight: 600; color: #ddd; margin-bottom: 14px; }
+.fl-edit-field { margin-bottom: 10px; }
+.fl-edit-label { font-size: 10px; color: #555; margin-bottom: 4px; }
+.fl-edit-input { width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 6px; padding: 7px 8px; font-size: 13px; color: #ddd; box-sizing: border-box; }
+.fl-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fl-edit-actions { display: flex; gap: 8px; margin-top: 14px; }
+.fl-edit-btn { flex: 1; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #2a2a2a; }
+.fl-edit-save { background: #0d2a1a; color: #4caf7d; border-color: #1a4a2a; }
+.fl-edit-cancel { background: #1a1a1a; color: #888; }
 .fl-reset { width: 100%; padding: 9px; background: #1a1a1a; color: #444; border: 1px solid #2a2a2a; border-radius: 8px; font-size: 12px; cursor: pointer; text-align: center; margin-bottom: 10px; }
 .fl-iifym { font-size: 11px; color: #333; text-align: center; padding: 4px 0 0; font-style: italic; }
 
@@ -384,8 +402,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
       <div class="sb-group-label">Overview</div>
       <div class="sb-tab active" onclick="showSection('dashboard', this)">Dashboard</div>
       <div class="sb-divider"></div>
-      <div class="sb-group-label">Meals</div>
+      <div class="sb-group-label">Trak</div>
       <div class="sb-tab" onclick="showSection('foodlog', this)">Food Log</div>
+      <div class="sb-divider"></div>
+      <div class="sb-group-label">Meals</div>
       <div class="sb-tab" onclick="showSection('mealplans', this)">Meal Plans</div>
       <div class="sb-divider"></div>
       <div class="sb-group-label">Training</div>
@@ -1922,12 +1942,55 @@ function flCurrentLog() {
   return flGetDayData(flCurrentDate).log;
 }
 
-function flAdd(name, cal, p, c, f) {
-  // Always append. Two cups of coffee count as two entries — name collisions
-  // don't dedupe. Use the X button on a row to remove a specific entry.
+function flAdd(name, cal, p, c, f, servings) {
+  // Macros stored are PER SERVING. servings=1 by default; the inline stepper
+  // and edit modal mutate the servings field. flTotals multiplies cal/P/C/F
+  // by servings on read so persisted base values stay clean.
   var log = flGetDayData(flCurrentDate).log;
-  log.push({name:name, cal:cal, p:p, c:c, f:f});
+  log.push({name:name, cal:cal, p:p, c:c, f:f, servings: Math.max(1, Math.min(10, parseInt(servings)||1))});
   flSaveAll(); flRender();
+}
+
+function flSetServings(idx, n) {
+  var log = flCurrentLog();
+  if (idx < 0 || idx >= log.length) return;
+  log[idx].servings = Math.max(1, Math.min(10, parseInt(n)||1));
+  flSaveAll(); flRender();
+}
+
+var _flEditIdx = -1;
+function flEdit(idx) {
+  var log = flCurrentLog();
+  if (idx < 0 || idx >= log.length) return;
+  var item = log[idx];
+  _flEditIdx = idx;
+  document.getElementById('fl-edit-name').value     = item.name;
+  document.getElementById('fl-edit-cal').value      = item.cal;
+  document.getElementById('fl-edit-p').value        = item.p;
+  document.getElementById('fl-edit-c').value        = item.c;
+  document.getElementById('fl-edit-f').value        = item.f;
+  document.getElementById('fl-edit-servings').value = item.servings || 1;
+  document.getElementById('fl-edit-modal').style.display = 'flex';
+}
+
+function flCloseEdit() {
+  document.getElementById('fl-edit-modal').style.display = 'none';
+  _flEditIdx = -1;
+}
+
+function flSaveEdit() {
+  if (_flEditIdx < 0) { flCloseEdit(); return; }
+  var log = flCurrentLog();
+  if (_flEditIdx >= log.length) { flCloseEdit(); return; }
+  var item = log[_flEditIdx];
+  item.name     = (document.getElementById('fl-edit-name').value || '').trim() || item.name;
+  item.cal      = parseFloat(document.getElementById('fl-edit-cal').value) || 0;
+  item.p        = parseFloat(document.getElementById('fl-edit-p').value)   || 0;
+  item.c        = parseFloat(document.getElementById('fl-edit-c').value)   || 0;
+  item.f        = parseFloat(document.getElementById('fl-edit-f').value)   || 0;
+  item.servings = Math.max(1, Math.min(10, parseInt(document.getElementById('fl-edit-servings').value)||1));
+  flSaveAll(); flRender();
+  flCloseEdit();
 }
 
 function flCustomAdd() { flAIAdd(); }
@@ -1956,7 +2019,7 @@ async function flAIAdd() {
     var items = JSON.parse(clean);
     if(!Array.isArray(items)) items = [items];
     items.forEach(function(item) {
-      flAdd(item.name, parseFloat(item.cal)||0, parseFloat(item.p)||0, parseFloat(item.c)||0, parseFloat(item.f)||0);
+      flAdd(item.name, parseFloat(item.cal)||0, parseFloat(item.p)||0, parseFloat(item.c)||0, parseFloat(item.f)||0, parseInt(item.servings)||1);
     });
     document.getElementById('fl-ai-input').value = '';
     status.textContent = 'Added ' + items.length + ' item' + (items.length>1?'s':'') + ' to your log';
@@ -1986,7 +2049,12 @@ function flReset() {
 
 function flTotals() {
   return flCurrentLog().reduce(function(acc,item) {
-    acc.cal+=item.cal; acc.p+=item.p; acc.c+=item.c; acc.f+=item.f; return acc;
+    var s = item.servings || 1;
+    acc.cal += item.cal * s;
+    acc.p   += item.p   * s;
+    acc.c   += item.c   * s;
+    acc.f   += item.f   * s;
+    return acc;
   }, {cal:0,p:0,c:0,f:0});
 }
 
@@ -2084,7 +2152,20 @@ function flRenderLog() {
     list.innerHTML = '<div class="fl-empty">Nothing logged yet — tap a meal or add a custom food</div>';
   } else {
     list.innerHTML = log.map(function(item,idx) {
-      return '<div class="fl-item"><span class="fl-item-name">'+item.name+'</span><span class="fl-item-macros">'+Math.round(item.cal)+' cal · '+Math.round(item.p)+'P · '+Math.round(item.c)+'C · '+Math.round(item.f)+'F</span><span class="fl-item-del" onclick="flDel('+idx+')">×</span></div>';
+      var s = item.servings || 1;
+      var nameHtml = item.name + (s > 1 ? ' <span class="fl-item-mult">· '+s+'x</span>' : '');
+      var macroHtml = Math.round(item.cal*s)+' cal · '+Math.round(item.p*s)+'P · '+Math.round(item.c*s)+'C · '+Math.round(item.f*s)+'F';
+      return '<div class="fl-item">' +
+        '<span class="fl-item-name">'+nameHtml+'</span>' +
+        '<span class="fl-item-macros">'+macroHtml+'</span>' +
+        '<span class="fl-item-stepper">' +
+          '<span class="fl-step-btn" onclick="flSetServings('+idx+','+(s-1)+')">−</span>' +
+          '<span class="fl-step-val">'+s+'x</span>' +
+          '<span class="fl-step-btn" onclick="flSetServings('+idx+','+(s+1)+')">+</span>' +
+        '</span>' +
+        '<span class="fl-item-edit" onclick="flEdit('+idx+')" title="Edit">✎</span>' +
+        '<span class="fl-item-del" onclick="flDel('+idx+')">×</span>' +
+        '</div>';
     }).join('');
   }
 }
@@ -2159,7 +2240,7 @@ function coachSystemPrompt(ctx) {
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
   p += 'CRITICAL INSTRUCTION: When the user mentions any loggable data, you MUST output ALL LOG action lines at the very beginning of your reply, before any other text. This is required — never put LOG actions after your response text. ';
   p += 'CRITICAL — FOOD LOGGING LANGUAGE: Food is NOT logged until the user taps "Confirm & Log All" on the confirmation card. NEVER say "[food] logged!" or "I\'ve logged [food]" or state updated totals as if the food is saved. Instead say something like "Tap confirm above to log [food]" or "Hit confirm to save that." Only reference updated totals AFTER the user explicitly confirms. ';
-  p += 'When user mentions eating anything (including named meals, morning coffee, gut drink), include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0} — use exact macros from the meal plan for any named meal. ';
+  p += 'When user mentions eating anything (including named meals, morning coffee, gut drink), include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0,"servings":1} — use exact macros from the meal plan for any named meal. The cal/p/c/f values must be PER SERVING; the servings field captures how many. If user says "I had 2 morning coffees", emit ONE LOGFOOD with servings:2 (not two separate LOGFOOD lines). Default servings to 1 when unspecified. ';
   p += 'When user mentions Gut Drink or Intra Workout, ALWAYS emit both LOGFOOD with exact macros AND LOGWATER:{"oz":16.9,"label":"Gut Drink"} (or Intra Workout) since they include 16.9oz water. ';
   p += 'When user mentions drinking plain water or other fluids, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
   p += 'When user mentions step count, include: LOGSTEPS:{"steps":6000} ';
@@ -2375,7 +2456,8 @@ async function sendCoachMsg() {
         var actionDiv = document.createElement('div');
         actionDiv.className = 'cmsg coach-msg';
         var rows = foods.map(function(f) {
-          return '<div class="action-crd-row"><span class="action-crd-key">' + f.name + '</span><span class="action-crd-val">' + f.cal + ' cal · ' + f.p + 'g P · ' + (f.c||0) + 'g C · ' + (f.f||0) + 'g F</span></div>';
+          var s = parseInt(f.servings)||1; var sx = s > 1 ? ' · '+s+'x' : '';
+          return '<div class="action-crd-row"><span class="action-crd-key">' + f.name + sx + '</span><span class="action-crd-val">' + Math.round(f.cal*s) + ' cal · ' + Math.round(f.p*s) + 'g P · ' + Math.round((f.c||0)*s) + 'g C · ' + Math.round((f.f||0)*s) + 'g F</span></div>';
         }).join('');
         actionDiv.innerHTML = '<div class="action-crd">'
           + '<div class="action-crd-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
@@ -2407,10 +2489,13 @@ function coachConfirmLog(name, cal, p, c, f, btn) {
   dbSaveChatMsg('main', 'assistant', name + ' has been logged to the food log.');
 }
 
+function _flAddFromCoach(f) {
+  flAdd(f.name, parseFloat(f.cal)||0, parseFloat(f.p)||0, parseFloat(f.c)||0, parseFloat(f.f)||0, parseInt(f.servings)||1);
+}
 function coachConfirmLogAll(btn) {
   var card = btn.closest('.cmsg');
   var foods = []; try { foods = JSON.parse(card.dataset.foods || '[]'); } catch(e){}
-  foods.forEach(function(f) { flAdd(f.name, f.cal, f.p, f.c, f.f); });
+  foods.forEach(_flAddFromCoach);
   var names = foods.map(function(f) { return f.name; }).join(', ');
   btn.parentNode.parentNode.innerHTML = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">&#10003; Logged — added to Food Log</div>';
   coachAddMsg('coach', (foods.length > 1 ? foods.length + ' items logged.' : names + ' is logged.') + ' Macros updated.');
@@ -2575,7 +2660,7 @@ async function briefChatSend() {
       }
       if (foodMatches.length > 0) {
         var loggedFoods = [];
-        foodMatches.forEach(function(m) { try { var f = JSON.parse(m[1]); flAdd(f.name, f.cal, f.p, f.c, f.f); loggedFoods.push(f); } catch(e){} });
+        foodMatches.forEach(function(m) { try { var f = JSON.parse(m[1]); _flAddFromCoach(f); loggedFoods.push(f); } catch(e){} });
         if (loggedFoods.length > 0) {
           briefChatAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Logged: ' + loggedFoods.map(function(f) { return f.name + ' (' + f.cal + ' cal)'; }).join(', ') + '</div>');
         }
@@ -3408,7 +3493,7 @@ function csConfirmLog(btn, cal, p, c, f) {
 function csConfirmLogAll(btn) {
   var card = btn.closest('.scmsg');
   var foods = []; try { foods = JSON.parse(card.dataset.foods || '[]'); } catch(e){}
-  foods.forEach(function(f) { flAdd(f.name, f.cal, f.p, f.c, f.f); });
+  foods.forEach(_flAddFromCoach);
   var names = foods.map(function(f) { return f.name; }).join(', ');
   btn.parentNode.parentNode.innerHTML = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">&#10003; Logged &#8212; added to Food Log</div>';
   csAddMsg('coach', (foods.length > 1 ? foods.length + ' items logged.' : names + ' is logged.') + ' Macros updated.');
@@ -3716,6 +3801,25 @@ setInterval(function() {
   });
 })();
 </script>
+<!-- FOOD LOG EDIT MODAL -->
+<div id="fl-edit-modal" class="fl-edit-overlay" onclick="if(event.target===this)flCloseEdit()">
+  <div class="fl-edit-card">
+    <div class="fl-edit-title">Edit entry</div>
+    <div class="fl-edit-field"><div class="fl-edit-label">Name</div><input id="fl-edit-name" class="fl-edit-input" type="text"></div>
+    <div class="fl-edit-grid">
+      <div class="fl-edit-field"><div class="fl-edit-label">Calories (per serving)</div><input id="fl-edit-cal" class="fl-edit-input" type="number" step="0.1"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Servings</div><input id="fl-edit-servings" class="fl-edit-input" type="number" min="1" max="10" step="1"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Protein (g)</div><input id="fl-edit-p" class="fl-edit-input" type="number" step="0.1"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Carbs (g)</div><input id="fl-edit-c" class="fl-edit-input" type="number" step="0.1"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Fat (g)</div><input id="fl-edit-f" class="fl-edit-input" type="number" step="0.1"></div>
+    </div>
+    <div class="fl-edit-actions">
+      <button class="fl-edit-btn fl-edit-cancel" onclick="flCloseEdit()">Cancel</button>
+      <button class="fl-edit-btn fl-edit-save" onclick="flSaveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- CLICK DISMISS OVERLAY -->
 <div id="cs-click-overlay" onclick="csClose()" style="position:fixed;inset:0;z-index:9999;display:none;"></div>
 
