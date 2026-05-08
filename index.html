@@ -593,6 +593,17 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 }
 .rw-title { font-size: 17px; font-weight: 600; color: #f0f0f0; margin-bottom: 6px; letter-spacing: 0.01em; }
 .rw-subtitle { font-size: 13px; color: #888; max-width: 280px; line-height: 1.4; }
+
+@media (min-width: 601px) {
+  body { zoom: 1.1; }
+  /* Desktop tile order: Cal Logged | Net Cal Burned | Steps / Weight | Water | Sleep Score */
+  .dash-right .dash-tile:nth-child(1) { order: 1; }
+  .dash-right .dash-tile:nth-child(2) { order: 3; }
+  .dash-right .dash-tile:nth-child(3) { order: 2; }
+  .dash-right .dash-tile:nth-child(4) { order: 5; }
+  .dash-right .dash-tile:nth-child(5) { order: 4; }
+  .dash-right .dash-tile:nth-child(6) { order: 6; }
+}
 </style>
 </head>
 <body>
@@ -689,8 +700,8 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           <div class="dash-tile"><div class="dash-tile-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="dash-tile-lbl">Cal Logged</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="dash-tile-lbl">Steps</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Cal Burned</div></div>
-          <div class="dash-tile"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="dash-tile-lbl">Water (oz)</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
           <div class="dash-macro">
             <div class="dash-macro-lbl">Macro Progress</div>
