@@ -2327,6 +2327,7 @@ function coachSystemPrompt(ctx) {
   p += 'When user mentions exercise minutes, include: LOGEXERCISE:{"min":38} ';
   p += 'When user mentions Stand ring or hours standing, include: LOGSTAND:{"hrs":10} ';
   p += 'When user mentions sleep score, sleep quality, or Oura sleep data, include: LOGSLEEP:{"score":82} ';
+  p += 'When user mentions their bodyweight or weigh-in (e.g. "I weighed in at 205", "I\'m 198 today"), include: LOGWEIGHT:{"lbs":205} — pounds only. ';
   p += 'When user wants to change today\'s training day (e.g. "change to push day 1", "make today a training day", "switch to rest day"), include on its own line: LOGSPLIT:{"split":"Push Day 1"} — valid values: Push Day 1, Push Day 2, Pull Day 1, Pull Day 2, Legs, Rest. ';
   p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
   p += 'CLEARDAY:{} must ONLY be included when the user explicitly asks to wipe or reset their ENTIRE day (e.g. "clear my day", "reset everything", "start my day over"). NEVER include CLEARDAY for fixing duplicates, correcting a single entry, adjusting water, editing food items, or any partial change. When in doubt, do not include CLEARDAY. ';
@@ -2368,7 +2369,8 @@ function processLogActions(reply) {
     { rx: /LOGMOVE:(\{[^}]+\})/g,     setter: setMove,     key: 'cal',   label: 'Move',        unit: ' cal' },
     { rx: /LOGEXERCISE:(\{[^}]+\})/g, setter: setExercise, key: 'min',   label: 'Exercise',    unit: ' min' },
     { rx: /LOGSTAND:(\{[^}]+\})/g,    setter: setStand,    key: 'hrs',   label: 'Stand',       unit: ' hrs' },
-    { rx: /LOGSLEEP:(\{[^}]+\})/g,    field: 'oura-score', key: 'score', label: 'sleep score', unit: '',     update: function(){ ouraUpdate(); } }
+    { rx: /LOGSLEEP:(\{[^}]+\})/g,    field: 'oura-score',         key: 'score', label: 'sleep score', unit: '',     update: function(){ ouraUpdate(); } },
+    { rx: /LOGWEIGHT:(\{[^}]+\})/g,   field: 'dash-weight-input',  key: 'lbs',   label: 'weight',      unit: ' lbs', update: function(){ try { weightUpdate(); } catch(e) {} } }
   ];
   patterns.forEach(function(p) {
     var matches = Array.from(cleaned.matchAll(p.rx));
@@ -2414,7 +2416,7 @@ function processLogActions(reply) {
 
 function stripActionTags(text) {
   return text
-    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT)\s*:\s*\{[^}]*\}/g, '')
+    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT)\s*:\s*\{[^}]*\}/g, '')
     .replace(/[ \t]+$/gm, '')
     .replace(/\n{2,}/g, '\n')
     .replace(/  +/g, ' ')
