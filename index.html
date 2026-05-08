@@ -1419,8 +1419,9 @@ function _setActivityField(fieldName, fieldId, value, source, date) {
   }
   var el = document.getElementById(fieldId);
   if (!el) return false;
-  var num = parseFloat(value);
-  var isClear = (value == null || value === '' || (!isNaN(num) && num === 0));
+  // Only null/undefined/empty-string is a "clear" intent. A numeric 0 from
+  // Oura early in the morning is a real write — must NOT wipe existing data.
+  var isClear = (value == null || value === '');
   if (!isClear) {
     var current = _activitySources[fieldName];
     var newPri = ACTIVITY_PRIORITY[source] || 0;
@@ -1428,6 +1429,19 @@ function _setActivityField(fieldName, fieldId, value, source, date) {
     if (current && newPri < curPri) {
       console.log('[setActivity] dropped lower-priority write — ' + fieldName + ' ' + source + '(' + newPri + ') < ' + current + '(' + curPri + ')');
       return false;
+    }
+    // Monotonic guard: Oura's steps and total_calories are cumulative for the
+    // day. If Oura returns a value lower than what we already have (ring
+    // charging, sync glitch, just-rolled-over day not yet populated), keep
+    // the higher number. Without this, a 0 or partial value from Oura clobbers
+    // the user's actual progress.
+    if (source === 'oura' && (fieldName === 'steps' || fieldName === 'calexp')) {
+      var currentVal = parseFloat(el.value) || 0;
+      var newVal = parseFloat(value) || 0;
+      if (currentVal > 0 && newVal < currentVal) {
+        console.log('[setActivity] Oura value lower than current — keeping higher: ' + fieldName + ' current=' + currentVal + ' incoming=' + newVal);
+        return false;
+      }
     }
   }
   el.value = isClear ? '' : value;
@@ -3019,6 +3033,13 @@ function ouraUpdate() {
   } else if(intensityEl) { intensityEl.style.display = 'none'; }
 
 
+  // Don't persist a fully-empty Oura blob — that would wipe the day's saved
+  // values. initNewDay clears all inputs then calls ouraUpdate to refresh
+  // displays; the all-zero check keeps that path from clobbering DB data
+  // before dbLoadAll has had a chance to repopulate.
+  if (!score && !total && !eff && !deep && !rem && !light && !hrv && !readiness && !steps && !calexp) {
+    return;
+  }
   try { localStorage.setItem('jr_oura', JSON.stringify({date:getTodayKey(),score,total,eff,deep,rem,light,bed,wake,hrv,readiness,steps,calexp})); } catch(e) {}
   dbSaveDay(_sessionDate, { oura: {date:_sessionDate,score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
 }
@@ -3179,6 +3200,10 @@ function dashAppleSave() {
   var e = parseFloat((document.getElementById('dash-exercise-input')||{}).value)||0;
   var s = parseFloat((document.getElementById('dash-stand-input')||{}).value)||0;
   var st = parseFloat((document.getElementById('oura-steps')||{}).value)||0;
+  // Same guard as ouraUpdate: don't persist an all-zero apple_fitness blob,
+  // which would happen during initNewDay (clears inputs → chokepoint fires →
+  // dashAppleSave runs with all empties) and wipe today's row.
+  if (m === 0 && e === 0 && s === 0 && st === 0) return;
   try { localStorage.setItem('jr_apple', JSON.stringify({date:getTodayKey(),move:m,exercise:e,stand:s,steps:st})); } catch(ex) {}
   dbSaveDay(_sessionDate, { apple_fitness: {date:getTodayKey(),move:m,exercise:e,stand:s,steps:st} });
 }
