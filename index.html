@@ -1676,6 +1676,13 @@ function getTodayKey() {
 var _activitySources = {}; // { steps: 'apple'|'oura'|'user'|'logaction', ... }
 var ACTIVITY_PRIORITY = { reset: 99, user: 3, logaction: 3, oura: 2, apple: 1 };
 
+// Last-known Oura blob loaded from Supabase. ouraUpdate() merges new non-empty
+// values onto this so that fields the inputs don't currently hold (e.g. calexp
+// before today's Oura activity sync arrives) don't get wiped to 0 in Supabase
+// — the upsert replaces the whole `oura` JSON column, so a 0 in the new blob
+// would clobber a previously-good value cross-device.
+var _lastOuraBlob = {};
+
 function _setActivityField(fieldName, fieldId, value, source, date) {
   var today = getTodayKey();
   if (date && date !== today) {
@@ -1897,6 +1904,8 @@ async function dbLoadAll() {
         if (todayRow.oura && typeof todayRow.oura === 'object') {
           var o = todayRow.oura;
           if (o.date && o.date === flDateKey(new Date())) {
+            // Cache the loaded blob so ouraUpdate's later save merges instead of clobbering.
+            _lastOuraBlob = Object.assign({}, o);
             if(o.score) { var el = document.getElementById('oura-score'); if(el) el.value = o.score; }
             if(o.total) { var el = document.getElementById('oura-total'); if(el) el.value = o.total; }
             if(o.eff) { var el = document.getElementById('oura-eff'); if(el) el.value = o.eff; }
@@ -1914,6 +1923,12 @@ async function dbLoadAll() {
             // run with calexp=0 and overwrite the saved value to 0.
             if(o.steps)  { var el = document.getElementById('oura-steps');  if(el) el.value = o.steps; }
             if(o.calexp) { var el = document.getElementById('oura-calexp'); if(el) el.value = o.calexp; }
+            // VO2 max — was previously localStorage-only, so it didn't sync
+            // cross-device. Now persisted on the oura blob too.
+            if(o.vo2) {
+              var el = document.getElementById('oura-vo2'); if(el) el.value = o.vo2;
+              try { localStorage.setItem('jr_vo2_max', o.vo2); } catch(e) {}
+            }
             ouraUpdate();
           }
         }
@@ -3402,13 +3417,35 @@ function ouraUpdate() {
   if (!score && !total && !eff && !deep && !rem && !light && !hrv && !readiness && !steps && !calexp) {
     return;
   }
-  try { localStorage.setItem('jr_oura', JSON.stringify({date:getTodayKey(),score,total,eff,deep,rem,light,bed,wake,hrv,readiness,steps,calexp})); } catch(e) {}
-  dbSaveDay(_sessionDate, { oura: {date:_sessionDate,score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
+  // Build a partial blob of *only the fields with real values right now*. The
+  // upsert replaces the entire `oura` JSON column, so saving 0/empty for a
+  // field that hasn't been populated yet (e.g. calexp before today's Oura
+  // activity sync arrives) would clobber the previously-good cross-device
+  // value. Merging onto _lastOuraBlob preserves those.
+  var vo2 = parseFloat((document.getElementById('oura-vo2')||{}).value) || 0;
+  var newOura = { date: _sessionDate };
+  if (score)              newOura.score = score;
+  if (total)              newOura.total = total;
+  if (eff)                newOura.eff = eff;
+  if (deep)               newOura.deep = deep;
+  if (rem)                newOura.rem = rem;
+  if (light)              newOura.light = light;
+  if (bed && bed !== '—') newOura.bed = bed;
+  if (wake && wake !== '—') newOura.wake = wake;
+  if (hrv)                newOura.hrv = hrv;
+  if (readiness)          newOura.readiness = readiness;
+  if (steps)              newOura.steps = steps;
+  if (calexp)             newOura.calexp = calexp;
+  if (vo2)                newOura.vo2 = vo2;
+  var mergedOura = Object.assign({}, _lastOuraBlob, newOura);
+  mergedOura.date = _sessionDate;
+  _lastOuraBlob = mergedOura;
+  try { localStorage.setItem('jr_oura', JSON.stringify(mergedOura)); } catch(e) {}
+  dbSaveDay(_sessionDate, { oura: mergedOura });
 }
 
-// VO2 max — slow-moving longevity metric. Persisted to localStorage only for
-// now (user_settings doesn't have a vo2_max column yet; add migration to enable
-// cross-device sync later).
+// VO2 max — slow-moving longevity metric. Persisted to localStorage and
+// piggybacked onto the daily oura blob (via ouraUpdate) so it syncs cross-device.
 function vo2Update() {
   var el = document.getElementById('oura-vo2');
   if (!el) return;
