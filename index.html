@@ -1663,6 +1663,29 @@ function flAutoSplit(d) {
   return dowMap[dow];
 }
 
+// Resolves today's training split with override precedence:
+// localStorage override → DB-loaded flDateStore → day-of-week default.
+// Use this everywhere instead of flAutoSplit() so LOGSPLIT overrides persist.
+function getTodaySplit() {
+  var todayKey = getTodayKey();
+  try {
+    var override = localStorage.getItem('jr_split_override_' + todayKey);
+    if (override) return override;
+  } catch(e) {}
+  if (flDateStore[todayKey] && flDateStore[todayKey].split) return flDateStore[todayKey].split;
+  return flAutoSplit(new Date());
+}
+
+// Single source for split → focus/exercises mapping. Used by coachBuildContext.
+var SPLIT_INFO = {
+  'Pull Day 1': {focus:'Heavy Back',        detail:'barbell rows, deadlifts, lat pulldowns, chest-supported rows, pullups'},
+  'Push Day 1': {focus:'Heavy Chest',       detail:'incline DB press, machine chest press, pec dec, cable lateral raises'},
+  'Legs':       {focus:'Heavy Legs',        detail:'leg press, smith machine squats or hack squats, walking lunges, hamstring curls'},
+  'Pull Day 2': {focus:'Medium Back',       detail:'lat pulldowns, seated cable rows, T-bar row, bent over DB row, pullups'},
+  'Push Day 2': {focus:'Medium Shoulders',  detail:'heavy shoulder press, DB lateral raises with drop sets, cable laterals, smith machine incline press'},
+  'Rest':       {focus:'Rest Day',          detail:'recovery, walk, hit nutrition targets'}
+};
+
 function flGetDayData(d) {
   var key = flDateKey(d);
   if (!flDateStore[key]) {
@@ -2092,16 +2115,8 @@ function coachBuildContext() {
   var today = new Date(); today.setHours(0,0,0,0);
   var dayNum = Math.floor((today - start) / 86400000) + 1;
   var dow = new Date().getDay();
-  var splitMap = {
-    1: {name:'Pull Day 1', focus:'Heavy Back', detail:'barbell rows, deadlifts, lat pulldowns, chest-supported rows, pullups'},
-    2: {name:'Push Day 1', focus:'Heavy Chest', detail:'incline DB press, machine chest press, pec dec, cable lateral raises'},
-    3: {name:'Rest', focus:'Rest Day', detail:'recovery, walk, hit nutrition targets'},
-    4: {name:'Legs', focus:'Heavy Legs', detail:'leg press, smith machine squats or hack squats, walking lunges, hamstring curls'},
-    5: {name:'Pull Day 2', focus:'Medium Back', detail:'lat pulldowns, seated cable rows, T-bar row, bent over DB row, pullups'},
-    6: {name:'Push Day 2', focus:'Medium Shoulders', detail:'heavy shoulder press, DB lateral raises with drop sets, cable laterals, smith machine incline press'},
-    0: {name:'Rest', focus:'Rest Day', detail:'recovery, walk, hit nutrition targets'}
-  };
-  var splitInfo = splitMap[dow];
+  var splitName = getTodaySplit();
+  var splitInfo = { name: splitName, focus: (SPLIT_INFO[splitName]||SPLIT_INFO['Rest']).focus, detail: (SPLIT_INFO[splitName]||SPLIT_INFO['Rest']).detail };
   var isRest = splitInfo.name === 'Rest';
   var dayType = isRest ? 'rd' : 'td';
   var tgt = flTargets[dayType];
@@ -3017,6 +3032,9 @@ async function ouraSyncFetch() {
     var sleep    = (data.sleep    && data.sleep.data    && data.sleep.data[0])    || {};
     var activity = (data.activity && data.activity.data && data.activity.data[0]) || {};
     var ready    = (data.readiness && data.readiness.data && data.readiness.data[0]) || {};
+    console.log('[Oura sync] sleep day=' + (sleep.day||'?') + ' score=' + (sleep.score||'?') + ' total_sleep_duration=' + (sleep.total_sleep_duration||'?') + ' efficiency=' + (sleep.sleep_efficiency||'?'));
+    console.log('[Oura sync] activity day=' + (activity.day||'?') + ' steps=' + (activity.steps||'?') + ' total_calories=' + (activity.total_calories||'?'));
+    console.log('[Oura sync] readiness=' + (ready.score||'?'));
     function setField(id, val) { var el = document.getElementById(id); if (el && val != null && val !== '') { el.value = val; el.dispatchEvent(new Event('input')); } }
     // Sleep
     setField('oura-score', sleep.score);
@@ -3039,7 +3057,18 @@ async function ouraSyncFetch() {
     ouraUpdate();
     dashRefresh();
     var syncStatus = document.getElementById('oura-sync-status');
-    if(syncStatus) { syncStatus.textContent = 'Synced · today'; syncStatus.style.color = '#4caf7d'; }
+    if(syncStatus) {
+      var now = new Date();
+      var hh = now.getHours(), mm = String(now.getMinutes()).padStart(2,'0');
+      var ampm = hh >= 12 ? 'PM' : 'AM'; hh = hh % 12 || 12;
+      var todayKey = getTodayKey();
+      // Be honest: only claim "today" if the activity payload is actually for today.
+      var isToday = activity && activity.day === todayKey;
+      syncStatus.textContent = isToday
+        ? ('Synced · ' + hh + ':' + mm + ' ' + ampm)
+        : ('Synced · ' + hh + ':' + mm + ' ' + ampm + ' (no activity for today yet)');
+      syncStatus.style.color = isToday ? '#4caf7d' : '#f5a623';
+    }
   } catch(e) { console.error('Oura sync fetch failed:', e); }
 }
 
@@ -3458,9 +3487,7 @@ function dashRefresh() {
   if(calBar2) calBar2.style.width = Math.min(Math.round((t.cal/tgt.cal)*100),100)+'%';
   if(calNum2) calNum2.textContent = Math.round(t.cal);
 
-  var dow2 = new Date().getDay();
-  var splitMap2 = {1:'Pull Day 1',2:'Push Day 1',3:'Rest',4:'Legs',5:'Pull Day 2',6:'Push Day 2',0:'Rest'};
-  var todaySplit = splitMap2[dow2];
+  var todaySplit = getTodaySplit();
   var expTraining = document.getElementById('exp-training');
   var expSteps = document.getElementById('exp-steps');
   var expBurned = document.getElementById('exp-burned');
@@ -3488,14 +3515,12 @@ function dashRefresh() {
     if(expNet) { expNet.textContent = '—'; expNet.style.color = '#aaa'; }
     if(netStat) { netStat.textContent = '—'; netStat.style.color = '#aaa'; }
   }
-  var dowMap2 = {1:'Pull Day 1',2:'Push Day 1',3:'Rest',4:'Legs',5:'Pull Day 2',6:'Push Day 2',0:'Rest'};
   var journeyStart = new Date('2026-04-10');
   var today = new Date();
   today.setHours(0,0,0,0);
   journeyStart.setHours(0,0,0,0);
   var dayNum = Math.floor((today - journeyStart) / 86400000);
-  var splitOverride = localStorage.getItem('jr_split_override_' + getTodayKey());
-  var splitDay = splitOverride || dowMap2[today.getDay()];
+  var splitDay = getTodaySplit();
   var trainingEl = document.getElementById('dash-training-val');
   trainingEl.textContent = splitDay;
   trainingEl.style.color = splitDay === 'Rest' ? '#555' : '#f5a623';
