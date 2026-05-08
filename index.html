@@ -21,9 +21,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 ::-webkit-scrollbar-corner { background: transparent; }
 
 /* HERO */
-.hero { background: #111; border-bottom: 1px solid #222; padding: 18px 20px 14px; text-align: center; flex-shrink: 0; }
+.hero { background: #111; border-bottom: 1px solid #222; padding: 18px 20px 14px; text-align: center; flex-shrink: 0; position: relative; }
 .hero h1 { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 0.02em; }
 .hero p { font-size: 12px; color: #555; margin-top: 4px; }
+
+/* Hamburger button: rendered in HTML at all sizes but invisible on desktop.
+   Only the @media (max-width: 600px) block at the bottom of this stylesheet
+   flips it to display:flex. Pure additive change — touches no existing rule. */
+.menu-btn { display: none; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; background: transparent; border: 0; cursor: pointer; padding: 0; align-items: center; justify-content: center; z-index: 5; }
+.menu-btn span { display: block; width: 20px; height: 2px; background: #d0d0d0; border-radius: 1px; position: relative; }
+.menu-btn span::before, .menu-btn span::after { content: ''; position: absolute; left: 0; width: 20px; height: 2px; background: #d0d0d0; border-radius: 1px; }
+.menu-btn span::before { top: -6px; }
+.menu-btn span::after  { top: 6px; }
+.menu-btn:active { background: #1a1a1a; border-radius: 8px; }
+
+/* Dim overlay shown behind the slide-out drawer on mobile. display:none until JS
+   toggles .open. Invisible on desktop because the drawer can't be opened there. */
+.mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10000; }
+.mobile-overlay.open { display: block; }
 
 /* LAYOUT */
 .app-body { display: flex; flex: 1; overflow: hidden; width: 100%; }
@@ -411,6 +426,39 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   .fl-input-row { grid-template-columns: 1fr 1fr 1fr; }
   .fl-input-row .fl-input:first-child { grid-column: span 3; }
 }
+
+/* ════ MOBILE-ONLY DASHBOARD LAYOUT ════
+   Every rule below applies ONLY when the viewport is ≤600px wide. The browser
+   ignores this entire block at desktop widths — desktop rendering is unchanged.
+   Stacks: [tiles] → [macros] → [training] in a single column, hides sidebar,
+   shows hamburger, removes content max-width cap. */
+@media (max-width: 600px) {
+  .menu-btn { display: flex; }
+  .sidebar { display: none; }
+  .main > * { max-width: 100%; }
+  .main { padding: 14px 12px 32px; }
+
+  .dash-grid { display: flex; flex-direction: column; gap: 12px; }
+  .dash-train { order: 2; }
+  .dash-right {
+    order: 1;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 8px;
+  }
+  .dash-macro { grid-column: 1 / span 2; grid-row: auto; }
+  .dash-tile { padding: 14px 8px; }
+  .dash-tile-val { font-size: 20px; }
+
+  /* When toggleMobileMenu() adds .mobile-open, sidebar slides in as a drawer */
+  .sidebar.mobile-open {
+    display: flex;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 280px; max-width: 80vw;
+    z-index: 10001;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  }
+}
 /* PULL TO REFRESH */
 #ptr-indicator { position:fixed; top:0; left:0; right:0; height:56px; display:flex; align-items:center; justify-content:center; z-index:99998; pointer-events:none; opacity:0; transform:translateY(-100%); }
 .ptr-spinner { width:22px; height:22px; border:2px solid #2a2a2a; border-top-color:#40ccbb; border-radius:50%; }
@@ -437,9 +485,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 </div>
 
 <div class="hero">
+  <button class="menu-btn" onclick="toggleMobileMenu()" aria-label="Open navigation"><span></span></button>
   <h1 style="font-size:20px;font-weight:800;color:#fff;letter-spacing:0.16em;font-family:-apple-system,sans-serif;">TRAKR</h1>
   <p style="font-size:9px;color:#444;letter-spacing:0.26em;margin-top:4px;font-family:-apple-system,sans-serif;">HEALTH OS</p>
 </div>
+<div class="mobile-overlay" onclick="toggleMobileMenu()"></div>
 
 <div class="app-body">
 
@@ -1923,7 +1973,27 @@ function flUpdateSplitUI(split) {
 
 var sections = ['dashboard','mealplans','td','rd','foodlog','rules','training','routines','longevity','covenant','insights','coach','settings'];
 
+// Toggles the mobile slide-out drawer + dim overlay. Only fires when the
+// hamburger is clicked, which is impossible on desktop (.menu-btn is
+// display:none above 600px). Safe to call at any size — the .mobile-open
+// class only has visual effect inside the @media (max-width: 600px) block.
+function toggleMobileMenu() {
+  var sb = document.querySelector('.sidebar');
+  var ov = document.querySelector('.mobile-overlay');
+  if (!sb) return;
+  var isOpen = sb.classList.contains('mobile-open');
+  sb.classList.toggle('mobile-open', !isOpen);
+  if (ov) ov.classList.toggle('open', !isOpen);
+}
+
 function showSection(id, el) {
+  // If the mobile drawer is open, close it on navigation
+  var sb = document.querySelector('.sidebar');
+  if (sb && sb.classList.contains('mobile-open')) {
+    sb.classList.remove('mobile-open');
+    var ov = document.querySelector('.mobile-overlay');
+    if (ov) ov.classList.remove('open');
+  }
   currentSection = id;
   sections.forEach(function(s) {
     var el2 = document.getElementById(s);
