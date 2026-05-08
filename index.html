@@ -366,11 +366,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .coach-error { font-size: 12px; color: #cc5555; padding: 8px; }
 
 /* Dashboard restructure: training+expenditure+longevity card on the left,
-   6 square-ish tiles on the right, macro bar strip below tiles.
-   These rules apply at ALL viewport widths — earlier they were accidentally
-   placed inside the mobile @media block and silently never matched. */
-.dash-grid { display: grid; grid-template-columns: 2.4fr 1fr 1fr 1fr; grid-template-rows: 95px 95px auto; gap: 10px; margin-bottom: 14px; }
-.dash-train { grid-row: 1 / span 3; grid-column: 1; background: #141414; border: 1px solid #2d2000; border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; }
+   right block (6 tiles + macro strip) on the right — true 50/50 split.
+   Right block uses a nested 3-col grid for the tiles + spanned macro strip. */
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.dash-right { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 95px 95px auto; gap: 10px; }
+.dash-train { background: #141414; border: 1px solid #2d2000; border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; }
 .dash-train-name { font-size: 18px; font-weight: 700; color: #f5a623; margin-bottom: 1px; }
 .dash-train-sub { font-size: 10px; color: #888; margin-bottom: 10px; }
 .dash-train-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
@@ -387,7 +387,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .dash-tile-val { font-size: 22px; font-weight: 700; line-height: 1.1; }
 .dash-tile-lbl { font-size: 10px; color: #888; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
 
-.dash-macro { grid-row: 3; grid-column: 2 / span 3; background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
+.dash-macro { grid-row: 3; grid-column: 1 / span 3; background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
 .dash-macro-lbl { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
 .dash-mb-row { display: grid; grid-template-columns: 56px 1fr 115px; align-items: center; gap: 10px; padding: 4px 0; font-size: 11px; }
 .dash-mb-row .dash-mb-val { white-space: nowrap; }
@@ -478,7 +478,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
       </div>
 
       <div class="dash-grid">
-        <!-- Training/Expenditure/Longevity card spans full grid height on the left -->
+        <!-- LEFT: Training + Expenditure + Longevity, single tall card -->
         <div class="dash-train">
           <div class="dash-train-name" id="dash-train-name">—</div>
           <div class="dash-train-sub" id="dash-train-sub">—</div>
@@ -495,26 +495,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
           <div class="dash-train-row"><span>Readiness</span><b id="dash-readiness-val">—</b></div>
           <div class="dash-train-row"><span>HRV</span><b id="dash-hrv-val">—</b></div>
           <div class="dash-train-row"><span>VO₂ max</span><b id="dash-vo2-val">—</b></div>
-          <!-- Hidden mirror of the legacy training-name field so dashRefresh code that
-               targets dash-training-val + .nextElementSibling keeps working. -->
+          <!-- Hidden mirror of the legacy training-name field so the LOGSPLIT
+               handler that targets dash-training-val + .nextElementSibling still works. -->
           <span id="dash-training-val" style="display:none">—</span><span id="dash-training-lbl" style="display:none">Training</span>
         </div>
-        <!-- 6 square-ish tiles, top row -->
-        <div class="dash-tile"><div class="dash-tile-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="dash-tile-lbl">Cal Logged</div></div>
-        <div class="dash-tile"><div class="dash-tile-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="dash-tile-lbl">Steps</div></div>
-        <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Cal Burned</div></div>
-        <!-- bottom row -->
-        <div class="dash-tile"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div></div>
-        <div class="dash-tile"><div class="dash-tile-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="dash-tile-lbl">Water (oz)</div></div>
-        <div class="dash-tile"><div class="dash-tile-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
-        <!-- Macro Progress strip below tiles, spans the 3 tile columns -->
-        <div class="dash-macro">
-          <div class="dash-macro-lbl">Macro Progress</div>
-          <div class="dash-mb-row"><span class="dash-mb-label" style="color:#5aabff;">Protein</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-p-bar" style="background:#5aabff;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-p-num">0g</b> · <span id="dash-p-pct">0%</span></span></div>
-          <div class="dash-mb-row"><span class="dash-mb-label" style="color:#f5a623;">Carbs</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-c-bar" style="background:#f5a623;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-c-num">0g</b> · <span id="dash-c-pct">0%</span></span></div>
-          <div class="dash-mb-row"><span class="dash-mb-label" style="color:#a07dd9;">Fat</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-f-bar" style="background:#a07dd9;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-f-num">0g</b> · <span id="dash-f-pct">0%</span></span></div>
-          <div class="dash-mb-row"><span class="dash-mb-label" style="color:#4caf7d;">Calories</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-cal-bar2" style="background:#4caf7d;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-cal-num2">0</b> · <span id="dash-cal-pct">0%</span></span></div>
-          <div class="dash-macro-status" id="dash-macro-status">—</div>
+        <!-- RIGHT: nested 3-col grid for tiles + macro strip -->
+        <div class="dash-right">
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="dash-tile-lbl">Cal Logged</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="dash-tile-lbl">Steps</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Cal Burned</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="dash-tile-lbl">Water (oz)</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
+          <div class="dash-macro">
+            <div class="dash-macro-lbl">Macro Progress</div>
+            <div class="dash-mb-row"><span class="dash-mb-label" style="color:#5aabff;">Protein</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-p-bar" style="background:#5aabff;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-p-num">0g</b> · <span id="dash-p-pct">0%</span></span></div>
+            <div class="dash-mb-row"><span class="dash-mb-label" style="color:#f5a623;">Carbs</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-c-bar" style="background:#f5a623;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-c-num">0g</b> · <span id="dash-c-pct">0%</span></span></div>
+            <div class="dash-mb-row"><span class="dash-mb-label" style="color:#a07dd9;">Fat</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-f-bar" style="background:#a07dd9;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-f-num">0g</b> · <span id="dash-f-pct">0%</span></span></div>
+            <div class="dash-mb-row"><span class="dash-mb-label" style="color:#4caf7d;">Calories</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-cal-bar2" style="background:#4caf7d;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-cal-num2">0</b> · <span id="dash-cal-pct">0%</span></span></div>
+            <div class="dash-macro-status" id="dash-macro-status">—</div>
+          </div>
         </div>
       </div>
 
