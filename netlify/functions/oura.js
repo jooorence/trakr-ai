@@ -91,8 +91,15 @@ exports.handler = async function(event) {
           body: JSON.stringify({ error: 'Missing token parameter' })
         };
       }
-      const today = new Date().toISOString().split('T')[0];
-      const dateParams = '?start_date=' + today + '&end_date=' + today;
+      // Use the date the client passed (in user's local timezone). Falling
+      // back to UTC was a real bug: in the evening in Pacific time, UTC has
+      // already rolled to the next day, so we'd query Oura for a day that
+      // doesn't have data yet and silently return empty sleep + activity.
+      // Validate the format so we don't accept arbitrary input.
+      const localDate = (params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date))
+        ? params.date
+        : new Date().toISOString().split('T')[0];
+      const dateParams = '?start_date=' + localDate + '&end_date=' + localDate;
       const authHeader = { 'Authorization': 'Bearer ' + token };
       // daily_sleep gives us `score` (a contributor-weighted number).
       // sleep gives us session-level fields: total_sleep_duration, sleep_efficiency,
