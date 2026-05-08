@@ -355,7 +355,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 </head>
 <body>
 <div id="ptr-indicator"><div class="ptr-spinner"></div></div>
-<div id="auth-gate" style="display:none;position:fixed;inset:0;background:#0f0f0f;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;">
+<div id="auth-gate" style="display:none;position:fixed;inset:0;background:#0f0f0f;z-index:99999;align-items:center;justify-content:center;flex-direction:column;gap:20px;">
 <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
   <div style="width:72px;height:72px;background:#0a0a0a;border:1px solid #333;border-radius:16px;display:flex;align-items:center;justify-content:center;">
     <span style="font-size:42px;font-weight:800;color:#fff;font-family:-apple-system,sans-serif;line-height:1;">T</span>
@@ -482,9 +482,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">
-          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Move (cal)</div><input id="dash-move-input" type="number" min="0" max="1500" placeholder="467" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="dashUpdateRings();dashAppleSave();"></div>
-          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Exercise (min)</div><input id="dash-exercise-input" type="number" min="0" max="180" placeholder="38" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="dashUpdateRings();dashAppleSave();"></div>
-          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Stand (hrs)</div><input id="dash-stand-input" type="number" min="0" max="16" placeholder="10" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="dashUpdateRings();dashAppleSave();"></div>
+          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Move (cal)</div><input id="dash-move-input" type="number" min="0" max="1500" placeholder="467" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setMove(this.value,'user')"></div>
+          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Exercise (min)</div><input id="dash-exercise-input" type="number" min="0" max="180" placeholder="38" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setExercise(this.value,'user')"></div>
+          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Stand (hrs)</div><input id="dash-stand-input" type="number" min="0" max="16" placeholder="10" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setStand(this.value,'user')"></div>
         </div>
       </div>
 
@@ -548,8 +548,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Light (hrs)</div><input id="oura-light" type="number" min="0" max="8" step="0.1" placeholder="3.7" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">HRV (ms)</div><input id="oura-hrv" type="number" min="0" max="200" placeholder="58" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Readiness (0–100)</div><input id="oura-readiness" type="number" min="0" max="100" placeholder="78" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
-          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Steps</div><input id="oura-steps" type="number" min="0" max="50000" placeholder="7240" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
-          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Cal Burned (total)</div><input id="oura-calexp" type="number" min="0" max="5000" placeholder="2840" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
+          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Steps</div><input id="oura-steps" type="number" min="0" max="50000" placeholder="7240" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setSteps(this.value,'user')"></div>
+          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Cal Burned (total)</div><input id="oura-calexp" type="number" min="0" max="5000" placeholder="2840" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setCalExp(this.value,'user')"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Bedtime</div><input id="oura-bed" type="text" placeholder="10:52 PM" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
@@ -1302,6 +1302,15 @@ const AUTH_SUPABASE_KEY = 'sb_publishable_sKRmZBiHO0quGaBo8XqS2w_fCRm9yya';
 const _sb = supabase.createClient(AUTH_SUPABASE_URL, AUTH_SUPABASE_KEY);
 
 async function initAuth() {
+  // Non-production bypass: skip OAuth gate everywhere except trakros.com so
+  // the dashboard is reachable in local previews / Netlify deploy previews.
+  const host = location.hostname;
+  const isProd = host === 'trakros.com' || host === 'www.trakros.com';
+  if (!isProd) {
+    document.getElementById('auth-gate').style.display = 'none';
+    console.log('[TRAKR] auth gate bypassed — non-prod host:', host || '(file)');
+    return;
+  }
   const { data: { session } } = await _sb.auth.getSession();
   if (session) {
     document.getElementById('auth-gate').style.display = 'none';
@@ -1366,6 +1375,105 @@ function getTodayKey() {
   var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   console.log('[TRAKR] getTodayKey:', key);
   return key;
+}
+
+/* ── DAILY ACTIVITY FIELD CHOKEPOINTS ──
+   All writes to steps / calExp / move / exercise / stand MUST go through these setters.
+   Enforces:
+   - Date guard: writes for a non-today date are silently dropped (prevents
+     yesterday's Oura activity payload from carrying over after midnight).
+   - Source priority: user / LOG-action (3) > Oura sync (2) > Apple Fitness (1).
+     Apple's manual fields are Move/Exercise/Stand only and don't conflict with
+     Oura's authoritative steps/cal-burned, so Apple sits at the lowest tier.
+     Once a higher-priority source has written, lower sources cannot overwrite.
+   - Empty/zero writes (clears) are always allowed regardless of priority.
+*/
+var _activitySources = {}; // { steps: 'apple'|'oura'|'user'|'logaction', ... }
+var ACTIVITY_PRIORITY = { reset: 99, user: 3, logaction: 3, oura: 2, apple: 1 };
+
+function _setActivityField(fieldName, fieldId, value, source, date) {
+  var today = getTodayKey();
+  if (date && date !== today) {
+    console.log('[setActivity] dropped stale write — ' + fieldName + ' date=' + date + ' today=' + today + ' source=' + source);
+    return false;
+  }
+  var el = document.getElementById(fieldId);
+  if (!el) return false;
+  var num = parseFloat(value);
+  var isClear = (value == null || value === '' || (!isNaN(num) && num === 0));
+  if (!isClear) {
+    var current = _activitySources[fieldName];
+    var newPri = ACTIVITY_PRIORITY[source] || 0;
+    var curPri = current ? (ACTIVITY_PRIORITY[current] || 0) : 0;
+    if (current && newPri < curPri) {
+      console.log('[setActivity] dropped lower-priority write — ' + fieldName + ' ' + source + '(' + newPri + ') < ' + current + '(' + curPri + ')');
+      return false;
+    }
+  }
+  el.value = isClear ? '' : value;
+  if (isClear) delete _activitySources[fieldName];
+  else _activitySources[fieldName] = source;
+  // Trigger downstream rendering + persistence
+  try {
+    if (fieldName === 'steps' || fieldName === 'calexp') {
+      if (typeof ouraUpdate === 'function') ouraUpdate();
+    }
+    if (fieldName === 'move' || fieldName === 'exercise' || fieldName === 'stand') {
+      if (typeof dashUpdateRings === 'function') dashUpdateRings();
+    }
+    if (fieldName === 'move' || fieldName === 'exercise' || fieldName === 'stand' || fieldName === 'steps') {
+      if (typeof dashAppleSave === 'function') dashAppleSave();
+    }
+    if (typeof dashRefresh === 'function') dashRefresh();
+  } catch(e) { console.error('[setActivity] downstream update failed:', e); }
+  return true;
+}
+
+function setSteps(value, source, date)    { return _setActivityField('steps',    'oura-steps',          value, source, date); }
+function setCalExp(value, source, date)   { return _setActivityField('calexp',   'oura-calexp',         value, source, date); }
+function setMove(value, source, date)     { return _setActivityField('move',     'dash-move-input',     value, source, date); }
+function setExercise(value, source, date) { return _setActivityField('exercise', 'dash-exercise-input', value, source, date); }
+function setStand(value, source, date)    { return _setActivityField('stand',    'dash-stand-input',    value, source, date); }
+
+/* ── NEW DAY INITIALIZATION ──
+   Single source of truth for "what does a clean day look like."
+   Called on page load AND when a midnight rollover is detected.
+*/
+function initNewDay() {
+  var today = getTodayKey();
+  console.log('[TRAKR] initNewDay →', today);
+  // Roll session date forward
+  if (typeof _sessionDate !== 'undefined') _sessionDate = today;
+  // Reset activity source tracking
+  _activitySources = {};
+  // Drop stale localStorage blobs (date != today)
+  ['jr_oura', 'jr_apple', 'jr_water_v2'].forEach(function(k) {
+    try {
+      var raw = localStorage.getItem(k);
+      if (!raw) return;
+      var d = JSON.parse(raw);
+      if (d && d.date && d.date !== today) localStorage.removeItem(k);
+    } catch(e) { try { localStorage.removeItem(k); } catch(_) {} }
+  });
+  try {
+    var brief = localStorage.getItem('jr_brief_date');
+    if (brief && brief !== today) localStorage.removeItem('jr_brief_date');
+  } catch(e) {}
+  // Clear all daily input fields
+  ['oura-score','oura-total','oura-eff','oura-deep','oura-rem','oura-light',
+   'oura-bed','oura-wake','oura-hrv','oura-readiness','oura-steps','oura-calexp',
+   'dash-move-input','dash-exercise-input','dash-stand-input'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  // Reset in-memory water state
+  if (typeof waterOz !== 'undefined') { waterOz = 0; waterJugs = 0; waterBottles = 0; }
+  // Re-render everything
+  try { if (typeof ouraUpdate === 'function') ouraUpdate(); } catch(e) {}
+  try { if (typeof dashUpdateRings === 'function') dashUpdateRings(); } catch(e) {}
+  try { if (typeof waterRender === 'function') waterRender(); } catch(e) {}
+  try { if (typeof flUpdateDateDisplay === 'function') flUpdateDateDisplay(); } catch(e) {}
+  try { if (typeof rtnInit === 'function') rtnInit(); } catch(e) {}
+  try { if (typeof dashRefresh === 'function') dashRefresh(); } catch(e) {}
 }
 
 function dbSaveChatMsg(surface, role, content) {
@@ -1504,25 +1612,14 @@ async function dbLoadAll() {
             ouraUpdate();
           }
         }
-        // Load today's Apple Fitness rings + steps (move/exercise/stand/steps)
-        // Stale check: only populate if the apple_fitness blob's date matches today.
-        if (todayRow.apple_fitness && typeof todayRow.apple_fitness === 'object' && todayRow.apple_fitness.date === todayKey) {
+        // Load today's Apple Fitness rings + steps (move/exercise/stand/steps).
+        // Chokepoint enforces date check + source priority.
+        if (todayRow.apple_fitness && typeof todayRow.apple_fitness === 'object') {
           var af = todayRow.apple_fitness;
-          var afFields = [
-            {id: 'dash-move-input',     val: af.move},
-            {id: 'dash-exercise-input', val: af.exercise},
-            {id: 'dash-stand-input',    val: af.stand},
-            {id: 'oura-steps',          val: af.steps}
-          ];
-          afFields.forEach(function(f) {
-            var el = document.getElementById(f.id);
-            if (el && f.val != null && f.val !== '') {
-              el.value = f.val;
-              el.dispatchEvent(new Event('input'));
-            }
-          });
-          dashUpdateRings();
-          dashAppleSave();
+          if (af.move != null     && af.move     !== '') setMove(af.move,         'apple', af.date);
+          if (af.exercise != null && af.exercise !== '') setExercise(af.exercise, 'apple', af.date);
+          if (af.stand != null    && af.stand    !== '') setStand(af.stand,       'apple', af.date);
+          if (af.steps != null    && af.steps    !== '') setSteps(af.steps,       'apple', af.date);
         }
       }
     }
@@ -2092,12 +2189,12 @@ function processLogActions(reply) {
   var confirmations = [];
   var cleaned = reply;
   var patterns = [
-    { rx: /LOGSTEPS:(\{[^}]+\})/g,    field: 'oura-steps',          key: 'steps', label: 'steps',      unit: '',     update: function(){ ouraUpdate(); dashRefresh(); } },
-    { rx: /LOGCALBURN:(\{[^}]+\})/g,  field: 'oura-calexp',         key: 'cal',   label: 'cal burned',  unit: ' cal', update: function(){ ouraUpdate(); dashRefresh(); } },
-    { rx: /LOGMOVE:(\{[^}]+\})/g,     field: 'dash-move-input',     key: 'cal',   label: 'Move',        unit: ' cal', update: function(){ dashUpdateRings(); dashAppleSave(); } },
-    { rx: /LOGEXERCISE:(\{[^}]+\})/g, field: 'dash-exercise-input', key: 'min',   label: 'Exercise',    unit: ' min', update: function(){ dashUpdateRings(); dashAppleSave(); } },
-    { rx: /LOGSTAND:(\{[^}]+\})/g,    field: 'dash-stand-input',    key: 'hrs',   label: 'Stand',       unit: ' hrs', update: function(){ dashUpdateRings(); dashAppleSave(); } },
-    { rx: /LOGSLEEP:(\{[^}]+\})/g,    field: 'oura-score',          key: 'score', label: 'sleep score', unit: '',     update: function(){ ouraUpdate(); } }
+    { rx: /LOGSTEPS:(\{[^}]+\})/g,    setter: setSteps,    key: 'steps', label: 'steps',      unit: '' },
+    { rx: /LOGCALBURN:(\{[^}]+\})/g,  setter: setCalExp,   key: 'cal',   label: 'cal burned',  unit: ' cal' },
+    { rx: /LOGMOVE:(\{[^}]+\})/g,     setter: setMove,     key: 'cal',   label: 'Move',        unit: ' cal' },
+    { rx: /LOGEXERCISE:(\{[^}]+\})/g, setter: setExercise, key: 'min',   label: 'Exercise',    unit: ' min' },
+    { rx: /LOGSTAND:(\{[^}]+\})/g,    setter: setStand,    key: 'hrs',   label: 'Stand',       unit: ' hrs' },
+    { rx: /LOGSLEEP:(\{[^}]+\})/g,    field: 'oura-score', key: 'score', label: 'sleep score', unit: '',     update: function(){ ouraUpdate(); } }
   ];
   patterns.forEach(function(p) {
     var matches = Array.from(cleaned.matchAll(p.rx));
@@ -2105,8 +2202,12 @@ function processLogActions(reply) {
       try {
         var data = JSON.parse(match[1]);
         var val = parseFloat(data[p.key]) || 0;
-        var el = document.getElementById(p.field);
-        if (el) { el.value = val; p.update(); }
+        if (p.setter) {
+          p.setter(val, 'logaction', getTodayKey());
+        } else if (p.field) {
+          var el = document.getElementById(p.field);
+          if (el) { el.value = val; if (p.update) p.update(); }
+        }
         confirmations.push(p.label + ': ' + val + p.unit);
       } catch(e) {}
     });
@@ -2929,10 +3030,11 @@ async function ouraSyncFetch() {
     setField('oura-wake',  sleep.bedtime_end          ? ouraFormatTime(sleep.bedtime_end)                 : null);
     // Readiness
     setField('oura-readiness', ready.score);
-    // Activity — only load if the data is actually for today (Oura returns yesterday's completed activity in the morning)
-    if (activity.day && activity.day === getTodayKey()) {
-      setField('oura-steps',  activity.steps);
-      setField('oura-calexp', activity.total_calories);
+    // Activity — chokepoint enforces date check + Apple Fitness > Oura priority.
+    // (Oura returns yesterday's completed activity in the morning; setSteps/setCalExp drop stale dates.)
+    if (activity.day) {
+      if (activity.steps != null)          setSteps(activity.steps,           'oura', activity.day);
+      if (activity.total_calories != null) setCalExp(activity.total_calories, 'oura', activity.day);
     }
     ouraUpdate();
     dashRefresh();
@@ -2972,15 +3074,11 @@ function dashAppleLoad() {
     if(saved) {
       var d = JSON.parse(saved);
       if(!d.date || d.date !== getTodayKey()) { localStorage.removeItem('jr_apple'); return; }
-      var mi = document.getElementById('dash-move-input');
-      var ei = document.getElementById('dash-exercise-input');
-      var si = document.getElementById('dash-stand-input');
-      if(mi && d.move) mi.value = d.move;
-      if(ei && d.exercise) ei.value = d.exercise;
-      if(si && d.stand) si.value = d.stand;
-      var sti = document.getElementById('oura-steps');
-      if(sti && d.steps) { sti.value = d.steps; ouraUpdate(); }
-      if(d.move||d.exercise||d.stand) dashUpdateRings();
+      // Chokepoint enforces date + source priority
+      if (d.move)     setMove(d.move,         'apple', d.date);
+      if (d.exercise) setExercise(d.exercise, 'apple', d.date);
+      if (d.stand)    setStand(d.stand,       'apple', d.date);
+      if (d.steps)    setSteps(d.steps,       'apple', d.date);
     }
   } catch(e) {}
 }
@@ -3521,8 +3619,23 @@ function waterLoad() {
 waterLoad();
 ouraCallback();
 
+/* Establish a clean baseline before any per-day data loads. */
+initNewDay();
+
 /* Load from Supabase (overrides localStorage with cloud data) */
 setTimeout(function() { dbLoadAll(); }, 100);
+
+/* Midnight rollover watcher — every 60s, compare today's date key to the
+   session's locked date. If they diverge, wipe the UI to a clean day and
+   re-pull from Supabase so the new day's row hydrates the dashboard. */
+setInterval(function() {
+  var now = getTodayKey();
+  if (typeof _sessionDate !== 'undefined' && now !== _sessionDate) {
+    console.log('[TRAKR] Midnight rollover detected:', _sessionDate, '→', now);
+    initNewDay();
+    try { dbLoadAll(); } catch(e) { console.error('rollover dbLoadAll failed:', e); }
+  }
+}, 60 * 1000);
 
 /* Convert vertical scroll to horizontal on the quick-actions row */
 (function() {
