@@ -570,6 +570,28 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .ptr-spinner { width:22px; height:22px; border:2px solid #2a2a2a; border-top-color:#40ccbb; border-radius:50%; }
 .ptr-spinner.ptr-spinning { animation:ptr-spin 0.7s linear infinite; }
 @keyframes ptr-spin { to { transform:rotate(360deg); } }
+
+/* PORTRAIT-ONLY ROTATION LOCK — phone-sized devices in landscape get a
+   blocking overlay since iOS Safari can't lock orientation outside a PWA.
+   The (max-height: 500px) gate matches phones in landscape (~390-430px tall)
+   without firing on tablets or laptops with short windows. */
+#rotate-warning { display: none; }
+@media (orientation: landscape) and (max-height: 500px) {
+  #rotate-warning {
+    display: flex; position: fixed; inset: 0; z-index: 100000;
+    background: #050a0a;
+    align-items: center; justify-content: center; flex-direction: column;
+    padding: 24px; text-align: center;
+  }
+  body { overflow: hidden; }
+}
+.rw-icon { width: 56px; height: 56px; margin-bottom: 20px; color: #40ccbb; animation: rwTilt 1.8s ease-in-out infinite; }
+@keyframes rwTilt {
+  0%, 100% { transform: rotate(-90deg); }
+  50% { transform: rotate(0deg); }
+}
+.rw-title { font-size: 17px; font-weight: 600; color: #f0f0f0; margin-bottom: 6px; letter-spacing: 0.01em; }
+.rw-subtitle { font-size: 13px; color: #888; max-width: 280px; line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -4380,6 +4402,16 @@ setInterval(function() {
     <textarea class="cs-input" id="cs-input" placeholder="Message CoachGPT..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();csSend()}" rows="1" style="resize:none;overflow-y:auto;max-height:120px;line-height:1.5;"></textarea>
     <button class="cs-send" onclick="csSend()">&#8593;</button>
   </div>
+</div>
+
+<!-- LANDSCAPE ROTATION WARNING — phone-only portrait lock (CSS-driven via media query) -->
+<div id="rotate-warning" aria-hidden="true">
+  <svg class="rw-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="2" width="14" height="20" rx="2"/>
+    <path d="M12 18h.01"/>
+  </svg>
+  <div class="rw-title">Please rotate your phone</div>
+  <div class="rw-subtitle">TRAKR is designed for portrait mode</div>
 </div>
 
 </body>
