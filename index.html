@@ -26,10 +26,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .hero p { font-size: 12px; color: #555; margin-top: 4px; }
 
 /* LAYOUT */
-.app-body { display: flex; flex: 1; overflow: hidden; max-width: 1100px; margin: 0 auto; width: 100%; }
+.app-body { display: flex; flex: 1; overflow: hidden; width: 100%; }
 
 /* SIDEBAR */
-.sidebar { width: 171px; flex-shrink: 0; background: #1a1a1a; border-right: 1px solid #2a2a2a; padding: 16px 8px 0; display: flex; flex-direction: column; overflow-y: hidden; }
+.sidebar { width: 220px; flex-shrink: 0; background: #1a1a1a; border-right: 1px solid #2a2a2a; padding: 16px 8px 0; display: flex; flex-direction: column; overflow-y: hidden; }
 .sb-nav-items { flex: 1; overflow-y: auto; }
 .sb-group-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #444; padding: 6px 10px 4px; }
 .sb-tab { padding: 9px 12px; border-radius: 7px; font-size: 13px; font-weight: 400; cursor: pointer; color: #d0d0d0; transition: all 0.12s; margin-bottom: 1px; }
@@ -47,7 +47,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .sb-settings-item:hover { background: #1e1e1e; color: #bbb; border-color: #2a2a2a; }
 
 /* MAIN CONTENT */
-.main { flex: 1; overflow-y: auto; padding: 20px 20px 40px; max-width: 1280px; }
+.main { flex: 1; overflow-y: auto; padding: 20px 16px 40px; display: flex; justify-content: center; }
+.main > * { width: 100%; max-width: 760px; }
 
 /* MACRO DASHBOARD */
 .macro-section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #444; margin: 0 0 8px; }
@@ -369,6 +370,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   .sb-tab { font-size: 12px; padding: 8px 10px; }
   .macro-val { font-size: 15px; }
   #dash-training-val { font-size: 13px; }
+
+  /* Dashboard restructure: training+expenditure+longevity card on the left,
+     6 square-ish tiles on the right, macro bar strip below tiles */
+  .dash-grid { display: grid; grid-template-columns: 2.4fr 1fr 1fr 1fr; grid-template-rows: 95px 95px auto; gap: 10px; margin-bottom: 14px; }
+  .dash-train { grid-row: 1 / span 3; grid-column: 1; background: #141414; border: 1px solid #2d2000; border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; }
+  .dash-train-name { font-size: 18px; font-weight: 700; color: #f5a623; margin-bottom: 1px; }
+  .dash-train-sub { font-size: 10px; color: #888; margin-bottom: 10px; }
+  .dash-train-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+  .dash-train-list { list-style: none; padding: 0; margin: 0 0 4px; }
+  .dash-train-list li { font-size: 11px; color: #ddd; padding: 3px 0; border-bottom: 1px solid #1a1a1a; }
+  .dash-train-list li::before { content: '·'; color: #f5a623; margin-right: 5px; }
+  .dash-train-list li:last-child { border-bottom: none; }
+  .dash-train-divider { height: 1px; background: #2a2a2a; margin: 10px 0 8px; }
+  .dash-train-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #888; border-bottom: 1px solid #1a1a1a; }
+  .dash-train-row:last-child { border-bottom: none; }
+  .dash-train-row b { color: #ddd; font-weight: 600; }
+
+  .dash-tile { background: #1a1a1a; border: 1px solid #252525; border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .dash-tile-val { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .dash-tile-lbl { font-size: 10px; color: #888; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+
+  .dash-macro { grid-row: 3; grid-column: 2 / span 3; background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
+  .dash-macro-lbl { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .dash-mb-row { display: grid; grid-template-columns: 56px 1fr 115px; align-items: center; gap: 10px; padding: 4px 0; font-size: 11px; }
+  .dash-mb-row .dash-mb-val { white-space: nowrap; }
+  .dash-mb-label { font-weight: 600; }
+  .dash-mb-track { height: 6px; background: #1e1e1e; border-radius: 3px; overflow: hidden; }
+  .dash-mb-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+  .dash-mb-val { color: #888; text-align: right; font-size: 10px; }
+  .dash-mb-val b { color: #ddd; font-weight: 600; }
+  .dash-macro-status { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1e1e1e; font-size: 11px; color: #888; text-align: center; }
+  .dash-macro-status b { color: #f5a623; font-weight: 600; }
   .coach-split { grid-template-columns: 1fr; }
   .fl-input-row { grid-template-columns: 1fr 1fr 1fr; }
   .fl-input-row .fl-input:first-child { grid-column: span 3; }
@@ -442,30 +475,44 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
         <div class="macro-section-label">Overview — Today</div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
-        <div class="macro-card"><div class="macro-val" style="color:#f5a623;" id="dash-training-val">—</div><div class="macro-lbl" id="dash-training-lbl">Training</div></div>
-        <div class="macro-card"><div class="macro-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="macro-lbl">Cal Logged</div></div>
-        <div class="macro-card"><div class="macro-val" style="color:#e05050;" id="dash-net-val">—</div><div class="macro-lbl">Net Cal Burned</div></div>
-        <div class="macro-card"><div class="macro-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="macro-lbl">Steps</div></div>
-        <div class="macro-card"><div class="macro-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="macro-lbl">Water (oz)</div></div>
-        <div class="macro-card"><div class="macro-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="macro-lbl">Sleep Score</div></div>
-      </div>
-
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <div style="flex:1;background:#141414;border:1px solid #222;border-radius:14px;padding:12px 14px;">
-          <div class="macro-section-label" style="margin-bottom:8px;">Macro Progress</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><span style="font-size:10px;color:#5aabff;width:48px;">Protein</span><div style="flex:1;background:#1e1e1e;border-radius:3px;height:5px;overflow:hidden;"><div id="dash-p-bar" style="height:100%;border-radius:3px;background:#5aabff;width:0%;"></div></div><span style="font-size:10px;color:#444;margin-left:4px;width:40px;text-align:right;" id="dash-p-num">0g</span></div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><span style="font-size:10px;color:#f5a623;width:48px;">Carbs</span><div style="flex:1;background:#1e1e1e;border-radius:3px;height:5px;overflow:hidden;"><div id="dash-c-bar" style="height:100%;border-radius:3px;background:#f5a623;width:0%;"></div></div><span style="font-size:10px;color:#444;margin-left:4px;width:40px;text-align:right;" id="dash-c-num">0g</span></div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><span style="font-size:10px;color:#a07dd9;width:48px;">Fat</span><div style="flex:1;background:#1e1e1e;border-radius:3px;height:5px;overflow:hidden;"><div id="dash-f-bar" style="height:100%;border-radius:3px;background:#a07dd9;width:0%;"></div></div><span style="font-size:10px;color:#444;margin-left:4px;width:40px;text-align:right;" id="dash-f-num">0g</span></div>
-          <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:10px;color:#4caf7d;width:48px;">Calories</span><div style="flex:1;background:#1e1e1e;border-radius:3px;height:5px;overflow:hidden;"><div id="dash-cal-bar2" style="height:100%;border-radius:3px;background:#4caf7d;width:0%;"></div></div><span style="font-size:10px;color:#444;margin-left:4px;width:40px;text-align:right;" id="dash-cal-num2">0</span></div>
+      <div class="dash-grid">
+        <!-- Training/Expenditure/Longevity card spans full grid height on the left -->
+        <div class="dash-train">
+          <div class="dash-train-name" id="dash-train-name">—</div>
+          <div class="dash-train-sub" id="dash-train-sub">—</div>
+          <div class="dash-train-lbl">Today's Lifts</div>
+          <ul class="dash-train-list" id="dash-train-lifts"></ul>
+          <div class="dash-train-divider"></div>
+          <div class="dash-train-lbl">Expenditure</div>
+          <div class="dash-train-row"><span>Training</span><b style="color:#f5a623;" id="exp-training">—</b></div>
+          <div class="dash-train-row"><span>Steps</span><b id="exp-steps">—</b></div>
+          <div class="dash-train-row"><span>Cal burned</span><b id="exp-burned">—</b></div>
+          <div class="dash-train-row"><span>Net cal burned</span><b id="exp-net">—</b></div>
+          <div class="dash-train-divider"></div>
+          <div class="dash-train-lbl">Longevity</div>
+          <div class="dash-train-row"><span>Readiness</span><b id="dash-readiness-val">—</b></div>
+          <div class="dash-train-row"><span>HRV</span><b id="dash-hrv-val">—</b></div>
+          <div class="dash-train-row"><span>VO₂ max</span><b id="dash-vo2-val">—</b></div>
+          <!-- Hidden mirror of the legacy training-name field so dashRefresh code that
+               targets dash-training-val + .nextElementSibling keeps working. -->
+          <span id="dash-training-val" style="display:none">—</span><span id="dash-training-lbl" style="display:none">Training</span>
         </div>
-        <div style="flex:1;background:#141414;border:1px solid #222;border-radius:14px;padding:12px 14px;">
-          <div class="macro-section-label" style="margin-bottom:10px;">Expenditure</div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1c1c1c;font-size:11px;"><span style="color:#555;">Training</span><span style="color:#f5a623;font-weight:500;" id="exp-training">—</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1c1c1c;font-size:11px;"><span style="color:#555;">Steps</span><span style="color:#aaa;" id="exp-steps">—</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1c1c1c;font-size:11px;"><span style="color:#555;">Steady state</span><span style="color:#aaa;">30 min</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1c1c1c;font-size:11px;"><span style="color:#555;">Cal burned</span><span style="color:#f5a623;font-weight:500;" id="exp-burned">—</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:11px;"><span style="color:#555;font-weight:500;">Net cal burned</span><span style="font-weight:600;" id="exp-net">—</span></div>
+        <!-- 6 square-ish tiles, top row -->
+        <div class="dash-tile"><div class="dash-tile-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="dash-tile-lbl">Cal Logged</div></div>
+        <div class="dash-tile"><div class="dash-tile-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="dash-tile-lbl">Steps</div></div>
+        <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Cal Burned</div></div>
+        <!-- bottom row -->
+        <div class="dash-tile"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div></div>
+        <div class="dash-tile"><div class="dash-tile-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="dash-tile-lbl">Water (oz)</div></div>
+        <div class="dash-tile"><div class="dash-tile-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
+        <!-- Macro Progress strip below tiles, spans the 3 tile columns -->
+        <div class="dash-macro">
+          <div class="dash-macro-lbl">Macro Progress</div>
+          <div class="dash-mb-row"><span class="dash-mb-label" style="color:#5aabff;">Protein</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-p-bar" style="background:#5aabff;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-p-num">0g</b> · <span id="dash-p-pct">0%</span></span></div>
+          <div class="dash-mb-row"><span class="dash-mb-label" style="color:#f5a623;">Carbs</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-c-bar" style="background:#f5a623;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-c-num">0g</b> · <span id="dash-c-pct">0%</span></span></div>
+          <div class="dash-mb-row"><span class="dash-mb-label" style="color:#a07dd9;">Fat</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-f-bar" style="background:#a07dd9;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-f-num">0g</b> · <span id="dash-f-pct">0%</span></span></div>
+          <div class="dash-mb-row"><span class="dash-mb-label" style="color:#4caf7d;">Calories</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-cal-bar2" style="background:#4caf7d;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-cal-num2">0</b> · <span id="dash-cal-pct">0%</span></span></div>
+          <div class="dash-macro-status" id="dash-macro-status">—</div>
         </div>
       </div>
 
@@ -577,6 +624,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Readiness (0–100)</div><input id="oura-readiness" type="number" min="0" max="100" placeholder="78" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Steps</div><input id="oura-steps" type="number" min="0" max="50000" placeholder="7240" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setSteps(this.value,'user')"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Cal Burned (total)</div><input id="oura-calexp" type="number" min="0" max="5000" placeholder="2840" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setCalExp(this.value,'user')"></div>
+          <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">VO₂ max</div><input id="oura-vo2" type="number" min="0" max="100" step="0.1" placeholder="47.2" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="vo2Update()"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Bedtime</div><input id="oura-bed" type="text" placeholder="10:52 PM" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
@@ -1723,14 +1771,15 @@ function getTodaySplit() {
   return flAutoSplit(new Date());
 }
 
-// Single source for split → focus/exercises mapping. Used by coachBuildContext.
+// Single source for split → focus/exercises mapping. Used by coachBuildContext + dashboard.
+// topLifts is the short bulleted summary shown on the dashboard's training card.
 var SPLIT_INFO = {
-  'Pull Day 1': {focus:'Heavy Back',        detail:'barbell rows, deadlifts, lat pulldowns, chest-supported rows, pullups'},
-  'Push Day 1': {focus:'Heavy Chest',       detail:'incline DB press, machine chest press, pec dec, cable lateral raises'},
-  'Legs':       {focus:'Heavy Legs',        detail:'leg press, smith machine squats or hack squats, walking lunges, hamstring curls'},
-  'Pull Day 2': {focus:'Medium Back',       detail:'lat pulldowns, seated cable rows, T-bar row, bent over DB row, pullups'},
-  'Push Day 2': {focus:'Medium Shoulders',  detail:'heavy shoulder press, DB lateral raises with drop sets, cable laterals, smith machine incline press'},
-  'Rest':       {focus:'Rest Day',          detail:'recovery, walk, hit nutrition targets'}
+  'Pull Day 1': {focus:'Heavy Back',        detail:'barbell rows, deadlifts, lat pulldowns, chest-supported rows, pullups',                              topLifts:['Standing Cable Pullover','Single Arm Lat Pulldown','Bent Over Row','Chest Supported Row','Deadlifts']},
+  'Push Day 1': {focus:'Heavy Chest',       detail:'incline DB press, machine chest press, pec dec, cable lateral raises',                                topLifts:['Standing Cable Chest Press','Incline Dumbbell Press','Incline Machine Press','Pec Deck Flies','Cable Lateral Raises']},
+  'Legs':       {focus:'Heavy Legs',        detail:'leg press, smith machine squats or hack squats, walking lunges, hamstring curls',                     topLifts:['Seated Hamstring Curls','Adductors','Hack or Smith Squats','Leg Press','Walking Lunges']},
+  'Pull Day 2': {focus:'Medium Back',       detail:'lat pulldowns, seated cable rows, T-bar row, bent over DB row, pullups',                              topLifts:['Traditional Lat Pulldown','Seated Wide Grip Row','Chest Supported T-Bar Row','Bent Over DB Row','Bodyweight Pullups']},
+  'Push Day 2': {focus:'Medium Shoulders',  detail:'heavy shoulder press, DB lateral raises with drop sets, cable laterals, smith machine incline press', topLifts:['Reverse Pec Dec — Rear Delt','Seated Shoulder Press','DB Lateral Raise','Incline Chest Press','Cable Lateral Raise + Face Pulls']},
+  'Rest':       {focus:'Rest Day',          detail:'recovery, walk, hit nutrition targets',                                                                topLifts:[]}
 };
 
 function flGetDayData(d) {
@@ -3057,6 +3106,24 @@ function ouraUpdate() {
   dbSaveDay(_sessionDate, { oura: {date:_sessionDate,score:score,total:total,eff:eff,deep:deep,rem:rem,light:light,bed:bed,wake:wake,hrv:hrv,readiness:readiness,steps:steps,calexp:calexp} });
 }
 
+// VO2 max — slow-moving longevity metric. Persisted to localStorage only for
+// now (user_settings doesn't have a vo2_max column yet; add migration to enable
+// cross-device sync later).
+function vo2Update() {
+  var el = document.getElementById('oura-vo2');
+  if (!el) return;
+  var v = parseFloat(el.value) || 0;
+  try { localStorage.setItem('jr_vo2_max', v); } catch(e) {}
+  try { dashRefresh(); } catch(e) {}
+}
+function vo2Load() {
+  try {
+    var v = localStorage.getItem('jr_vo2_max');
+    var el = document.getElementById('oura-vo2');
+    if (el && v) el.value = v;
+  } catch(e) {}
+}
+
 function weightUpdate() {
   var wi = document.getElementById('dash-weight-input');
   var gi = document.getElementById('dash-goal-input');
@@ -3084,6 +3151,8 @@ function weightUpdate() {
   } else if(statusBar) { statusBar.style.display = 'none'; }
   try { localStorage.setItem('jr_weight', JSON.stringify({cur, goal})); } catch(e) {}
   dbSaveSettings({ weight: cur, goal_weight: goal });
+  // Refresh the dashboard so the new Body Weight tile updates live
+  try { dashRefresh(); } catch(e) {}
 }
 
 function weightLoad() {
@@ -3597,23 +3666,73 @@ function csQuick(prompt) {
 function dashRefresh() {
   var t = flTotals();
   var tgt = flTargets[flDay];
+  // Top tiles
   document.getElementById('dash-cal-val').textContent = Math.round(t.cal) || '—';
   document.getElementById('dash-water-val').textContent = Math.round(waterOz*10)/10 || '—';
-  var pp = tgt.p>0?Math.min(Math.round((t.p/tgt.p)*100),150):0;
-  var cp = tgt.c>0?Math.min(Math.round((t.c/tgt.c)*100),150):0;
-  var fp = tgt.f>0?Math.min(Math.round((t.f/tgt.f)*100),150):0;
+  // Macro bars + percentages (cap fill at 100% but show the real % in the label so over-target is visible)
+  var pp = tgt.p>0 ? Math.round((t.p/tgt.p)*100) : 0;
+  var cp = tgt.c>0 ? Math.round((t.c/tgt.c)*100) : 0;
+  var fp = tgt.f>0 ? Math.round((t.f/tgt.f)*100) : 0;
+  var calp = tgt.cal>0 ? Math.round((t.cal/tgt.cal)*100) : 0;
   document.getElementById('dash-p-bar').style.width = Math.min(pp,100)+'%';
   document.getElementById('dash-c-bar').style.width = Math.min(cp,100)+'%';
   document.getElementById('dash-f-bar').style.width = Math.min(fp,100)+'%';
-  document.getElementById('dash-p-num').textContent = Math.round(t.p)+'g';
-  document.getElementById('dash-c-num').textContent = Math.round(t.c)+'g';
-  document.getElementById('dash-f-num').textContent = Math.round(t.f)+'g';
+  document.getElementById('dash-p-num').textContent = Math.round(t.p) + ' / ' + tgt.p + 'g';
+  document.getElementById('dash-c-num').textContent = Math.round(t.c) + ' / ' + tgt.c + 'g';
+  document.getElementById('dash-f-num').textContent = Math.round(t.f) + ' / ' + tgt.f + 'g';
+  var pPctEl = document.getElementById('dash-p-pct'); if (pPctEl) pPctEl.textContent = pp + '%';
+  var cPctEl = document.getElementById('dash-c-pct'); if (cPctEl) cPctEl.textContent = cp + '%';
+  var fPctEl = document.getElementById('dash-f-pct'); if (fPctEl) fPctEl.textContent = fp + '%';
+  var calPctEl = document.getElementById('dash-cal-pct'); if (calPctEl) calPctEl.textContent = calp + '%';
   var calBar2 = document.getElementById('dash-cal-bar2');
   var calNum2 = document.getElementById('dash-cal-num2');
-  if(calBar2) calBar2.style.width = Math.min(Math.round((t.cal/tgt.cal)*100),100)+'%';
-  if(calNum2) calNum2.textContent = Math.round(t.cal);
+  if(calBar2) calBar2.style.width = Math.min(calp,100)+'%';
+  if(calNum2) calNum2.textContent = Math.round(t.cal) + ' / ' + tgt.cal;
+  // Status hint: cal to go (or over)
+  var statusEl = document.getElementById('dash-macro-status');
+  if (statusEl) {
+    var diff = (tgt.cal || 0) - Math.round(t.cal);
+    if (!t.cal) {
+      statusEl.innerHTML = '<b>' + (tgt.cal||0) + ' cal</b> target for today';
+    } else if (diff > 0) {
+      statusEl.innerHTML = '<b>' + diff + ' cal</b> to reach today’s target';
+    } else if (diff < 0) {
+      statusEl.innerHTML = '<b style="color:#e05050;">' + Math.abs(diff) + ' cal</b> over today’s target';
+    } else {
+      statusEl.innerHTML = '<b style="color:#4caf7d;">Target hit</b>';
+    }
+  }
 
   var todaySplit = getTodaySplit();
+  var info = SPLIT_INFO[todaySplit] || SPLIT_INFO['Rest'];
+  var isRest = todaySplit === 'Rest';
+  // Training card name + focus + lifts
+  var nameEl = document.getElementById('dash-train-name');
+  var subEl = document.getElementById('dash-train-sub');
+  var liftsEl = document.getElementById('dash-train-lifts');
+  if (nameEl) {
+    nameEl.textContent = todaySplit;
+    nameEl.style.color = isRest ? '#888' : '#f5a623';
+  }
+  if (subEl) subEl.textContent = (isRest ? 'Rest Day' : 'Training Day') + ' · ' + info.focus;
+  if (liftsEl) {
+    var lifts = info.topLifts || [];
+    if (lifts.length === 0) {
+      liftsEl.innerHTML = '<li style="color:#888;border-bottom:none;">Recovery, walk, hit nutrition</li>';
+    } else {
+      liftsEl.innerHTML = lifts.map(function(l){ return '<li>' + l + '</li>'; }).join('');
+    }
+  }
+  // Legacy mirror so any other code reading dash-training-val keeps working
+  var legacyTrain = document.getElementById('dash-training-val');
+  if (legacyTrain) {
+    legacyTrain.textContent = todaySplit;
+    legacyTrain.style.color = isRest ? '#555' : '#f5a623';
+  }
+  var legacyLbl = document.getElementById('dash-training-lbl');
+  if (legacyLbl) legacyLbl.textContent = isRest ? 'Rest Day' : 'Training Day';
+
+  // Expenditure section
   var expTraining = document.getElementById('exp-training');
   var expSteps = document.getElementById('exp-steps');
   var expBurned = document.getElementById('exp-burned');
@@ -3621,16 +3740,26 @@ function dashRefresh() {
   if(expTraining) expTraining.textContent = todaySplit;
   var stepsVal = parseFloat((document.getElementById('oura-steps')||{}).value) || 0;
   var calexpVal = parseFloat((document.getElementById('oura-calexp')||{}).value) || 0;
-  if(expSteps) expSteps.textContent = stepsVal ? stepsVal.toLocaleString() + ' steps' : '—';
-  if(expBurned) expBurned.textContent = calexpVal ? calexpVal.toLocaleString() + ' cal' : '—';
+  if(expSteps) expSteps.textContent = stepsVal ? stepsVal.toLocaleString() : '—';
+  if(expBurned) { expBurned.textContent = calexpVal ? calexpVal.toLocaleString() + ' cal' : '—'; expBurned.style.color = calexpVal ? '#f5a623' : '#888'; }
+
+  // Top tiles dependent on Oura data
   var sleepScoreVal = parseFloat((document.getElementById('oura-score')||{}).value) || 0;
-  var dashStepsEl = document.getElementById('dash-weight-val');
+  var dashStepsEl = document.getElementById('dash-weight-val'); // legacy id, used for Steps tile
   var dashSleepEl = document.getElementById('dash-goal-val');
   if(dashStepsEl) dashStepsEl.textContent = stepsVal ? stepsVal.toLocaleString() : '—';
   if(dashSleepEl) {
     dashSleepEl.textContent = sleepScoreVal || '—';
     if(sleepScoreVal) dashSleepEl.style.color = sleepScoreVal >= 85 ? '#4caf7d' : sleepScoreVal >= 70 ? '#f5a623' : '#e05050';
   }
+  // Body Weight tile pulls from existing weight input
+  var bwInput = document.getElementById('dash-weight-input');
+  var bwTile = document.getElementById('dash-bw-val');
+  if (bwTile) {
+    var bwVal = bwInput ? parseFloat(bwInput.value) : 0;
+    bwTile.textContent = bwVal ? bwVal : '—';
+  }
+  // Net Cal Burned (consumed - burned, signed, +green / -red)
   var netStat = document.getElementById('dash-net-val');
   if(calexpVal) {
     var net = Math.round((t.cal || 0) - calexpVal);
@@ -3641,16 +3770,29 @@ function dashRefresh() {
     if(expNet) { expNet.textContent = '—'; expNet.style.color = '#aaa'; }
     if(netStat) { netStat.textContent = '—'; netStat.style.color = '#aaa'; }
   }
+
+  // Longevity section: readiness, HRV, VO2 max
+  var readinessVal = parseFloat((document.getElementById('oura-readiness')||{}).value) || 0;
+  var hrvVal = parseFloat((document.getElementById('oura-hrv')||{}).value) || 0;
+  var vo2Val = parseFloat((document.getElementById('oura-vo2')||{}).value) || 0;
+  var rEl = document.getElementById('dash-readiness-val');
+  var hEl = document.getElementById('dash-hrv-val');
+  var vEl = document.getElementById('dash-vo2-val');
+  if (rEl) {
+    rEl.textContent = readinessVal || '—';
+    rEl.style.color = readinessVal >= 85 ? '#4caf7d' : readinessVal >= 70 ? '#f5a623' : readinessVal > 0 ? '#e05050' : '#888';
+  }
+  if (hEl) hEl.textContent = hrvVal ? hrvVal + ' ms' : '—';
+  if (vEl) {
+    vEl.textContent = vo2Val ? vo2Val.toFixed(1) : '—';
+    vEl.style.color = vo2Val >= 45 ? '#4caf7d' : vo2Val >= 35 ? '#f5a623' : vo2Val > 0 ? '#e05050' : '#888';
+  }
+
   var journeyStart = new Date('2026-04-10');
   var today = new Date();
   today.setHours(0,0,0,0);
   journeyStart.setHours(0,0,0,0);
   var dayNum = Math.floor((today - journeyStart) / 86400000);
-  var splitDay = getTodaySplit();
-  var trainingEl = document.getElementById('dash-training-val');
-  trainingEl.textContent = splitDay;
-  trainingEl.style.color = splitDay === 'Rest' ? '#555' : '#f5a623';
-  document.getElementById('dash-training-val').nextElementSibling.textContent = splitDay === 'Rest' ? 'Rest Day' : 'Training Day';
   dashUpdateRings();
 
   var today2 = new Date(); today2.setHours(0,0,0,0);
@@ -3768,6 +3910,7 @@ function waterLoad() {
   waterRender();
 }
 waterLoad();
+vo2Load();
 ouraCallback();
 
 /* Establish a clean baseline before any per-day data loads. */
