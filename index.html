@@ -2624,7 +2624,7 @@ function processLogActions(reply) {
           if (el) { el.value = val; if (p.update) p.update(); }
         }
         confirmations.push(p.label + ': ' + val + p.unit);
-      } catch(e) {}
+      } catch(e) { console.error('[LOG action] failed to apply', match[0], e); }
     });
     if (matches.length > 0) cleaned = cleaned.replace(p.rx, '').trim();
   });
@@ -2651,6 +2651,10 @@ function processLogActions(reply) {
 
   if (confirmations.length > 0) { try { dashRefresh(); } catch(e) {} }
   return { cleaned: cleaned, confirmations: confirmations };
+}
+
+function _normalizeLogActions(text) {
+  return text.replace(/(LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT)|CLEARDAY)\s*:\s*(?=\{)/g, '$1:');
 }
 
 function stripActionTags(text) {
@@ -2740,6 +2744,7 @@ async function sendCoachMsg() {
     if(typing) typing.remove();
     coachHistory.push({role:'assistant', content: reply});
     dbSaveChatMsg('main', 'assistant', reply);
+    reply = _normalizeLogActions(reply);
 
     // Check for CLEARDAY action first
     var clearResult = processClearDay(reply);
@@ -2955,6 +2960,7 @@ async function briefChatSend() {
     if(typ) typ.remove();
     briefChatHistory.push({role:'assistant', content: reply});
     dbSaveChatMsg('brief', 'assistant', reply);
+    reply = _normalizeLogActions(reply);
     // Process all LOG actions
     var clearResult = processClearDay(reply);
     if(clearResult.cleared) {
@@ -3802,6 +3808,7 @@ async function csSend() {
     var typing = document.getElementById('cs-typing');
     if (typing) typing.remove();
     csHistory.push({role:'assistant', content: reply});
+    reply = _normalizeLogActions(reply);
 
     // Check for CLEARDAY action first
     var clearResult = processClearDay(reply);
