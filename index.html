@@ -2616,7 +2616,7 @@ function coachSystemPrompt(ctx) {
   p += 'When user mentions Move ring or active calories, include: LOGMOVE:{"cal":467} ';
   p += 'When user mentions exercise minutes, include: LOGEXERCISE:{"min":38} ';
   p += 'When user mentions Stand ring or hours standing, include: LOGSTAND:{"hrs":10} ';
-  p += 'When user mentions sleep score, sleep quality, or Oura sleep data, include: LOGSLEEP:{"score":82} ';
+  p += 'When user mentions any Oura Ring data — sleep score, total sleep, deep/REM/light sleep hours, HRV, readiness, VO2 max, bedtime, wake time, or efficiency — include on its own line: LOGOURA:{"score":82,"total":7.4,"deep":1.2,"rem":2.1,"light":3.8,"hrv":45,"readiness":67,"vo2":47.2,"bed":"10:52 PM","wake":"6:18 AM","eff":85} — only include the fields the user actually mentioned. A simple sleep score mention is fine as LOGOURA:{"score":82}. Awake time is never included — it is computed automatically. ';
   p += 'When user mentions their bodyweight or weigh-in (e.g. "I weighed in at 205", "I\'m 198 today"), include: LOGWEIGHT:{"lbs":205} — pounds only. ';
   p += 'When user wants to change today\'s training day (e.g. "change to push day 1", "make today a training day", "switch to rest day"), include on its own line: LOGSPLIT:{"split":"Push Day 1"} — valid values: Push Day 1, Push Day 2, Pull Day 1, Pull Day 2, Legs, Rest. ';
   p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
@@ -2700,17 +2700,48 @@ function processLogActions(reply) {
   });
   if (splitMatches.length > 0) cleaned = cleaned.replace(/LOGSPLIT:\{"split":"[^"]+"\}/g, '').trim();
 
+  // Handle LOGOURA — set multiple Oura fields from a single payload.
+  // Only fields present in the JSON are written; missing fields are left alone
+  // so existing cross-device values aren't clobbered. ouraUpdate() handles the
+  // merge-save against _lastOuraBlob and refreshes all displays.
+  var ouraLogMatches = Array.from(cleaned.matchAll(/LOGOURA:(\{[^}]+\})/g));
+  if (ouraLogMatches.length > 0) {
+    try {
+      var ol = JSON.parse(ouraLogMatches[0][1]);
+      var numFields = { score:'oura-score', total:'oura-total', eff:'oura-eff',
+                        deep:'oura-deep', rem:'oura-rem', light:'oura-light',
+                        hrv:'oura-hrv', readiness:'oura-readiness', vo2:'oura-vo2' };
+      var txtFields = { bed:'oura-bed', wake:'oura-wake' };
+      var logged = [];
+      Object.keys(numFields).forEach(function(f) {
+        if (ol[f] !== undefined) {
+          var el = document.getElementById(numFields[f]);
+          if (el) { el.value = ol[f]; logged.push(f); }
+        }
+      });
+      Object.keys(txtFields).forEach(function(f) {
+        if (ol[f] !== undefined) {
+          var el = document.getElementById(txtFields[f]);
+          if (el) { el.value = ol[f]; logged.push(f); }
+        }
+      });
+      ouraUpdate();
+      if (logged.length > 0) confirmations.push('Oura: ' + logged.join(', '));
+    } catch(e) { console.error('[LOGOURA] failed', e); }
+    cleaned = cleaned.replace(/LOGOURA:\{[^}]+\}/g, '').trim();
+  }
+
   if (confirmations.length > 0) { try { dashRefresh(); } catch(e) {} }
   return { cleaned: cleaned, confirmations: confirmations };
 }
 
 function _normalizeLogActions(text) {
-  return text.replace(/(LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT)|CLEARDAY)\s*:\s*(?=\{)/g, '$1:');
+  return text.replace(/(LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT|OURA)|CLEARDAY)\s*:\s*(?=\{)/g, '$1:');
 }
 
 function stripActionTags(text) {
   return text
-    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT)\s*:\s*\{[^}]*\}/g, '')
+    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT|OURA)\s*:\s*\{[^}]*\}/g, '')
     .replace(/[ \t]+$/gm, '')
     .replace(/\n{2,}/g, '\n')
     .replace(/  +/g, ' ')
