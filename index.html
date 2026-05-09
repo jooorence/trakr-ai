@@ -375,6 +375,32 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .fl-reset { width: 100%; padding: 9px; background: #1a1a1a; color: #444; border: 1px solid #2a2a2a; border-radius: 8px; font-size: 12px; cursor: pointer; text-align: center; margin-bottom: 10px; }
 .fl-iifym { font-size: 11px; color: #333; text-align: center; padding: 4px 0 0; font-style: italic; }
 
+/* Slim water strip — Option D */
+.fl-water-strip { background: #141414; border: 1px solid #222; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.fl-water-icon { font-size: 16px; }
+.fl-water-num { font-size: 14px; font-weight: 700; color: #5aabff; flex-shrink: 0; }
+.fl-water-target { font-size: 10px; color: #444; flex-shrink: 0; }
+.fl-water-bar-track { flex: 1; background: #1e1e1e; height: 5px; border-radius: 3px; overflow: hidden; min-width: 30px; }
+.fl-water-bar-fill { height: 100%; background: #1a3a5c; border-radius: 3px; transition: width 0.3s; }
+.fl-water-btn { background: #1a1a2d; border: 1px solid #2a2a4a; border-radius: 6px; padding: 5px 9px; font-size: 11px; font-weight: 600; color: #5aabff; flex-shrink: 0; cursor: pointer; }
+.fl-water-btn:active { background: #2a2a4a; }
+
+/* Trak Your Food hero card — Option D */
+.fl-hero { background: linear-gradient(135deg, #0d2a1a 0%, #122e1e 100%); border: 1px solid #1f5a39; border-radius: 16px; padding: 16px 14px 14px; margin-bottom: 14px; box-shadow: 0 0 20px -6px rgba(76,175,125,0.25), 0 8px 24px -10px rgba(0,0,0,0.5); }
+.fl-hero-title { font-size: 13px; font-weight: 700; color: #7be0a8; letter-spacing: 0.05em; margin-bottom: 10px; }
+.fl-hero-input-row { display: flex; gap: 6px; margin-bottom: 12px; }
+.fl-hero-input { flex: 1; background: #0a1a12; border: 1px solid #1f5a39; border-radius: 10px; padding: 10px 12px; font-size: 14px; color: #ddd; }
+.fl-hero-input::placeholder { color: #3d6b50; }
+.fl-hero-send { width: 40px; height: 40px; border-radius: 10px; background: #1f5a39; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; cursor: pointer; }
+.fl-hero-send:active { background: #2a7a4f; }
+.fl-hero-status { font-size: 11px; color: #3d6b50; font-style: italic; text-align: center; margin-bottom: 12px; min-height: 14px; }
+.fl-hero-divider { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #3d6b50; text-align: center; margin-bottom: 8px; font-weight: 600; }
+.fl-chip-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.fl-chip { background: rgba(31,90,57,0.25); border: 1px solid rgba(31,90,57,0.55); border-radius: 10px; padding: 8px 4px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
+.fl-chip:active { background: rgba(31,90,57,0.45); }
+.fl-chip-emoji { font-size: 20px; line-height: 1; }
+.fl-chip-name { font-size: 9px; color: #9bd4b1; font-weight: 600; line-height: 1.1; }
+
 /* HEY COACH PANEL */
 .coach-panel { border-top: 2px solid #40ccbb; background: #080f0e; padding: 16px 20px; flex-shrink: 0; display: none; min-height: 120px; }
 .coach-panel.open { display: block; }
@@ -1068,20 +1094,6 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
         <div id="fl-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
       </div>
 
-      <!-- TRAINING SELECTOR -->
-      <div style="background:#141414;border:1px solid #222;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
-        <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#444;margin-bottom:8px;">Today&#39;s Training</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="fl-split-grid">
-          <div onclick="flSetSplit('Pull Day 1')" class="fl-split-opt" id="split-pd1">Pull Day 1</div>
-          <div onclick="flSetSplit('Push Day 1')" class="fl-split-opt" id="split-pu1">Push Day 1</div>
-          <div onclick="flSetSplit('Legs')" class="fl-split-opt" id="split-legs">Legs</div>
-          <div onclick="flSetSplit('Pull Day 2')" class="fl-split-opt" id="split-pd2">Pull Day 2</div>
-          <div onclick="flSetSplit('Push Day 2')" class="fl-split-opt" id="split-pu2">Push Day 2</div>
-          <div onclick="flSetSplit('Rest')" class="fl-split-opt" id="split-rest-2">Rest</div>
-        </div>
-        <div style="font-size:10px;color:#444;text-align:center;margin-top:6px;">Auto-filled by day of week · tap to override</div>
-      </div>
-
       <div class="fl-toggle" style="display:none;">
         <div class="fl-btn on" id="fl-td-btn">Training Day</div>
         <div class="fl-btn" id="fl-rd-btn">Rest Day</div>
@@ -1121,57 +1133,43 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
         </div>
       </div>
 
-      <div id="fl-water-inline" style="background:#141414;border:1px solid #222;border-radius:14px;padding:12px 16px;margin-bottom:14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <span style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#444;">Water Intake</span>
-          <span style="font-size:18px;font-weight:700;color:#5aabff;" id="water-oz">0</span>
-          <span style="font-size:11px;color:#333;">/ 135–169 oz</span>
-        </div>
-        <div style="background:#1e1e1e;border-radius:4px;height:7px;overflow:hidden;margin-bottom:8px;">
-          <div id="water-bar-min" style="height:100%;border-radius:4px;background:#1a3a5c;transition:width 0.3s;width:0%;"></div>
-        </div>
-        <div style="display:flex;gap:4px;margin-bottom:6px;">
-          <div onclick="waterAddJug()" style="flex:1;background:#1a1a2d;border:1px solid #2a2a4a;border-radius:7px;padding:7px 6px;text-align:center;cursor:pointer;">
-            <div style="font-size:12px;font-weight:600;color:#5aabff;">+ Jug</div>
-            <div style="font-size:10px;color:#444;">70 oz · <span id="water-jug-count" style="color:#5aabff;">0</span></div>
-          </div>
-          <div onclick="waterAddBottle()" style="flex:1;background:#1a1a2d;border:1px solid #2a2a4a;border-radius:7px;padding:7px 6px;text-align:center;cursor:pointer;">
-            <div style="font-size:12px;font-weight:600;color:#5aabff;">+ Bottle</div>
-            <div style="font-size:10px;color:#444;">16.9 oz · <span id="water-bottle-count" style="color:#5aabff;">0</span></div>
-          </div>
-          <div onclick="waterReset()" style="flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:7px;padding:7px 6px;text-align:center;cursor:pointer;">
-            <div style="font-size:12px;color:#444;">Reset</div>
-          </div>
-        </div>
-        <div id="water-status-inline" style="font-size:11px;color:#444;font-style:italic;text-align:center;">Tap to log</div>
+      <!-- WATER (slim strip — Option D) -->
+      <div class="fl-water-strip">
+        <span class="fl-water-icon">💧</span>
+        <span class="fl-water-num"><span id="water-oz">0</span> oz</span>
+        <span class="fl-water-target">/ 169</span>
+        <div class="fl-water-bar-track"><div class="fl-water-bar-fill" id="water-bar-min" style="width:0%;"></div></div>
+        <div class="fl-water-btn" onclick="waterAddJug()">+ Jug</div>
+        <div class="fl-water-btn" onclick="waterAddBottle()">+ Bot</div>
       </div>
-      <div class="fl-section">Quick-Add Meals</div>
-      <div id="fl-quick-td" class="fl-quick-grid">
-        <div class="fl-quick" onclick="flAdd('Morning Coffee',135,0.5,20.5,7.25)"><div class="fl-quick-name">Morning Coffee</div><div class="fl-quick-macros">135 cal · 0.5P · 20.5C · 7.25F</div></div>
-        <div class="fl-quick" onclick="flAddWater(16.9,'Gut Drink',35,0,4,0)"><div class="fl-quick-name">Gut Drink</div><div class="fl-quick-macros">35 cal · 0P · 4C · 0F · +16.9 oz</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 1 — Breakfast',565,43,69,11)"><div class="fl-quick-name">Meal 1 — Breakfast</div><div class="fl-quick-macros">565 cal · 43P · 69C · 11F</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 2 — Lunch',397,36,51,5)"><div class="fl-quick-name">Meal 2 — Lunch</div><div class="fl-quick-macros">397 cal · 36P · 51C · 5F</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 3 — Midday',277,33,25,9)"><div class="fl-quick-name">Meal 3 — Midday</div><div class="fl-quick-macros">277 cal · 33P · 25C · 9F</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 4 — Pre Workout',458,37,49,13)"><div class="fl-quick-name">Meal 4 — Pre Workout</div><div class="fl-quick-macros">458 cal · 37P · 49C · 13F</div></div>
-        <div class="fl-quick" onclick="flAddWater(16.9,'Intra Workout',100,0,25,0)"><div class="fl-quick-name">Intra Workout</div><div class="fl-quick-macros">100 cal · 0P · 25C · 0F · +16.9 oz</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 5 — Post Workout',430,41,47,9)"><div class="fl-quick-name">Meal 5 — Post Workout</div><div class="fl-quick-macros">430 cal · 41P · 47C · 9F</div></div>
-      </div>
-      <div id="fl-quick-rd" class="fl-quick-grid" style="display:none">
-        <div class="fl-quick" onclick="flAdd('Morning Coffee',135,0.5,20.5,7.25)"><div class="fl-quick-name">Morning Coffee</div><div class="fl-quick-macros">135 cal · 0.5P · 20.5C · 7.25F</div></div>
-        <div class="fl-quick" onclick="flAddWater(16.9,'Gut Drink',35,0,4,0)"><div class="fl-quick-name">Gut Drink</div><div class="fl-quick-macros">35 cal · 0P · 4C · 0F · +16.9 oz</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 1 — Breakfast',505,42,54,11)"><div class="fl-quick-name">Meal 1 — Breakfast</div><div class="fl-quick-macros">505 cal · 42P · 54C · 11F</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 2 — Lunch',397,36,51,5)"><div class="fl-quick-name">Meal 2 — Lunch</div><div class="fl-quick-macros">397 cal · 36P · 51C · 5F</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 3 — Midday',226,32,12,9)"><div class="fl-quick-name">Meal 3 — Midday</div><div class="fl-quick-macros">226 cal · 32P · 12C · 9F</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 4 — Afternoon',458,37,49,13)"><div class="fl-quick-name">Meal 4 — Afternoon</div><div class="fl-quick-macros">458 cal · 37P · 49C · 13F</div></div>
-        <div class="fl-quick" onclick="flAdd('Meal 5 — Dinner',500,40,47,17)"><div class="fl-quick-name">Meal 5 — Dinner</div><div class="fl-quick-macros">500 cal · 40P · 47C · 17F</div></div>
-      </div>
-      <div class="fl-section">Trak Your Food</div>
-      <div class="fl-custom">
-        <div style="display:flex;gap:6px;margin-bottom:8px;">
-          <input class="fl-input" id="fl-ai-input" placeholder="I ate a banana, 2 eggs and oatmeal..." style="flex:1;" onkeydown="if(event.key==='Enter')flAIAdd()" />
-          <div class="fl-add-btn" onclick="flAIAdd()" style="width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:8px;font-size:18px;">↑</div>
+      <!-- TRAK YOUR FOOD HERO — Option D (AI input + emoji quick-add chips) -->
+      <div class="fl-hero">
+        <div class="fl-hero-title">Trak Your Food</div>
+        <div class="fl-hero-input-row">
+          <input class="fl-hero-input" id="fl-ai-input" placeholder="I ate a banana, 2 eggs, oatmeal..." onkeydown="if(event.key==='Enter')flAIAdd()" />
+          <div class="fl-hero-send" onclick="flAIAdd()">↑</div>
         </div>
-        <div id="fl-ai-status" style="font-size:11px;color:#444;font-style:italic;min-height:16px;text-align:center;"></div>
+        <div class="fl-hero-status" id="fl-ai-status"></div>
+        <div class="fl-hero-divider">— or quick-add —</div>
+        <div id="fl-quick-td" class="fl-chip-grid">
+          <div class="fl-chip" onclick="flAdd('Morning Coffee',135,0.5,20.5,7.25)"><div class="fl-chip-emoji">☕</div><div class="fl-chip-name">Coffee</div></div>
+          <div class="fl-chip" onclick="flAddWater(16.9,'Gut Drink',35,0,4,0)"><div class="fl-chip-emoji">🥤</div><div class="fl-chip-name">Gut Drink</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 1 — Breakfast',565,43,69,11)"><div class="fl-chip-emoji">🍳</div><div class="fl-chip-name">Breakfast</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 2 — Lunch',397,36,51,5)"><div class="fl-chip-emoji">🥗</div><div class="fl-chip-name">Lunch</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 3 — Midday',277,33,25,9)"><div class="fl-chip-emoji">🍱</div><div class="fl-chip-name">Midday</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 4 — Pre Workout',458,37,49,13)"><div class="fl-chip-emoji">💪</div><div class="fl-chip-name">Pre-WO</div></div>
+          <div class="fl-chip" onclick="flAddWater(16.9,'Intra Workout',100,0,25,0)"><div class="fl-chip-emoji">⚡</div><div class="fl-chip-name">Intra</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 5 — Post Workout',430,41,47,9)"><div class="fl-chip-emoji">🥩</div><div class="fl-chip-name">Post-WO</div></div>
+        </div>
+        <div id="fl-quick-rd" class="fl-chip-grid" style="display:none;">
+          <div class="fl-chip" onclick="flAdd('Morning Coffee',135,0.5,20.5,7.25)"><div class="fl-chip-emoji">☕</div><div class="fl-chip-name">Coffee</div></div>
+          <div class="fl-chip" onclick="flAddWater(16.9,'Gut Drink',35,0,4,0)"><div class="fl-chip-emoji">🥤</div><div class="fl-chip-name">Gut Drink</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 1 — Breakfast',505,42,54,11)"><div class="fl-chip-emoji">🍳</div><div class="fl-chip-name">Breakfast</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 2 — Lunch',397,36,51,5)"><div class="fl-chip-emoji">🥗</div><div class="fl-chip-name">Lunch</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 3 — Midday',226,32,12,9)"><div class="fl-chip-emoji">🍱</div><div class="fl-chip-name">Midday</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 4 — Afternoon',458,37,49,13)"><div class="fl-chip-emoji">🥑</div><div class="fl-chip-name">Afternoon</div></div>
+          <div class="fl-chip" onclick="flAdd('Meal 5 — Dinner',500,40,47,17)"><div class="fl-chip-emoji">🌙</div><div class="fl-chip-name">Dinner</div></div>
+        </div>
       </div>
       <div class="fl-section">Today's Log</div>
       <div class="fl-log" id="fl-log-td">
@@ -1180,7 +1178,6 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
       <div class="fl-log" id="fl-log-rd" style="display:none">
         <div class="fl-empty">Nothing logged yet — tap a meal or add a custom food</div>
       </div>
-      <div class="fl-reset" onclick="flReset()">Reset Day</div>
       <div class="fl-iifym">If it fits your macros — log it, own it, move on.</div>
     </div>
 
@@ -4282,7 +4279,7 @@ function waterRender() {
     bar.style.background = '#1a3a5c';
   }
   var statusEl = document.getElementById('water-status-inline');
-  if(waterOz === 0) {
+  if(!statusEl) {} else if(waterOz === 0) {
     statusEl.textContent = 'Start logging to track intake';
     statusEl.style.color = '#444';
   } else if(waterOz >= idealTarget) {
