@@ -2507,7 +2507,7 @@ function flRenderBars() {
     var s = flStatus(item.val, item.tgt);
     var display = item.val === 0 ? '—' : (item.label === 'Calories' ? Math.round(item.val).toLocaleString() : Math.round(item.val) + 'g');
     return '<div style="background:'+s.bg+';border:1px solid '+s.border+';border-radius:6px;padding:5px 6px;text-align:center;">' +
-      '<div style="font-size:12px;font-weight:700;color:'+s.color+';">'+display+'</div>' +
+      '<div style="font-size:14px;font-weight:700;color:#ddd;">'+display+'</div>' +
       '<div style="font-size:9px;color:#444;margin-top:1px;">'+item.label+'</div>' +
       '</div>';
   }).join('');
