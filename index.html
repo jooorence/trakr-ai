@@ -393,7 +393,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .fl-hero-input::placeholder { color: #3d6b50; }
 .fl-hero-send { width: 40px; height: 40px; border-radius: 10px; background: #1f5a39; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; cursor: pointer; }
 .fl-hero-send:active { background: #2a7a4f; }
-.fl-hero-status { font-size: 11px; color: #3d6b50; font-style: italic; text-align: center; margin-bottom: 12px; min-height: 14px; }
+.fl-hero-status { font-size: 11px; color: #3d6b50; font-style: italic; text-align: center; margin-bottom: 4px; min-height: 0; }
 .fl-hero-divider { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #3d6b50; text-align: center; margin-bottom: 8px; font-weight: 600; }
 .fl-chip-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .fl-chip { background: rgba(31,90,57,0.25); border: 1px solid rgba(31,90,57,0.55); border-radius: 10px; padding: 8px 4px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
@@ -2440,10 +2440,11 @@ function flStatus(val, tgt) {
 function flRenderBars() {
   var t = flTotals();
   var tgt = flTargets[flDay];
-  var tgt2 = flTargets[flDay] || flTargets['td']; document.getElementById('fl-cal-nums').textContent = Math.round(t.cal) + ' / ' + tgt2.cal.toLocaleString();
-  document.getElementById('fl-p-nums').textContent = Math.round(t.p) + 'g / ' + tgt.p + 'g';
-  document.getElementById('fl-c-nums').textContent = Math.round(t.c) + 'g / ' + tgt.c + 'g';
-  document.getElementById('fl-f-nums').textContent = Math.round(t.f) + 'g / ' + tgt.f + 'g';
+  var tgt2 = flTargets[flDay] || flTargets['td'];
+  document.getElementById('fl-cal-nums').textContent = Math.round(t.cal) + ' / ' + tgt2.cal.toLocaleString() + (tgt2.cal > 0 ? ' · ' + Math.round((t.cal/tgt2.cal)*100) + '%' : '');
+  document.getElementById('fl-p-nums').textContent = Math.round(t.p) + 'g / ' + tgt.p + 'g' + (tgt.p > 0 ? ' · ' + Math.round((t.p/tgt.p)*100) + '%' : '');
+  document.getElementById('fl-c-nums').textContent = Math.round(t.c) + 'g / ' + tgt.c + 'g' + (tgt.c > 0 ? ' · ' + Math.round((t.c/tgt.c)*100) + '%' : '');
+  document.getElementById('fl-f-nums').textContent = Math.round(t.f) + 'g / ' + tgt.f + 'g' + (tgt.f > 0 ? ' · ' + Math.round((t.f/tgt.f)*100) + '%' : '');
   [{id:'fl-cal-bar',val:t.cal,tgt:tgt.cal,cls:'fl-cal-fill'},{id:'fl-p-bar',val:t.p,tgt:tgt.p,cls:'fl-pro-fill'},{id:'fl-c-bar',val:t.c,tgt:tgt.c,cls:'fl-carb-fill'},{id:'fl-f-bar',val:t.f,tgt:tgt.f,cls:'fl-fat-fill'}].forEach(function(b) {
     var el = document.getElementById(b.id);
     el.style.width = Math.min(Math.round((b.val/b.tgt)*100),100) + '%';
@@ -2504,8 +2505,9 @@ function flRenderBars() {
 
   document.getElementById('fl-status-grid').innerHTML = items.map(function(item) {
     var s = flStatus(item.val, item.tgt);
+    var display = item.val === 0 ? '—' : (item.label === 'Calories' ? Math.round(item.val).toLocaleString() : Math.round(item.val) + 'g');
     return '<div style="background:'+s.bg+';border:1px solid '+s.border+';border-radius:6px;padding:5px 6px;text-align:center;">' +
-      '<div style="font-size:12px;font-weight:700;color:'+s.color+';">'+s.label+'</div>' +
+      '<div style="font-size:12px;font-weight:700;color:'+s.color+';">'+display+'</div>' +
       '<div style="font-size:9px;color:#444;margin-top:1px;">'+item.label+'</div>' +
       '</div>';
   }).join('');
