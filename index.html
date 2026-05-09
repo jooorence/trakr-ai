@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a0a0a'/><text x='50' y='76' text-anchor='middle' font-family='-apple-system,sans-serif' font-weight='800' font-size='64' fill='white'>T</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <title>TRAKR</title>
@@ -512,8 +512,11 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
     border: 1px solid rgba(255,255,255,0.18);
     box-shadow: 0 8px 28px rgba(64,204,187,0.35), inset 0 0 0 1px rgba(255,255,255,0.08);
   }
-  /* Keep main content from being hidden behind the bottom dock */
-  .main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+  /* Keep main content fully clear of the bottom dock — the dock occupies
+     20px (offset) + 64px (height) = 84px from the viewport bottom, so 140px
+     gives ~56px of comfortable breathing room above it. Applies to all page
+     sections since they all live inside .main. */
+  .main { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
 
   /* Body-text font sizes — middle ground between the original (too small) and
      the previous bump (too crammed). Titles + tile values left at their larger
