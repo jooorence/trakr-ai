@@ -4126,8 +4126,8 @@ function dashRefresh() {
     var pDiff   = (tgt.p   || 0) - Math.round(t.p);
     var cDiff   = (tgt.c   || 0) - Math.round(t.c);
     var fDiff   = (tgt.f   || 0) - Math.round(t.f);
-    function fmtMacro(diff, label) {
-      if (diff > 0) return '<span>' + diff + 'g ' + label + ' to go</span>';
+    function fmtMacro(diff, label, color) {
+      if (diff > 0) return '<span><b style="color:' + color + ';font-weight:600;">' + diff + 'g</b> ' + label + ' to go</span>';
       if (diff < 0) return '<span style="color:#e05050;">' + Math.abs(diff) + 'g over ' + label + '</span>';
       return '<span style="color:#4caf7d;">' + label + ' hit</span>';
     }
@@ -4144,9 +4144,9 @@ function dashRefresh() {
     var macroLine = '';
     if (t.cal) {
       macroLine = '<div style="font-size:10px;color:#888;margin-top:4px;letter-spacing:0.02em;">' +
-        fmtMacro(pDiff, 'protein') + ' · ' +
-        fmtMacro(cDiff, 'carbs')   + ' · ' +
-        fmtMacro(fDiff, 'fat')     +
+        fmtMacro(pDiff, 'protein', '#5aabff') + ' · ' +
+        fmtMacro(cDiff, 'carbs',   '#f5a623') + ' · ' +
+        fmtMacro(fDiff, 'fat',     '#a07dd9') +
         '</div>';
     }
     statusEl.innerHTML = calLine + macroLine;
