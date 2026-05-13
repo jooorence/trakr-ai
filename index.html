@@ -554,11 +554,11 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
      20px (offset) + 64px (height) = 84px from the viewport bottom, so 140px
      gives ~56px of comfortable breathing room above it. Applies to all page
      sections since they all live inside .main. */
-  /* Let .main extend full height so content scrolls behind the floating dock
-     (you see it through the glass blur — the iOS bottom-bar look). The 220px
-     inner pad ensures the LAST item on each page scrolls fully clear of the
-     dock when scrolled to the bottom. */
-  .main { padding-bottom: calc(220px + env(safe-area-inset-bottom)); }
+  /* Reserve a dedicated bottom strip via .app-body so the dock has its own
+     space below content. .main's scroll area ends ~46px above the dock —
+     content is never obscured at any scroll position. */
+  .app-body { padding-bottom: calc(130px + env(safe-area-inset-bottom)); }
+  .main { padding-bottom: 24px; }
 
   /* Body-text font sizes — middle ground between the original (too small) and
      the previous bump (too crammed). Titles + tile values left at their larger
