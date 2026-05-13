@@ -2924,8 +2924,11 @@ async function sendCoachMsg() {
     var data = await res.json();
     var reply = data.content.map(function(i){return i.text||'';}).join('');
     if(typing) typing.remove();
-    coachHistory.push({role:'assistant', content: reply});
-    dbSaveChatMsg('main', 'assistant', reply);
+    // Store the stripped reply in history — same root-cause fix as csSend:
+    // otherwise Claude sees its own past LOG actions and re-emits them next turn.
+    var strippedReply = stripActionTags(reply);
+    coachHistory.push({role:'assistant', content: strippedReply});
+    dbSaveChatMsg('main', 'assistant', strippedReply);
     reply = _normalizeLogActions(reply);
 
     // Check for CLEARDAY action first
@@ -4013,7 +4016,10 @@ async function csSend() {
     var reply = data.content.map(function(i){return i.text||'';}).join('');
     var typing = document.getElementById('cs-typing');
     if (typing) typing.remove();
-    csHistory.push({role:'assistant', content: reply});
+    // IMPORTANT: store the *stripped* reply in history (no LOG action tags).
+    // Otherwise Claude sees its own past LOG actions on the next turn and
+    // re-emits them — duplicating food cards, water logs, etc.
+    csHistory.push({role:'assistant', content: stripActionTags(reply)});
     reply = _normalizeLogActions(reply);
 
     // Check for CLEARDAY action first
