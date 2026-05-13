@@ -155,6 +155,8 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .tag-pull { background: #0d1f33; color: #5aabff; }
 .tag-push { background: #2d1500; color: #ff8c42; }
 .tag-legs { background: #1a0d2d; color: #b07dff; }
+.tag-arms { background: #2d2a0d; color: #f5d142; }
+.tag-bonus { background: #0d2d2a; color: #40d4cc; }
 .tag-abs { background: #0d1a0d; color: #7dc47d; font-size: 10px; margin-left: 6px; }
 .day-arrow { font-size: 12px; color: #333; }
 .day-content { display: none; padding: 4px 0 8px; }
@@ -1350,6 +1352,21 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           <div class="exercise-card"><div class="exercise-name">Single Arm Cable Lateral Raise superset w/ Rope Face Pulls</div><div class="exercise-sets">3 sets × 15 reps · Last set to failure</div><div class="exercise-notes">First 2 sets leave 1–2 reps in reserve.</div></div>
         </div>
       </div>
+
+      <!-- BONUS DAYS — on-demand workouts not part of the weekly rotation.
+           Swap in via CoachGPT (e.g. "make today an arm day") or manual split toggle. -->
+      <div class="section-label" style="margin-top:28px;">Bonus Day <span style="font-size:11px;color:#444;font-weight:normal;margin-left:8px;">— On-demand · swap in via CoachGPT</span></div>
+      <div class="day-section">
+        <div class="day-header" onclick="toggleDay('armday')"><h3>Arm Day <span style="font-size:11px;color:#444;margin-left:6px;">Bonus · Bi/Tri Supersets</span></h3><div style="display:flex;align-items:center;gap:8px;"><span class="day-tag tag-arms">Arms</span><span class="day-arrow" id="arr-armday">▼</span></div></div>
+        <div class="day-content" id="armday">
+          <div class="exercise-card"><div class="exercise-name">Warmup — Light DB Curls + Standing DB Tricep Extension</div><div class="exercise-sets">2 sets · stretch &amp; activation</div><div class="exercise-notes">Light weight, full range. Warm the biceps with controlled curls; stretch the long head of the triceps with a slow standing extension. Prime the joints, no fatigue.</div></div>
+          <div class="exercise-card"><div class="exercise-name">Alt. DB Curls superset w/ Lying Barbell Skull Crushers</div><div class="exercise-sets">3 sets pyramiding — warmup, feeder, top set · Top set: 8–10 reps</div><div class="exercise-notes">Increment weight every set. Alternate arms on curls — full supination, squeeze hard at top. On skull crushers, lower bar behind the head, drive through the long head of the tricep.</div></div>
+          <div class="exercise-card"><div class="exercise-name">Barbell Curls superset w/ Lying DB Skull Crushers</div><div class="exercise-sets">3 sets pyramiding · Top set: 8–10 reps</div><div class="exercise-notes">Keep elbows pinned at sides on barbell curls — no swinging. DB skulls allow neutral grip and deeper stretch than barbell version. Control the negative.</div></div>
+          <div class="exercise-card"><div class="exercise-name">Single-Arm Preacher Curl superset w/ Bent-Over Tricep Extensions</div><div class="exercise-sets">3 sets × 10–12 reps each arm</div><div class="exercise-notes">Right arm first, then left — both arms get full 10–12 reps. Slow eccentric. Bent-over tri ext: hinge at hips, lock the upper arm, extend through the elbow only — feel the long head light up.</div></div>
+          <div class="exercise-card"><div class="exercise-name">Cable Curls superset w/ Tricep Pulldowns</div><div class="exercise-sets">3 sets × 12–15 reps · Finisher — chase the pump</div><div class="exercise-notes">Constant tension throughout. Last set to failure. Goal is maximum blood in the arms — let the cables do their job at the end-range stretch and squeeze.</div></div>
+          <div class="abs-card"><div class="abs-title">Abs — End of Session</div><div class="abs-item">Hanging knee or leg raises</div><div class="abs-item">Planks — 1–2 min hold</div><div class="abs-item">Traditional sit-ups — no arm swinging</div><div class="abs-item" style="color:#333;font-size:12px;">2 rounds × 15–20+ reps · 60 sec rest between rounds</div></div>
+        </div>
+      </div>
     </div>
 
     <!-- ROUTINES -->
@@ -2103,7 +2120,14 @@ var SPLIT_INFO = {
     {name:'Incline Chest Press',         sets:'10–12 reps'},
     {name:'Cable Lateral + Face Pulls',  sets:'3 × 15'}
   ]},
-  'Rest':       {focus:'Rest Day',          detail:'recovery, walk, hit nutrition targets',                                                                topLifts:[]}
+  'Rest':       {focus:'Rest Day',          detail:'recovery, walk, hit nutrition targets',                                                                topLifts:[]},
+  // Bonus / on-demand split — not in weekly auto-rotation, only available via LOGSPLIT.
+  'Arm Day':    {focus:'Arms — Bi/Tri Supersets', detail:'DB curls × skulls, BB curls × DB skulls, preacher × bent-over ext, cable curls × pulldowns',     topLifts:[
+    {name:'Alt. DB Curls + Lying Skull Crushers',    sets:'3 × 8–10'},
+    {name:'Barbell Curls + DB Skull Crushers',       sets:'3 × 8–10'},
+    {name:'Preacher Curl 1-arm + Bent-Over Tri Ext', sets:'3 × 10–12'},
+    {name:'Cable Curls + Tricep Pulldowns',          sets:'3 × 12–15'}
+  ]}
 };
 
 function flGetDayData(d) {
@@ -2691,7 +2715,7 @@ function coachSystemPrompt(ctx) {
   p += 'When user mentions Stand ring or hours standing, include: LOGSTAND:{"hrs":10} ';
   p += 'When user mentions any Oura Ring data — sleep score, total sleep, deep/REM/light sleep hours, HRV, readiness, VO2 max, bedtime, wake time, or efficiency — include on its own line: LOGOURA:{"score":82,"total":7.4,"deep":1.2,"rem":2.1,"light":3.8,"hrv":45,"readiness":67,"vo2":47.2,"bed":"10:52 PM","wake":"6:18 AM","eff":85} — only include the fields the user actually mentioned. A simple sleep score mention is fine as LOGOURA:{"score":82}. Awake time is never included — it is computed automatically. ';
   p += 'When user mentions their bodyweight or weigh-in (e.g. "I weighed in at 205", "I\'m 198 today"), include: LOGWEIGHT:{"lbs":205} — pounds only. ';
-  p += 'When user wants to change today\'s training day (e.g. "change to push day 1", "make today a training day", "switch to rest day"), include on its own line: LOGSPLIT:{"split":"Push Day 1"} — valid values: Push Day 1, Push Day 2, Pull Day 1, Pull Day 2, Legs, Rest. ';
+  p += 'When user wants to change today\'s training day (e.g. "change to push day 1", "make today a training day", "switch to rest day", "make today an arm day"), include on its own line: LOGSPLIT:{"split":"Push Day 1"} — valid values: Push Day 1, Push Day 2, Pull Day 1, Pull Day 2, Legs, Rest, Arm Day. Arm Day is a bonus on-demand workout (biceps & triceps supersets) — not part of the weekly rotation; user explicitly swaps to it when desired. ';
   p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
   p += 'CLEARDAY:{} must ONLY be included when the user explicitly asks to wipe or reset their ENTIRE day (e.g. "clear my day", "reset everything", "start my day over"). NEVER include CLEARDAY for fixing duplicates, correcting a single entry, adjusting water, editing food items, or any partial change. When in doubt, do not include CLEARDAY. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
