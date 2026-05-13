@@ -230,7 +230,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 
 
 /* FLOATING COACH BUBBLE */
-#coach-bubble { position:fixed; bottom:24px; right:max(24px, calc((100vw - 1100px) / 2 + 24px)); width:56px; height:56px; border-radius:50%; background:#40ccbb; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10002; box-shadow:0 4px 20px rgba(64,204,187,0.4); animation:bubblePulse 2.5s ease-in-out infinite; }
+#coach-bubble { position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%; background:#40ccbb; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10002; box-shadow:0 4px 20px rgba(64,204,187,0.4); animation:bubblePulse 2.5s ease-in-out infinite; }
 #coach-bubble svg { width:24px; height:24px; }
 @keyframes bubblePulse { 0%,100%{box-shadow:0 4px 20px rgba(64,204,187,0.4)} 50%{box-shadow:0 4px 32px rgba(64,204,187,0.75)} }
 #coach-bubble:active { transform:scale(0.93); }
@@ -640,7 +640,10 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .rw-subtitle { font-size: 13px; color: #888; max-width: 280px; line-height: 1.4; }
 
 @media (min-width: 601px) {
-  body { zoom: 1.1; }
+  /* Keep the 1.1x visual scale, but shrink body's CSS height so rendered
+     height = 100vh exactly. Otherwise zoom inflates body past viewport and
+     clips the bottom of every page. */
+  body { zoom: 1.1; height: calc(100vh / 1.1); }
   /* Desktop tile order: Cal Logged | Net Cal Burned | Steps / Weight | Water | Sleep Score */
   .dash-right .dash-tile:nth-child(1) { order: 1; }
   .dash-right .dash-tile:nth-child(2) { order: 4; }
