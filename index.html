@@ -562,11 +562,13 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
      (you see it through the glass blur — the iOS bottom-bar look). The 220px
      inner pad ensures the LAST item on each page scrolls fully clear of the
      dock when scrolled to the bottom. */
-  /* Inner padding minimal — .page-spacer (below) provides the bulk of clearance. */
+  /* Inner padding minimal — .page-spacer (below) provides the bulk of clearance.
+     justify-content: flex-start overrides desktop's center alignment so content
+     starts at the top of .main instead of being vertically centered. */
   .main { padding-bottom: calc(24px + env(safe-area-inset-bottom));
-          flex-direction: column; align-items: center; }
+          flex-direction: column; align-items: center; justify-content: flex-start; }
   /* Blank "section" at the bottom of every page — adds scroll room past the floating dock. */
-  .page-spacer { display: block; height: 280px; flex-shrink: 0; }
+  .page-spacer { display: block; height: 120px; flex-shrink: 0; }
 
   /* Body-text font sizes — middle ground between the original (too small) and
      the previous bump (too crammed). Titles + tile values left at their larger
