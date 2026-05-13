@@ -4100,7 +4100,9 @@ function csQuick(prompt) {
 
 function dashRefresh() {
   var t = flTotals();
-  var tgt = flTargets[flDay];
+  // Dashboard targets follow today's actual day type (Rest = rd, anything else = td),
+  // not flDay (which is the food log's manual TD/RD toggle).
+  var tgt = flTargets[getTodaySplit() === 'Rest' ? 'rd' : 'td'];
   // Top tiles
   document.getElementById('dash-cal-val').textContent = Math.round(t.cal) || '—';
   document.getElementById('dash-water-val').textContent = Math.round(waterOz*10)/10 || '—';
