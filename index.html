@@ -2766,6 +2766,9 @@ function processLogActions(reply) {
       trainingEl.style.color = splitName === 'Rest' ? '#555' : '#f5a623';
       trainingEl.nextElementSibling.textContent = splitName === 'Rest' ? 'Rest Day' : 'Training Day';
     }
+    // Refresh macro displays everywhere so the new TD/RD targets show immediately
+    try { if (typeof flRender === 'function') flRender(); } catch(e) {}
+    try { if (typeof dashRefresh === 'function') dashRefresh(); } catch(e) {}
     confirmations.push('Training day → ' + splitName);
   });
   if (splitMatches.length > 0) cleaned = cleaned.replace(/LOGSPLIT:\{"split":"[^"]+"\}/g, '').trim();
