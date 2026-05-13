@@ -2698,8 +2698,19 @@ function coachSystemPrompt(ctx) {
   p += ctx.isRest ? "REST DAY macros: 2086 cal / 187g P / 213g C / 55g F. " : "TRAINING DAY macros: 2227 cal / 190g P / 266g C / 47g F. ";
   p += "CONFIRMED food log (" + ctx.itemsLogged + " items actually saved): " + ctx.cals + " cal / " + ctx.protein + "g P / " + ctx.carbs + "g C / " + ctx.fat + "g F. THIS IS THE AUTHORITATIVE TOTAL — always use these numbers, never totals from earlier in the conversation. ";
   p += "Water: " + ctx.waterOz + " oz (min 135, ideal 169). Sleep score: " + ctx.sleepScore + ". Sleep: " + ctx.sleepTotal + " hrs. ";
-  p += "MEAL PLAN — Training Day: Morning Coffee (135cal/0.5P/20.5C/7.25F), Gut Drink (0cal/0P/0C/0F/+16.9oz water — negligible, not tracked), Meal 1 Breakfast (565cal/43P/69C/11F), Meal 2 Lunch (397cal/36P/51C/5F), Meal 3 Midday (277cal/33P/25C/9F), Meal 4 Pre Workout (458cal/37P/49C/13F), Intra Workout (100cal/0P/25C/0F/+16.9oz water), Meal 5 Post Workout (430cal/41P/47C/9F). ";
-  p += "Rest Day variants: Meal 1 (505cal/42P/54C/11F), Meal 3 (226cal/32P/12C/9F), Meal 5 (500cal/40P/47C/17F). Morning Coffee, Gut Drink, Meal 2, Meal 4 are the same on both days. ";
+  p += "MEAL PLAN DETAILS — Training Day: \n" +
+       "- Morning Coffee (135cal/0.5P/20.5C/7.25F)\n" +
+       "- Gut Drink (0cal, negligible — also +16.9oz water)\n" +
+       "- Meal 1 Breakfast (565cal/43P/69C/11F): 2 large eggs (Kirkland, 140cal/12P/0C/10F), 8oz liquid egg whites (Kirkland, 123cal/25P/0C/0F), 30–50g spinach cooked into eggs (~10cal/1P/1C/0F), 157g cooked sticky rice — weigh after microwaving (Bibigo, 232cal/4P/53C/1F), 105g blueberries (60cal/1P/15C/0F)\n" +
+       "- Meal 2 Lunch + Essentials Stack (397cal/36P/51C/5F): 5oz chicken skewers (WestEnd, 187cal/30P/4C/4F), 125g Bibigo rice (185cal/4P/42C/1F), 50–75g broccoli (~25cal/2P/5C/0F)\n" +
+       "- Meal 3 Midday (277cal/33P/25C/9F): Oikos 30g protein shake (Oikos, 170cal/30P/9C/4F), ~57g banana (51cal/1P/13C/0F), 16g natural peanut butter (Good & Gather, 90cal/4P/4C/8F)\n" +
+       "- Meal 4 Pre Workout (486cal/38P/50C/15F, eat 1–1.5 hrs before training): 5oz chicken skewers (WestEnd, 187cal/30P/4C/4F), 125g Bibigo rice (185cal/4P/42C/1F), 20g raw almonds (Good & Gather, 114cal/4P/4C/10F)\n" +
+       "- Intra Workout (100cal/0P/25C/0F, +16.9oz water, sip 10 min prior and throughout): Demo Day 25g carbs (Axe & Sledge), 10g creatine, 1L filtered water minimum\n" +
+       "- Meal 5 Post Workout (430cal/41P/47C/9F, within 1 hr post): 5oz grass-fed top sirloin (Costco, 220cal/35P/0C/8F), 125g Bibigo rice (185cal/4P/42C/1F), 50–75g broccoli (~25cal/2P/5C/0F)\n";
+  p += "REST DAY variants (Morning Coffee, Gut Drink, Meal 2, Meal 4 are identical to TD):\n" +
+       "- Meal 1 Breakfast (505cal/42P/54C/11F): same as TD minus the blueberries — 2 large eggs, 8oz liquid egg whites, 30–50g spinach, 157g cooked sticky rice (no fruit)\n" +
+       "- Meal 3 Midday (226cal/32P/12C/9F): Oikos 30g protein shake (170cal/30P/9C/4F), NO banana (carb budget met), 16g natural peanut butter (Good & Gather, 90cal/4P/4C/8F), 10g creatine\n" +
+       "- Meal 5 Dinner (500cal/40P/47C/17F, longevity swap from steak to salmon): 5oz wild caught salmon (Costco, 290cal/34P/0C/16F), 125g Bibigo rice (Bibigo, 185cal/4P/42C/1F), 50–75g broccoli (~25cal/2P/5C/0F)\n";
   p += "When user mentions any meal by name or alias (M1/M2/M3/M4/M5, gut drink, morning coffee, breakfast, lunch, midday, pre workout, intra, post workout, etc.), ALWAYS use the EXACT macros from this meal plan — never estimate or use partial macros. ";
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
   p += 'CRITICAL INSTRUCTION: When the user mentions any loggable data, you MUST output ALL LOG action lines at the very beginning of your reply, before any other text. This is required — never put LOG actions after your response text. ';
