@@ -563,9 +563,10 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
      inner pad ensures the LAST item on each page scrolls fully clear of the
      dock when scrolled to the bottom. */
   /* Inner padding minimal — .page-spacer (below) provides the bulk of clearance. */
-  .main { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .main { padding-bottom: calc(24px + env(safe-area-inset-bottom));
+          flex-direction: column; align-items: center; }
   /* Blank "section" at the bottom of every page — adds scroll room past the floating dock. */
-  .page-spacer { display: block; height: 280px; }
+  .page-spacer { display: block; height: 280px; flex-shrink: 0; }
 
   /* Body-text font sizes — middle ground between the original (too small) and
      the previous bump (too crammed). Titles + tile values left at their larger
