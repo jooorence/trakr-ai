@@ -2110,6 +2110,14 @@ function flGetDayData(d) {
     var split = flAutoSplit(d);
     flDateStore[key] = { split: split, dayType: split === 'Rest' ? 'rd' : 'td', log: [] };
   }
+  // For today specifically, always re-derive split + dayType from getTodaySplit()
+  // so stale DB rows (e.g. saved before a day's actual split was detected) don't
+  // lock in the wrong macros. Other dates keep their stored values.
+  if (key === getTodayKey()) {
+    var todaySplit = getTodaySplit();
+    flDateStore[key].split = todaySplit;
+    flDateStore[key].dayType = todaySplit === 'Rest' ? 'rd' : 'td';
+  }
   return flDateStore[key];
 }
 
