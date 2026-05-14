@@ -386,7 +386,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 /* Plan-reference pill — small green badge next to ingredients logged from a
    prescribed meal chip (M1/M2/M3/M4/M5/Pre-WO/Intra/Post-WO). Lets JR see
    at a glance which entries are part of his coach's plan vs custom adds. */
-.fl-item-plan-ref { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 20px; background: #0d2a1a; color: #4caf7d; margin-left: 6px; white-space: nowrap; letter-spacing: 0.04em; vertical-align: middle; }
+.fl-item-plan-ref { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 20px; background: #0d2a1a; color: #4caf7d; margin-right: 8px; white-space: nowrap; letter-spacing: 0.04em; vertical-align: middle; }
 /* "Move to" menu — appears on long-press / right-click of a food log row.
    Lets you reassign the row's section without opening the edit modal. */
 .fl-move-menu { position: fixed; z-index: 12000; background: #141414; border: 1px solid #2a2a2a; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding: 6px; min-width: 180px; display: none; }
@@ -3067,7 +3067,8 @@ function flRenderLog() {
       var s = item.servings || 1;
       var brandHtml   = item.brand   ? '<span class="fl-item-brand">' + item.brand + '</span>' : '';
       var planRefHtml = item.planRef ? '<span class="fl-item-plan-ref">' + item.planRef + '</span>' : '';
-      var nameHtml = item.name + brandHtml + planRefHtml + (s > 1 ? ' <span class="fl-item-mult">· ' + s + 'x</span>' : '');
+      // planRef pill goes FIRST so the M1 / M2 / Pre-WO tag leads the row, then food name, then brand.
+      var nameHtml = planRefHtml + item.name + brandHtml + (s > 1 ? ' <span class="fl-item-mult">· ' + s + 'x</span>' : '');
       var macroHtml = Math.round(item.cal * s) + ' cal · ' + Math.round(item.p * s) + 'P · ' + Math.round(item.c * s) + 'C · ' + Math.round(item.f * s) + 'F';
       return '<div class="fl-item" data-idx="' + idx + '">' +
         '<span class="fl-item-name">' + nameHtml + '</span>' +
