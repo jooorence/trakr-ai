@@ -3040,12 +3040,11 @@ function flRenderLog() {
   // Section order: meal slots in plan order, then snack at the end.
   var order = flSectionOrder(flDay);
 
-  // Build the rendered HTML — one block per section. Empty sections render
-  // a faded "empty" line so the structure is always visible (MyFitnessPal-style).
-  // Snack section is HIDDEN when empty to avoid clutter.
+  // Build the rendered HTML — one block per section. All sections are always
+  // visible (including empty ones + Snacks) so the day's structure stays in
+  // view and the user can long-press → move items to any section easily.
   var html = order.map(function(sec) {
     var entries = grouped[sec] || [];
-    if (sec === 'snack' && entries.length === 0) return '';
     // Section totals
     var totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
     entries.forEach(function(e) {
