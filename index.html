@@ -2782,6 +2782,7 @@ function coachSystemPrompt(ctx) {
   p += 'When user mentions any Oura Ring data — sleep score, total sleep, deep/REM/light sleep hours, HRV, readiness, VO2 max, bedtime, wake time, or efficiency — include on its own line: LOGOURA:{"score":82,"total":7.4,"deep":1.2,"rem":2.1,"light":3.8,"hrv":45,"readiness":67,"vo2":47.2,"bed":"10:52 PM","wake":"6:18 AM","eff":85} — only include the fields the user actually mentioned. A simple sleep score mention is fine as LOGOURA:{"score":82}. Awake time is never included — it is computed automatically. ';
   p += 'When user mentions their bodyweight or weigh-in (e.g. "I weighed in at 205", "I\'m 198 today"), include: LOGWEIGHT:{"lbs":205} — pounds only. ';
   p += 'When user wants to change today\'s training day (e.g. "change to push day 1", "make today a training day", "switch to rest day", "make today an arm day"), include on its own line: LOGSPLIT:{"split":"Push Day 1"} — valid values: Push Day 1, Push Day 2, Pull Day 1, Pull Day 2, Legs, Rest, Arm Day. Arm Day is a bonus on-demand workout (biceps & triceps supersets) — not part of the weekly rotation; user explicitly swaps to it when desired. ';
+  p += 'When user wants to EDIT an existing food log entry (e.g. "actually that rice was 150g", "change my chicken to 6oz", "I had more peanut butter", "fix my morning coffee — 2 cups"), include on its own line: LOGEDIT:{"match":"rice","name":"150g Bibigo rice","cal":222,"p":5,"c":50,"f":1} — match is a substring (case-insensitive) to find the existing entry; name is the new display name (optional, omit to keep existing); cal/p/c/f are the NEW per-serving macros. Compute the new macros by scaling from the meal plan reference (e.g. 150g/125g × 185cal = 222cal). The app will find matching entries and either show a confirmation card (if 1 match), a picker (if multiple matches), or a "not found" prompt (if 0 matches). DO NOT use LOGEDIT for new items the user hasn\'t logged yet — use LOGFOOD for those. ';
   p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
   p += 'CLEARDAY:{} must ONLY be included when the user explicitly asks to wipe or reset their ENTIRE day (e.g. "clear my day", "reset everything", "start my day over"). NEVER include CLEARDAY for fixing duplicates, correcting a single entry, adjusting water, editing food items, or any partial change. When in doubt, do not include CLEARDAY. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
@@ -2907,7 +2908,7 @@ function _normalizeLogActions(text) {
 
 function stripActionTags(text) {
   return text
-    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT|OURA)\s*:\s*\{[^}]*\}/g, '')
+    .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT|OURA|EDIT)\s*:\s*\{[^}]*\}/g, '')
     .replace(/[ \t]+$/gm, '')
     .replace(/\n{2,}/g, '\n')
     .replace(/  +/g, ' ')
@@ -4155,6 +4156,8 @@ async function csSend() {
     if (logResult.confirmations.length > 0) {
       csAddMsg('coach', '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">Updated: ' + logResult.confirmations.join(' · ') + '</div>');
     }
+    // Process any LOGEDIT actions — renders confirm card / picker / not-found message
+    try { processLogEdits(reply); } catch(e) { console.error('processLogEdits failed:', e); }
     } // end else (not CLEARDAY)
   } catch(e) {
     var t2 = document.getElementById('cs-typing');
@@ -4235,6 +4238,128 @@ function csSaveEdit(btn) {
 function csQuick(prompt) {
   document.getElementById('cs-input').value = prompt;
   csSend();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// LOGEDIT handling — lets CoachGPT edit an existing food log entry.
+// Flow: Claude emits LOGEDIT:{match,name?,cal,p,c,f} → app searches today's log
+// for entries whose name contains `match` (case-insensitive). Then:
+//   - 0 matches  → "not found" message
+//   - 1 match    → single-row confirm card (Before → After diff)
+//   - 2+ matches → picker (user taps one) → single-row confirm card
+// All paths require explicit user confirmation before the edit applies.
+// ────────────────────────────────────────────────────────────────────────────
+
+// Render the Edit confirmation card for a specific log index.
+function csRenderEditConfirm(payload, idx) {
+  var log = flGetDayData(new Date()).log;
+  if (idx < 0 || idx >= log.length) return;
+  var cur = log[idx];
+  var newName = payload.name || cur.name;
+  var ac = document.createElement('div');
+  ac.className = 'scmsg sc-coach';
+  ac.dataset.editPayload = JSON.stringify(payload);
+  ac.dataset.editIdx = String(idx);
+  ac.innerHTML = '<div class="sc-action-card">'
+    + '<div class="sc-action-title">Edit this entry?</div>'
+    + '<div class="sc-action-row"><span class="sc-action-key">' + cur.name + '</span><span class="sc-action-val" style="color:#666;">' + cur.cal + ' cal · ' + cur.p + 'P · ' + cur.c + 'C · ' + cur.f + 'F</span></div>'
+    + '<div class="sc-action-row"><span class="sc-action-key" style="color:#7be0a8;">→ ' + newName + '</span><span class="sc-action-val" style="color:#7be0a8;">' + payload.cal + ' cal · ' + payload.p + 'P · ' + payload.c + 'C · ' + payload.f + 'F</span></div>'
+    + '<div class="sc-action-btns"><div class="sc-confirm-btn" onclick="csConfirmEditEntry(this)">Confirm Edit</div>'
+    + '<div class="sc-edit-btn" onclick="csCancelEdit(this)">Cancel</div></div>'
+    + '</div>';
+  document.getElementById('cs-messages').appendChild(ac);
+  document.getElementById('cs-messages').scrollTop = 99999;
+}
+
+// Render the picker card when multiple log entries match.
+function csRenderEditPicker(payload, matchIndices) {
+  var log = flGetDayData(new Date()).log;
+  var ac = document.createElement('div');
+  ac.className = 'scmsg sc-coach';
+  ac.dataset.editPayload = JSON.stringify(payload);
+  ac.dataset.editIndices = JSON.stringify(matchIndices);
+  var rows = matchIndices.map(function(i) {
+    var it = log[i];
+    return '<div class="sc-action-row" style="cursor:pointer;" onclick="csPickEditTarget(this, ' + i + ')">'
+      + '<span class="sc-action-key">' + it.name + '</span>'
+      + '<span class="sc-action-val">' + it.cal + ' cal</span>'
+      + '</div>';
+  }).join('');
+  ac.innerHTML = '<div class="sc-action-card">'
+    + '<div class="sc-action-title">Which "' + (payload.match || 'entry') + '" did you mean?</div>'
+    + rows
+    + '<div class="sc-action-btns"><div class="sc-edit-btn" onclick="csCancelEdit(this)">Cancel</div></div>'
+    + '</div>';
+  document.getElementById('cs-messages').appendChild(ac);
+  document.getElementById('cs-messages').scrollTop = 99999;
+}
+
+// User tapped one of the picker rows — show the confirm card for that index.
+function csPickEditTarget(rowEl, idx) {
+  var card = rowEl.closest('.scmsg');
+  var payload;
+  try { payload = JSON.parse(card.dataset.editPayload || '{}'); } catch(e) { payload = {}; }
+  // Replace the picker card with the confirm card for the chosen entry.
+  card.remove();
+  csRenderEditConfirm(payload, idx);
+}
+
+// Confirm the edit — apply to the food log, refresh everything.
+function csConfirmEditEntry(btn) {
+  var card = btn.closest('.scmsg');
+  var payload, idx;
+  try { payload = JSON.parse(card.dataset.editPayload || '{}'); } catch(e) { payload = {}; }
+  try { idx = parseInt(card.dataset.editIdx, 10); } catch(e) { idx = -1; }
+  var log = flGetDayData(new Date()).log;
+  if (idx < 0 || idx >= log.length) {
+    card.querySelector('.sc-action-card').innerHTML = '<div style="background:#2a0a0a;border:1px solid #4a1a1a;border-radius:8px;padding:8px 12px;font-size:11px;color:#e05050;">⚠ Couldn\'t apply edit — entry not found.</div>';
+    return;
+  }
+  var cur = log[idx];
+  var oldName = cur.name;
+  if (payload.name) cur.name = payload.name;
+  cur.cal = payload.cal != null ? payload.cal : cur.cal;
+  cur.p   = payload.p   != null ? payload.p   : cur.p;
+  cur.c   = payload.c   != null ? payload.c   : cur.c;
+  cur.f   = payload.f   != null ? payload.f   : cur.f;
+  flSaveAll();
+  try { flRender(); } catch(e) {}
+  try { dashRefresh(); } catch(e) {}
+  card.querySelector('.sc-action-card').innerHTML = '<div style="background:#0d2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#4caf7d;">&#10003; Updated &mdash; ' + oldName + ' &rarr; ' + cur.name + ' (' + cur.cal + ' cal)</div>';
+}
+
+// Cancel button on any edit card.
+function csCancelEdit(btn) {
+  var card = btn.closest('.scmsg');
+  card.querySelector('.sc-action-card').innerHTML = '<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 12px;font-size:11px;color:#555;">Edit cancelled.</div>';
+}
+
+// Main entry — parses LOGEDIT payloads from the reply, routes to the right card.
+function processLogEdits(reply) {
+  var matches = Array.from(reply.matchAll(/LOGEDIT:(\{[^}]+\})/g));
+  if (matches.length === 0) return;
+  var log = flGetDayData(new Date()).log;
+  matches.forEach(function(m) {
+    var payload;
+    try { payload = JSON.parse(m[1]); } catch(e) { return; }
+    if (!payload.match || typeof payload.match !== 'string') return;
+    var needle = payload.match.toLowerCase().trim();
+    var matchIndices = [];
+    log.forEach(function(item, i) {
+      if ((item.name || '').toLowerCase().indexOf(needle) !== -1) matchIndices.push(i);
+    });
+    if (matchIndices.length === 0) {
+      var notFound = document.createElement('div');
+      notFound.className = 'scmsg sc-coach';
+      notFound.innerHTML = '<div style="background:#2a1a00;border:1px solid #4a3000;border-radius:8px;padding:8px 12px;font-size:11px;color:#f5a623;">No food log entry matches "' + payload.match + '" — log it as new instead?</div>';
+      document.getElementById('cs-messages').appendChild(notFound);
+    } else if (matchIndices.length === 1) {
+      csRenderEditConfirm(payload, matchIndices[0]);
+    } else {
+      csRenderEditPicker(payload, matchIndices);
+    }
+  });
+  document.getElementById('cs-messages').scrollTop = 99999;
 }
 
 function dashRefresh() {
