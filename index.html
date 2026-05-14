@@ -375,6 +375,14 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .fl-step-val { font-size: 11px; color: #888; min-width: 22px; text-align: center; }
 .fl-item-edit { font-size: 13px; color: #444; cursor: pointer; padding: 0 4px; flex-shrink: 0; line-height: 1; }
 .fl-item-edit:hover { color: #aaa; }
+/* Section grouping inside Today's Log (MyFitnessPal-style meal slots). */
+.fl-sec-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #1a1a1a; border-bottom: 1px solid #1c1c1c; }
+.fl-sec-name { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #888; text-transform: uppercase; }
+.fl-sec-totals { font-size: 10px; color: #555; font-weight: 500; white-space: nowrap; }
+.fl-sec-totals b { color: #888; }
+.fl-sec-empty { padding: 10px 14px; font-size: 11px; color: #333; font-style: italic; border-bottom: 1px solid #1c1c1c; }
+.fl-sec-empty:last-child { border-bottom: none; }
+.fl-item-brand { font-size: 10px; color: #3a3a3a; margin-left: 6px; }
 .fl-edit-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99998; display: none; align-items: center; justify-content: center; }
 .fl-edit-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 14px; padding: 20px; width: 320px; max-width: 90vw; }
 .fl-edit-title { font-size: 14px; font-weight: 600; color: #ddd; margin-bottom: 14px; }
@@ -1583,8 +1591,8 @@ var MEAL_PLAN = {
     daily: { cal: 2227, p: 190, c: 266, f: 47 },
     flag: 'Fat runs ~8g over target — eggs, almonds & PB combined. Acceptable quality sources.',
     extras: {
-      coffee:   { name: 'Morning Coffee', cal: 135, p: 0.5, c: 20.5, f: 7.25, chip:{emoji:'☕', label:'Coffee'} },
-      gutdrink: { name: 'Gut Drink',      cal: 0,   p: 0,   c: 0,    f: 0,    water: 16.9, chip:{emoji:'🥤', label:'Gut Drink'} }
+      coffee:   { name: 'Morning Coffee', cal: 135, p: 0.5, c: 20.5, f: 7.25, chip:{emoji:'☕', label:'Coffee', section:'m1'} },
+      gutdrink: { name: 'Gut Drink',      cal: 0,   p: 0,   c: 0,    f: 0,    water: 16.9, chip:{emoji:'🥤', label:'Gut Drink', section:'m1'} }
     },
     meals: [
       { id:'m1', badge:{cls:'badge-regular', text:'Meal 1'},        title:'Breakfast',                  titleNote:'',                              cal:565, p:43, c:69, f:11, chip:{emoji:'🍳', label:'Breakfast', logName:'Meal 1 — Breakfast'},          items:[
@@ -1625,8 +1633,8 @@ var MEAL_PLAN = {
     daily: { cal: 2086, p: 187, c: 213, f: 55 },
     flag: 'Rest day salmon swap adds healthy omega-3 fat. Carbs sit ~215g with longevity additions. Confirm with Coach Sage.',
     extras: {
-      coffee:   { name: 'Morning Coffee', cal: 135, p: 0.5, c: 20.5, f: 7.25, chip:{emoji:'☕', label:'Coffee'} },
-      gutdrink: { name: 'Gut Drink',      cal: 0,   p: 0,   c: 0,    f: 0,    water: 16.9, chip:{emoji:'🥤', label:'Gut Drink'} }
+      coffee:   { name: 'Morning Coffee', cal: 135, p: 0.5, c: 20.5, f: 7.25, chip:{emoji:'☕', label:'Coffee', section:'m1'} },
+      gutdrink: { name: 'Gut Drink',      cal: 0,   p: 0,   c: 0,    f: 0,    water: 16.9, chip:{emoji:'🥤', label:'Gut Drink', section:'m1'} }
     },
     meals: [
       { id:'m1', badge:{cls:'badge-regular', text:'Meal 1'},        title:'Breakfast',                  titleNote:'',                              cal:505, p:42, c:54, f:11, chip:{emoji:'🍳', label:'Breakfast', logName:'Meal 1 — Breakfast'},          items:[
@@ -1661,37 +1669,27 @@ var MEAL_PLAN = {
 };
 
 // Build the food-log quick-add chip grid HTML for one day variant.
-// Reads chip metadata + per-meal macros from MEAL_PLAN so chips and meal plan stay in sync.
+// Each chip expands into the meal's ingredient list when tapped (via
+// flAddMeal/flAddExtra), and each ingredient is tagged with the meal's
+// section ID so they group correctly in Today's Log.
 function flRenderChipsForDay(day) {
   var plan = MEAL_PLAN[day];
   if (!plan) return '';
-  // Helper: builds the click handler with proper escaped name argument.
-  function escName(n) { return (n || '').replace(/'/g, "\\'"); }
   var chips = [];
-  // Coffee + Gut Drink (Gut Drink uses flAddWater since it includes 16.9oz water).
   if (plan.extras && plan.extras.coffee && plan.extras.coffee.chip) {
     var c = plan.extras.coffee;
-    chips.push('<div class="fl-chip" onclick="flAdd(\'' + escName(c.name) + '\',' + c.cal + ',' + c.p + ',' + c.c + ',' + c.f + ')">'
+    chips.push('<div class="fl-chip" onclick="flAddExtra(\'coffee\',\'' + day + '\')">'
       + '<div class="fl-chip-emoji">' + c.chip.emoji + '</div><div class="fl-chip-name">' + c.chip.label + '</div></div>');
   }
   if (plan.extras && plan.extras.gutdrink && plan.extras.gutdrink.chip) {
     var g = plan.extras.gutdrink;
-    chips.push('<div class="fl-chip" onclick="flAddWater(' + g.water + ',\'' + escName(g.name) + '\',' + g.cal + ',' + g.p + ',' + g.c + ',' + g.f + ')">'
+    chips.push('<div class="fl-chip" onclick="flAddExtra(\'gutdrink\',\'' + day + '\')">'
       + '<div class="fl-chip-emoji">' + g.chip.emoji + '</div><div class="fl-chip-name">' + g.chip.label + '</div></div>');
   }
-  // Meals (including Intra Workout, which uses flAddWater).
   plan.meals.forEach(function(m) {
     if (!m.chip) return;
-    var logName = m.chip.logName || m.badge.text;
-    var emoji = m.chip.emoji;
-    var label = m.chip.label;
-    if (m.chip.water) {
-      chips.push('<div class="fl-chip" onclick="flAddWater(' + m.chip.water + ',\'' + escName(logName) + '\',' + m.cal + ',' + m.p + ',' + m.c + ',' + m.f + ')">'
-        + '<div class="fl-chip-emoji">' + emoji + '</div><div class="fl-chip-name">' + label + '</div></div>');
-    } else {
-      chips.push('<div class="fl-chip" onclick="flAdd(\'' + escName(logName) + '\',' + m.cal + ',' + m.p + ',' + m.c + ',' + m.f + ')">'
-        + '<div class="fl-chip-emoji">' + emoji + '</div><div class="fl-chip-name">' + label + '</div></div>');
-    }
+    chips.push('<div class="fl-chip" onclick="flAddMeal(\'' + m.id + '\',\'' + day + '\')">'
+      + '<div class="fl-chip-emoji">' + m.chip.emoji + '</div><div class="fl-chip-name">' + m.chip.label + '</div></div>');
   });
   return chips.join('');
 }
@@ -1702,6 +1700,139 @@ function flRenderChips() {
   var rdEl = document.getElementById('fl-quick-rd');
   if (tdEl) tdEl.innerHTML = flRenderChipsForDay('td');
   if (rdEl) rdEl.innerHTML = flRenderChipsForDay('rd');
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// FOOD LOG SECTIONS — MyFitnessPal-style grouping.
+// Every food log entry has a `section` field identifying which meal slot it
+// belongs to. Section IDs match MEAL_PLAN meal IDs (m1, m2, m3, m4, intra, m5)
+// plus 'snack' as a catch-all. Display labels come from MEAL_PLAN per day type.
+// ────────────────────────────────────────────────────────────────────────────
+
+// Auto-classify by current time of day. Falls back to 'snack' outside meal windows.
+// Used as default when CoachGPT logs a food without specifying section.
+function flClassifyByTime() {
+  var h = new Date().getHours();
+  if (h >= 5  && h < 10) return 'm1';
+  if (h >= 10 && h < 13) return 'm2';
+  if (h >= 13 && h < 16) return 'm3';
+  if (h >= 16 && h < 19) return 'm4';   // pre-workout slot on TD / afternoon on RD
+  if (h >= 19 && h < 22) return 'm5';   // post-workout slot on TD / dinner on RD
+  return 'snack';
+}
+
+// Heuristic name-based classifier — used for backfilling pre-section entries.
+function flClassifyByName(name) {
+  var n = (name || '').toLowerCase();
+  if (n.indexOf('intra') !== -1) return 'intra';
+  if (n.indexOf('pre workout') !== -1 || n.indexOf('pre-workout') !== -1 || n.indexOf('pre-wo') !== -1) return 'm4';
+  if (n.indexOf('post workout') !== -1 || n.indexOf('post-workout') !== -1 || n.indexOf('post-wo') !== -1) return 'm5';
+  if (n.indexOf('meal 1') !== -1 || n.indexOf('breakfast') !== -1 || n.indexOf('morning coffee') !== -1 || n === 'gut drink' || n.indexOf('gut drink') !== -1) return 'm1';
+  if (n.indexOf('meal 2') !== -1 || n.indexOf('lunch') !== -1) return 'm2';
+  if (n.indexOf('meal 3') !== -1 || n.indexOf('midday') !== -1) return 'm3';
+  if (n.indexOf('meal 4') !== -1 || n.indexOf('afternoon') !== -1) return 'm4';
+  if (n.indexOf('meal 5') !== -1 || n.indexOf('dinner') !== -1) return 'm5';
+  return 'snack';
+}
+
+// Resolve a section's display label using today's MEAL_PLAN.
+// TD m4 = "Meal 4 — Pre Workout"; RD m4 = "Meal 4 — Afternoon"; etc.
+function flSectionLabel(sectionId, dayType) {
+  if (sectionId === 'snack') return 'Snacks';
+  var plan = MEAL_PLAN[dayType || flDay] || MEAL_PLAN.td;
+  var meal = plan.meals.find(function(m) { return m.id === sectionId; });
+  if (meal) {
+    var lbl = meal.badge.text;
+    if (meal.title) lbl += ' — ' + meal.title;
+    return lbl;
+  }
+  return sectionId;
+}
+
+// The section ordering shown on the food log, derived from the day's meal plan
+// (so order matches the user's actual day flow) + 'snack' always at end.
+function flSectionOrder(dayType) {
+  var plan = MEAL_PLAN[dayType || flDay] || MEAL_PLAN.td;
+  var order = plan.meals.map(function(m) { return m.id; });
+  if (order.indexOf('snack') === -1) order.push('snack');
+  return order;
+}
+
+// One-time backfill: tag any existing entries (logged before sections existed)
+// with a best-guess section based on their name. Saves silently if any change.
+function flBackfillSections() {
+  var changedDates = {};
+  Object.keys(flDateStore).forEach(function(key) {
+    var data = flDateStore[key];
+    if (!data || !data.log) return;
+    data.log.forEach(function(entry) {
+      if (!entry.section) {
+        entry.section = flClassifyByName(entry.name);
+        changedDates[key] = true;
+      }
+    });
+  });
+  Object.keys(changedDates).forEach(function(key) {
+    dbSaveDay(key, { food_log: flDateStore[key].log });
+  });
+  try { localStorage.setItem('jr_fl_v2', JSON.stringify({store: flDateStore})); } catch(e) {}
+}
+
+// Log a single item with explicit section (or auto-classify if omitted).
+// Pass opts.batch=true to skip the save+render call (caller will batch).
+function flAddItem(name, cal, p, c, f, opts) {
+  opts = opts || {};
+  var log = flGetDayData(flCurrentDate).log;
+  var entry = {
+    name: name,
+    cal: parseFloat(cal) || 0,
+    p:   parseFloat(p)   || 0,
+    c:   parseFloat(c)   || 0,
+    f:   parseFloat(f)   || 0,
+    servings: Math.max(1, Math.min(10, parseInt(opts.servings) || 1)),
+    section: opts.section || flClassifyByTime()
+  };
+  if (opts.brand) entry.brand = opts.brand;
+  log.push(entry);
+  if (!opts.batch) { flSaveAll(); flRender(); }
+}
+
+// Expand a meal chip into individual ingredient entries, all tagged with the
+// meal's id as section. Skips note-only items (e.g. "1L filtered water" has
+// no macros). If the meal has chip.water (intra), also logs the water amount.
+// All entries added in one batch — single save+render at the end.
+function flAddMeal(mealId, dayType) {
+  var plan = MEAL_PLAN[dayType || flDay] || MEAL_PLAN.td;
+  var meal = plan.meals.find(function(m) { return m.id === mealId; });
+  if (!meal) return;
+  meal.items.forEach(function(it) {
+    if (it.noMacroPill && (it.cal == null || it.cal === 0)) return;
+    flAddItem(it.name, it.cal || 0, it.p || 0, it.c || 0, it.f || 0, {
+      section: mealId,
+      brand: it.brand,
+      batch: true
+    });
+  });
+  if (meal.chip && meal.chip.water) {
+    waterOz += meal.chip.water;
+    waterBottles += 1;
+    try { waterSave(); waterRender(); } catch(e) {}
+  }
+  flSaveAll(); flRender();
+}
+
+// Log a "extra" (coffee, gut drink) using its chip section + water (if any).
+function flAddExtra(extraId, dayType) {
+  var plan = MEAL_PLAN[dayType || flDay] || MEAL_PLAN.td;
+  var ex = plan.extras && plan.extras[extraId];
+  if (!ex) return;
+  var section = (ex.chip && ex.chip.section) || 'm1';
+  flAddItem(ex.name, ex.cal || 0, ex.p || 0, ex.c || 0, ex.f || 0, { section: section });
+  if (ex.water) {
+    waterOz += ex.water;
+    waterBottles += 1;
+    try { waterSave(); waterRender(); } catch(e) {}
+  }
 }
 
 // Render a meal item <li> from data — matches the original hand-written HTML structure exactly.
@@ -2165,6 +2296,9 @@ async function dbLoadAll() {
         ouraSyncFetch();
       }
     }
+    // Backfill sections on any pre-section entries (food log was flat before).
+    // Idempotent — already-sectioned entries skip. Saves silently if changed.
+    try { flBackfillSections(); } catch(e) { console.error('section backfill:', e); }
     // Re-render everything
     waterRender();
     flUpdateDateDisplay();
@@ -2527,12 +2661,19 @@ function flCurrentLog() {
   return flGetDayData(flCurrentDate).log;
 }
 
-function flAdd(name, cal, p, c, f, servings) {
+function flAdd(name, cal, p, c, f, servings, section) {
   // Macros stored are PER SERVING. servings=1 by default; the inline stepper
   // and edit modal mutate the servings field. flTotals multiplies cal/P/C/F
   // by servings on read so persisted base values stay clean.
+  // Section auto-classifies by time of day if not provided — keeps the entry
+  // landing in the right meal-slot group on Today's Log.
   var log = flGetDayData(flCurrentDate).log;
-  log.push({name:name, cal:cal, p:p, c:c, f:f, servings: Math.max(1, Math.min(10, parseInt(servings)||1))});
+  log.push({
+    name: name,
+    cal: cal, p: p, c: c, f: f,
+    servings: Math.max(1, Math.min(10, parseInt(servings) || 1)),
+    section: section || flClassifyByName(name) || flClassifyByTime()
+  });
   flSaveAll(); flRender();
 }
 
@@ -2555,6 +2696,8 @@ function flEdit(idx) {
   document.getElementById('fl-edit-c').value        = item.c;
   document.getElementById('fl-edit-f').value        = item.f;
   document.getElementById('fl-edit-servings').value = item.servings || 1;
+  var secEl = document.getElementById('fl-edit-section');
+  if (secEl) secEl.value = item.section || flClassifyByName(item.name) || 'snack';
   document.getElementById('fl-edit-modal').style.display = 'flex';
 }
 
@@ -2574,6 +2717,8 @@ function flSaveEdit() {
   item.c        = parseFloat(document.getElementById('fl-edit-c').value)   || 0;
   item.f        = parseFloat(document.getElementById('fl-edit-f').value)   || 0;
   item.servings = Math.max(1, Math.min(10, parseInt(document.getElementById('fl-edit-servings').value)||1));
+  var secEl = document.getElementById('fl-edit-section');
+  if (secEl && secEl.value) item.section = secEl.value;
   flSaveAll(); flRender();
   flCloseEdit();
 }
@@ -2735,26 +2880,66 @@ function flRenderLog() {
   var list = document.getElementById(listId);
   if (!list) return;
   var log = flCurrentLog();
-  if(log.length === 0) {
+  if (log.length === 0) {
     list.innerHTML = '<div class="fl-empty">Nothing logged yet — tap a meal or add a custom food</div>';
-  } else {
-    list.innerHTML = log.map(function(item,idx) {
+    return;
+  }
+
+  // Group entries by section, preserving original log index for handlers.
+  var grouped = {};
+  log.forEach(function(item, idx) {
+    var sec = item.section || flClassifyByName(item.name) || 'snack';
+    if (!grouped[sec]) grouped[sec] = [];
+    grouped[sec].push({ item: item, idx: idx });
+  });
+
+  // Section order: meal slots in plan order, then snack at the end.
+  var order = flSectionOrder(flDay);
+
+  // Build the rendered HTML — one block per section. Empty sections render
+  // a faded "empty" line so the structure is always visible (MyFitnessPal-style).
+  // Snack section is HIDDEN when empty to avoid clutter.
+  var html = order.map(function(sec) {
+    var entries = grouped[sec] || [];
+    if (sec === 'snack' && entries.length === 0) return '';
+    // Section totals
+    var totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
+    entries.forEach(function(e) {
+      var s = e.item.servings || 1;
+      totalCal += (e.item.cal || 0) * s;
+      totalP   += (e.item.p   || 0) * s;
+      totalC   += (e.item.c   || 0) * s;
+      totalF   += (e.item.f   || 0) * s;
+    });
+    var label = flSectionLabel(sec, flDay);
+    var totalsHtml = entries.length === 0 ? '<span class="fl-sec-totals">—</span>'
+      : '<span class="fl-sec-totals"><b>' + Math.round(totalCal) + '</b> cal · <b>' + Math.round(totalP) + 'P</b> · <b>' + Math.round(totalC) + 'C</b> · <b>' + Math.round(totalF) + 'F</b></span>';
+    var headerHtml = '<div class="fl-sec-header"><span class="fl-sec-name">' + label + '</span>' + totalsHtml + '</div>';
+    if (entries.length === 0) {
+      return headerHtml + '<div class="fl-sec-empty">No items logged yet</div>';
+    }
+    var rowsHtml = entries.map(function(e) {
+      var item = e.item; var idx = e.idx;
       var s = item.servings || 1;
-      var nameHtml = item.name + (s > 1 ? ' <span class="fl-item-mult">· '+s+'x</span>' : '');
-      var macroHtml = Math.round(item.cal*s)+' cal · '+Math.round(item.p*s)+'P · '+Math.round(item.c*s)+'C · '+Math.round(item.f*s)+'F';
+      var brandHtml = item.brand ? '<span class="fl-item-brand">' + item.brand + '</span>' : '';
+      var nameHtml = item.name + brandHtml + (s > 1 ? ' <span class="fl-item-mult">· ' + s + 'x</span>' : '');
+      var macroHtml = Math.round(item.cal * s) + ' cal · ' + Math.round(item.p * s) + 'P · ' + Math.round(item.c * s) + 'C · ' + Math.round(item.f * s) + 'F';
       return '<div class="fl-item">' +
-        '<span class="fl-item-name">'+nameHtml+'</span>' +
-        '<span class="fl-item-macros">'+macroHtml+'</span>' +
+        '<span class="fl-item-name">' + nameHtml + '</span>' +
+        '<span class="fl-item-macros">' + macroHtml + '</span>' +
         '<span class="fl-item-stepper">' +
-          '<span class="fl-step-btn" onclick="flSetServings('+idx+','+(s-1)+')">−</span>' +
-          '<span class="fl-step-val">'+s+'x</span>' +
-          '<span class="fl-step-btn" onclick="flSetServings('+idx+','+(s+1)+')">+</span>' +
+          '<span class="fl-step-btn" onclick="flSetServings(' + idx + ',' + (s - 1) + ')">−</span>' +
+          '<span class="fl-step-val">' + s + 'x</span>' +
+          '<span class="fl-step-btn" onclick="flSetServings(' + idx + ',' + (s + 1) + ')">+</span>' +
         '</span>' +
-        '<span class="fl-item-edit" onclick="flEdit('+idx+')" title="Edit">✎</span>' +
-        '<span class="fl-item-del" onclick="flDel('+idx+')">×</span>' +
+        '<span class="fl-item-edit" onclick="flEdit(' + idx + ')" title="Edit">✎</span>' +
+        '<span class="fl-item-del" onclick="flDel(' + idx + ')">×</span>' +
         '</div>';
     }).join('');
-  }
+    return headerHtml + rowsHtml;
+  }).join('');
+
+  list.innerHTML = html;
 }
 
 function flRender() { flRenderLog(); flRenderBars(); }
@@ -2829,7 +3014,8 @@ function coachSystemPrompt(ctx) {
   p += 'CRITICAL INSTRUCTION: When the user mentions any loggable data, you MUST output ALL LOG action lines at the very beginning of your reply, before any other text. This is required — never put LOG actions after your response text. ';
   p += 'CRITICAL — FOOD LOGGING LANGUAGE: Food is NOT logged until the user taps "Confirm & Log All" on the confirmation card. NEVER say "[food] logged!" or "I\'ve logged [food]" or state updated totals as if the food is saved. Instead say something like "Tap confirm above to log [food]" or "Hit confirm to save that." Only reference updated totals AFTER the user explicitly confirms. ';
   p += 'CRITICAL — NEVER RE-EMIT PENDING LOG ACTIONS: Once you emit LOGFOOD (or LOGWATER, LOGOURA, etc.) in a response, that action is now pending the user\'s confirmation. Do NOT re-emit the same LOGFOOD in any subsequent reply unless the user explicitly mentions that food again. If the user asks about something unrelated (e.g. changing day type, asking a question), respond to that — DO NOT repeat previous LOG actions. The user can still tap Confirm on the earlier card. ';
-  p += 'When user mentions eating anything (including named meals, morning coffee, gut drink), include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0,"servings":1} — use exact macros from the meal plan for any named meal. The cal/p/c/f values must be PER SERVING; the servings field captures how many. If user says "I had 2 morning coffees", emit ONE LOGFOOD with servings:2 (not two separate LOGFOOD lines). Default servings to 1 when unspecified. ';
+  p += 'When user mentions eating anything (including named meals, morning coffee, gut drink), include on its own line: LOGFOOD:{"name":"FoodName","cal":0,"p":0,"c":0,"f":0,"servings":1,"section":"m1"} — use exact macros from the meal plan for any named meal. The cal/p/c/f values must be PER SERVING; the servings field captures how many. If user says "I had 2 morning coffees", emit ONE LOGFOOD with servings:2 (not two separate LOGFOOD lines). Default servings to 1 when unspecified. ';
+  p += 'SECTION FIELD (always include) — picks which meal slot the entry groups under in the food log. Valid values: m1 (Meal 1 / Breakfast), m2 (Meal 2 / Lunch), m3 (Meal 3 / Midday), m4 (Meal 4 / Pre-Workout on TD, Afternoon on RD), intra (Intra-Workout, TD only), m5 (Meal 5 / Post-Workout on TD, Dinner on RD), snack (off-plan or doesn\'t fit a meal). Pick the section by these rules in order: (1) If the user explicitly names a meal slot ("pre-workout", "lunch", "post-workout", "intra", "snack"), use that. (2) If the food matches a meal-plan item (e.g. "5oz chicken skewers" appears in Meal 2 + Meal 4 on TD, "Oikos shake" is Meal 3), use that meal\'s section. (3) Otherwise infer from time of day using the current hour: 5-10 AM → m1, 10 AM-1 PM → m2, 1-4 PM → m3, 4-7 PM → m4, 7-10 PM → m5, anywhere else → snack. ALWAYS include the section field. ';
   p += 'When user mentions Gut Drink or Intra Workout, ALWAYS emit both LOGFOOD with exact macros AND LOGWATER:{"oz":16.9,"label":"Gut Drink"} (or Intra Workout) since they include 16.9oz water. ';
   p += 'When user mentions drinking plain water or other fluids, include on its own line: LOGWATER:{"oz":16.9,"label":"water bottle"} — use 16.9 for a bottle, 70 for a jug, or estimate oz for other drinks. ';
   p += 'When user mentions step count, include: LOGSTEPS:{"steps":6000} ';
@@ -3124,7 +3310,9 @@ function coachConfirmLog(name, cal, p, c, f, btn) {
 }
 
 function _flAddFromCoach(f) {
-  flAdd(f.name, parseFloat(f.cal)||0, parseFloat(f.p)||0, parseFloat(f.c)||0, parseFloat(f.f)||0, parseInt(f.servings)||1);
+  // Pass section through if Claude specified one. Otherwise flAdd will auto-classify
+  // by name (e.g. "Meal 1 Breakfast") or by time of day.
+  flAdd(f.name, parseFloat(f.cal)||0, parseFloat(f.p)||0, parseFloat(f.c)||0, parseFloat(f.f)||0, parseInt(f.servings)||1, f.section);
 }
 function coachConfirmLogAll(btn) {
   var card = btn.closest('.cmsg');
@@ -4817,6 +5005,17 @@ setInterval(function() {
   <div class="fl-edit-card">
     <div class="fl-edit-title">Edit entry</div>
     <div class="fl-edit-field"><div class="fl-edit-label">Name</div><input id="fl-edit-name" class="fl-edit-input" type="text"></div>
+    <div class="fl-edit-field"><div class="fl-edit-label">Section</div>
+      <select id="fl-edit-section" class="fl-edit-input">
+        <option value="m1">Meal 1</option>
+        <option value="m2">Meal 2</option>
+        <option value="m3">Meal 3</option>
+        <option value="m4">Meal 4 / Pre-Workout</option>
+        <option value="intra">Intra-Workout</option>
+        <option value="m5">Meal 5 / Post-Workout</option>
+        <option value="snack">Snacks</option>
+      </select>
+    </div>
     <div class="fl-edit-grid">
       <div class="fl-edit-field"><div class="fl-edit-label">Calories (per serving)</div><input id="fl-edit-cal" class="fl-edit-input" type="number" step="0.1"></div>
       <div class="fl-edit-field"><div class="fl-edit-label">Servings</div><input id="fl-edit-servings" class="fl-edit-input" type="number" min="1" max="10" step="1"></div>
