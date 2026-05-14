@@ -1782,24 +1782,59 @@ var SUPABASE_URL = 'https://ztqpxwaeaknylgpvipuu.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0cXB4d2FlYWtueWxncHZpcHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNTk3OTcsImV4cCI6MjA5MTYzNTc5N30.pusi0hcRZgSzojtsNDasSi-EfBgRPHLYrdTpgK8a1Cw';
 var sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 var _dbTimers = {};
+// Pending payloads for debounced saves. Keyed the same as _dbTimers.
+// Multiple successive dbSaveDay/dbSaveSettings calls MERGE into the pending
+// payload — previously, a clearTimeout-based debounce would silently drop
+// earlier fields (e.g. oura blob got wiped when apple_fitness update arrived
+// before the 600ms timer fired). Merging preserves all fields across the batch.
+var _dbPending = {};
+
+function _flushDbSave(key) {
+  var pending = _dbPending[key];
+  if (!pending || !sb) return;
+  delete _dbPending[key];
+  clearTimeout(_dbTimers[key]);
+  delete _dbTimers[key];
+  pending.payload.updated_at = new Date().toISOString();
+  sb.from(pending.table).upsert(pending.payload).then(function(r) {
+    if (r.error) console.error('DB save:', r.error);
+  });
+}
+
+// Immediately fire every pending debounced save. Called on visibility loss /
+// page hide / tab close so changes never sit in a pending 600ms timer when
+// the user switches apps or devices.
+function flushPendingDbSaves() {
+  if (!sb) return;
+  Object.keys(_dbPending).forEach(function(key) { _flushDbSave(key); });
+}
 
 function dbSaveDay(dateKey, fields) {
   if (!sb) return;
-  clearTimeout(_dbTimers['d_' + dateKey]);
-  _dbTimers['d_' + dateKey] = setTimeout(function() {
-    var payload = Object.assign({ date: dateKey, updated_at: new Date().toISOString() }, fields);
-    sb.from('daily_logs').upsert(payload).then(function(r) { if(r.error) console.error('DB save:', r.error); });
-  }, 600);
+  var key = 'd_' + dateKey;
+  if (!_dbPending[key]) _dbPending[key] = { table: 'daily_logs', payload: { date: dateKey } };
+  Object.assign(_dbPending[key].payload, fields);
+  clearTimeout(_dbTimers[key]);
+  _dbTimers[key] = setTimeout(function() { _flushDbSave(key); }, 600);
 }
 
 function dbSaveSettings(fields) {
   if (!sb) return;
-  clearTimeout(_dbTimers['settings']);
-  _dbTimers['settings'] = setTimeout(function() {
-    var payload = Object.assign({ id: 1, updated_at: new Date().toISOString() }, fields);
-    sb.from('user_settings').upsert(payload).then(function(r) { if(r.error) console.error('DB settings:', r.error); });
-  }, 600);
+  var key = 'settings';
+  if (!_dbPending[key]) _dbPending[key] = { table: 'user_settings', payload: { id: 1 } };
+  Object.assign(_dbPending[key].payload, fields);
+  clearTimeout(_dbTimers[key]);
+  _dbTimers[key] = setTimeout(function() { _flushDbSave(key); }, 600);
 }
+
+// Flush pending saves when the app loses focus, gets backgrounded, or closes.
+// This is the cross-device sync fix — without it, a 600ms debounce could
+// swallow your last change if you switched devices/apps too quickly.
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden') flushPendingDbSaves();
+});
+window.addEventListener('pagehide', flushPendingDbSaves);
+window.addEventListener('beforeunload', flushPendingDbSaves);
 
 /* ── CHAT HISTORY: cross-device CoachGPT persistence ── */
 var loadedChatHistory = null; // { surface: [{role, content}, ...] } once dbLoadAll resolves
