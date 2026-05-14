@@ -1950,10 +1950,10 @@ function initNewDay() {
     var brief = localStorage.getItem('jr_brief_date');
     if (brief && brief !== today) localStorage.removeItem('jr_brief_date');
   } catch(e) {}
-  // Clear all daily input fields
+  // Clear all daily input fields (weight is now per-day too — clears at midnight)
   ['oura-score','oura-total','oura-eff','oura-deep','oura-rem','oura-light',
    'oura-bed','oura-wake','oura-hrv','oura-readiness','oura-steps','oura-calexp',
-   'dash-move-input','dash-exercise-input','dash-stand-input'].forEach(function(id){
+   'dash-move-input','dash-exercise-input','dash-stand-input','dash-weight-input'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
   // Reset in-memory water state
@@ -2083,6 +2083,7 @@ async function dbLoadAll() {
           dayType: row.day_type || 'td',
           log: row.food_log || [],
           water: parseFloat(row.water_oz) || 0,
+          weight: (row.weight != null && row.weight !== '') ? parseFloat(row.weight) : null,
           sleepScore: (row.oura && row.oura.score) ? row.oura.score : null
         };
       });
@@ -2140,12 +2141,22 @@ async function dbLoadAll() {
         }
       }
     }
-    // Load user settings (weight, oura token)
+    // Load user settings (goal weight, oura token). Goal is persistent.
+    // user_settings.weight = last known weight (used for the dashboard subscript
+    // on days when today's weight isn't logged yet) — NOT used to populate the
+    // input field, since that field is now per-day.
     var sRes = await sb.from('user_settings').select('*').eq('id', 1).maybeSingle();
     if (sRes.data) {
       var wi = document.getElementById('dash-weight-input');
       var gi = document.getElementById('dash-goal-input');
-      if(wi && sRes.data.weight) wi.value = sRes.data.weight;
+      // Populate weight input ONLY if today has a logged weight in daily_logs.
+      // Otherwise leave blank — daily tracking model: new day, fresh entry.
+      var todayKey = getTodayKey();
+      var todayStored = flDateStore[todayKey];
+      if (wi) {
+        if (todayStored && todayStored.weight) wi.value = todayStored.weight;
+        else wi.value = '';
+      }
       if(gi && sRes.data.goal_weight) gi.value = sRes.data.goal_weight;
       weightUpdate();
       // Restore Oura token cross-device — only fetch if token found and not already synced this load
@@ -3748,7 +3759,20 @@ function weightUpdate() {
     }
   } else if(statusBar) { statusBar.style.display = 'none'; }
   try { localStorage.setItem('jr_weight', JSON.stringify({cur, goal})); } catch(e) {}
-  dbSaveSettings({ weight: cur, goal_weight: goal });
+  // Daily weight tracking: cur lands in TODAY's daily_logs row + user_settings.weight
+  // (latest known, used for the "last logged" subscript on days when today is unset).
+  // Goal weight stays in user_settings only — it's a persistent target, not a daily measure.
+  var settingsPayload = { goal_weight: goal };
+  if (cur > 0) {
+    var todayKey = getTodayKey();
+    if (!flDateStore[todayKey]) flDateStore[todayKey] = { split: getTodaySplit(), dayType: 'td', log: [] };
+    flDateStore[todayKey].weight = cur;
+    dbSaveDay(todayKey, { weight: cur });
+    settingsPayload.weight = cur;
+  }
+  // NOTE: when input is empty (cur=0) we do NOT overwrite user_settings.weight —
+  // that would wipe the "last known weight" needed for the dashboard subscript.
+  dbSaveSettings(settingsPayload);
   // Refresh the dashboard so the new Body Weight tile updates live
   try { dashRefresh(); } catch(e) {}
 }
@@ -3758,11 +3782,12 @@ function weightLoad() {
     var saved = localStorage.getItem('jr_weight');
     if(saved) {
       var d = JSON.parse(saved);
-      var wi = document.getElementById('dash-weight-input');
       var gi = document.getElementById('dash-goal-input');
-      if(wi && d.cur) wi.value = d.cur;
+      // Weight input is per-day now — wait for dbLoadAll to fill from today's
+      // daily_logs row. localStorage doesn't carry date stamps for weight, so
+      // pre-filling here could show yesterday's number as if it were today's.
       if(gi && d.goal) gi.value = d.goal;
-      if(wi || gi) weightUpdate();
+      if(gi) weightUpdate();
     }
   } catch(e) {}
 }
@@ -4529,12 +4554,34 @@ function dashRefresh() {
     dashSleepEl.textContent = sleepScoreVal || '—';
     if(sleepScoreVal) dashSleepEl.style.color = sleepScoreVal >= 85 ? '#4caf7d' : sleepScoreVal >= 70 ? '#f5a623' : '#e05050';
   }
-  // Body Weight tile pulls from existing weight input
-  var bwInput = document.getElementById('dash-weight-input');
+  // Body Weight tile — daily tracking model.
+  // Shows TODAY's weight if logged. Otherwise shows "—" with a subscript noting
+  // the last logged value and how many days ago (so it's never just a blank tile).
   var bwTile = document.getElementById('dash-bw-val');
   if (bwTile) {
-    var bwVal = bwInput ? parseFloat(bwInput.value) : 0;
-    bwTile.textContent = bwVal ? bwVal : '—';
+    var todayKey = getTodayKey();
+    var todayData = flDateStore[todayKey];
+    var todayWeight = (todayData && todayData.weight) ? parseFloat(todayData.weight) : 0;
+    if (todayWeight) {
+      bwTile.textContent = todayWeight;
+    } else {
+      // Find the most recent prior day with a logged weight
+      var dates = Object.keys(flDateStore).filter(function(k) {
+        return k < todayKey && flDateStore[k] && flDateStore[k].weight;
+      }).sort().reverse();
+      var subHtml = '';
+      if (dates.length > 0) {
+        var lastDate = dates[0];
+        var lastWeight = parseFloat(flDateStore[lastDate].weight);
+        // Days-ago math: parse YYYY-MM-DD as local noon to avoid TZ edge cases
+        var dt1 = new Date(lastDate + 'T12:00:00');
+        var dt2 = new Date(todayKey + 'T12:00:00');
+        var diffDays = Math.round((dt2 - dt1) / 86400000);
+        var ago = diffDays === 1 ? 'yesterday' : (diffDays + 'd ago');
+        subHtml = '<div style="font-size:10px;color:#555;font-weight:400;margin-top:4px;letter-spacing:0;text-transform:none;">last: ' + lastWeight + ' · ' + ago + '</div>';
+      }
+      bwTile.innerHTML = '—' + subHtml;
+    }
   }
   // Net Cal Burned (consumed - burned, signed, +green / -red)
   var netStat = document.getElementById('dash-net-val');
