@@ -383,6 +383,17 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .fl-sec-empty { padding: 10px 14px; font-size: 11px; color: #333; font-style: italic; border-bottom: 1px solid #1c1c1c; }
 .fl-sec-empty:last-child { border-bottom: none; }
 .fl-item-brand { font-size: 10px; color: #3a3a3a; margin-left: 6px; }
+/* "Move to" menu — appears on long-press / right-click of a food log row.
+   Lets you reassign the row's section without opening the edit modal. */
+.fl-move-menu { position: fixed; z-index: 12000; background: #141414; border: 1px solid #2a2a2a; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding: 6px; min-width: 180px; display: none; }
+.fl-move-menu.open { display: block; }
+.fl-move-menu-title { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #555; text-transform: uppercase; padding: 6px 10px; }
+.fl-move-option { padding: 9px 12px; font-size: 13px; color: #ddd; border-radius: 6px; cursor: pointer; user-select: none; }
+.fl-move-option:hover, .fl-move-option:active { background: #1e1e1e; color: #fff; }
+.fl-move-option.current { background: #0d2a1a; color: #4caf7d; }
+/* Hint on rows that they're long-pressable (subtle — no visual change at rest, only on press) */
+.fl-item { user-select: none; -webkit-tap-highlight-color: transparent; }
+.fl-item.lp-active { background: #1a1a1a; }
 .fl-edit-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99998; display: none; align-items: center; justify-content: center; }
 .fl-edit-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 14px; padding: 20px; width: 320px; max-width: 90vw; }
 .fl-edit-title { font-size: 14px; font-weight: 600; color: #ddd; margin-bottom: 14px; }
@@ -1595,19 +1606,19 @@ var MEAL_PLAN = {
       gutdrink: { name: 'Gut Drink',      cal: 0,   p: 0,   c: 0,    f: 0,    water: 16.9, chip:{emoji:'🥤', label:'Gut Drink', section:'m1'} }
     },
     meals: [
-      { id:'m1', badge:{cls:'badge-regular', text:'Meal 1'},        title:'Breakfast',                  titleNote:'',                              cal:565, p:43, c:69, f:11, chip:{emoji:'🍳', label:'Breakfast', logName:'Meal 1 — Breakfast'},          items:[
+      { id:'m1', badge:{cls:'badge-regular', text:'Meal 1'},        title:'Breakfast',                  titleNote:'',                              cal:565, p:43, c:69, f:11, chip:{emoji:'🍳', label:'M1', logName:'Meal 1 — Breakfast'},          items:[
         { name:'2 large eggs',                                            brand:'Kirkland',        cal:140, p:12, c:0,  f:10 },
         { name:'8 oz liquid egg whites',                                  brand:'Kirkland',        cal:123, p:25, c:0,  f:0  },
         { name:'30–50g spinach cooked into eggs',                         longevity:true,          cal:10,  p:1,  c:1,  f:0,  approx:true },
         { name:'157g cooked sticky rice — weigh after microwaving',       brand:'Bibigo',          cal:232, p:4,  c:53, f:1  },
         { name:'105g blueberries',                                                                  cal:60,  p:1,  c:15, f:0  }
       ]},
-      { id:'m2', badge:{cls:'badge-regular', text:'Meal 2'},        title:'Lunch + Essentials Stack',   titleNote:'',                              cal:397, p:36, c:51, f:5,  chip:{emoji:'🥗', label:'Lunch',     logName:'Meal 2 — Lunch'},              items:[
+      { id:'m2', badge:{cls:'badge-regular', text:'Meal 2'},        title:'Lunch + Essentials Stack',   titleNote:'',                              cal:397, p:36, c:51, f:5,  chip:{emoji:'🥗', label:'M2',        logName:'Meal 2 — Lunch'},              items:[
         { name:'5 oz chicken skewers',                                    brand:'WestEnd',         cal:187, p:30, c:4,  f:4  },
         { name:'125g Bibigo rice',                                        brand:'Bibigo',          cal:185, p:4,  c:42, f:1  },
         { name:'50–75g broccoli',                                         longevity:true,          cal:25,  p:2,  c:5,  f:0,  approx:true }
       ]},
-      { id:'m3', badge:{cls:'badge-regular', text:'Meal 3'},        title:'Midday',                     titleNote:'',                              cal:277, p:33, c:25, f:9,  chip:{emoji:'🍱', label:'Midday',    logName:'Meal 3 — Midday'},             items:[
+      { id:'m3', badge:{cls:'badge-regular', text:'Meal 3'},        title:'Midday',                     titleNote:'',                              cal:277, p:33, c:25, f:9,  chip:{emoji:'🍱', label:'M3',        logName:'Meal 3 — Midday'},             items:[
         { name:'Oikos 30g protein shake',                                 brand:'Oikos',           cal:170, p:30, c:9,  f:4  },
         { name:'~57g banana',                                             tag:'calculated portion',cal:51,  p:1,  c:13, f:0  },
         { name:'16g natural peanut butter',                               brand:'Good & Gather',   cal:90,  p:4,  c:4,  f:8  }
@@ -1637,29 +1648,29 @@ var MEAL_PLAN = {
       gutdrink: { name: 'Gut Drink',      cal: 0,   p: 0,   c: 0,    f: 0,    water: 16.9, chip:{emoji:'🥤', label:'Gut Drink', section:'m1'} }
     },
     meals: [
-      { id:'m1', badge:{cls:'badge-regular', text:'Meal 1'},        title:'Breakfast',                  titleNote:'',                              cal:505, p:42, c:54, f:11, chip:{emoji:'🍳', label:'Breakfast', logName:'Meal 1 — Breakfast'},          items:[
+      { id:'m1', badge:{cls:'badge-regular', text:'Meal 1'},        title:'Breakfast',                  titleNote:'',                              cal:505, p:42, c:54, f:11, chip:{emoji:'🍳', label:'M1', logName:'Meal 1 — Breakfast'},          items:[
         { name:'2 large eggs',                                            brand:'Kirkland',        cal:140, p:12, c:0,  f:10 },
         { name:'8 oz liquid egg whites',                                  brand:'Kirkland',        cal:123, p:25, c:0,  f:0  },
         { name:'30–50g spinach cooked into eggs',                         longevity:true,          cal:10,  p:1,  c:1,  f:0,  approx:true },
         { name:'157g cooked sticky rice — weigh after microwaving',       brand:'Bibigo',          cal:232, p:4,  c:53, f:1  }
       ]},
-      { id:'m2', badge:{cls:'badge-regular', text:'Meal 2'},        title:'Lunch + Essentials Stack',   titleNote:'',                              cal:397, p:36, c:51, f:5,  chip:{emoji:'🥗', label:'Lunch',     logName:'Meal 2 — Lunch'},              items:[
+      { id:'m2', badge:{cls:'badge-regular', text:'Meal 2'},        title:'Lunch + Essentials Stack',   titleNote:'',                              cal:397, p:36, c:51, f:5,  chip:{emoji:'🥗', label:'M2',        logName:'Meal 2 — Lunch'},              items:[
         { name:'5 oz chicken skewers',                                    brand:'WestEnd',         cal:187, p:30, c:4,  f:4  },
         { name:'125g Bibigo rice',                                        brand:'Bibigo',          cal:185, p:4,  c:42, f:1  },
         { name:'50–75g broccoli',                                         longevity:true,          cal:25,  p:2,  c:5,  f:0,  approx:true }
       ]},
-      { id:'m3', badge:{cls:'badge-regular', text:'Meal 3'},        title:'Midday',                     titleNote:'',                              cal:226, p:32, c:12, f:9,  chip:{emoji:'🍱', label:'Midday',    logName:'Meal 3 — Midday'},             items:[
+      { id:'m3', badge:{cls:'badge-regular', text:'Meal 3'},        title:'Midday',                     titleNote:'',                              cal:226, p:32, c:12, f:9,  chip:{emoji:'🍱', label:'M3',        logName:'Meal 3 — Midday'},             items:[
         { name:'Oikos 30g protein shake',                                 brand:'Oikos',           cal:170, p:30, c:9,  f:4  },
         { name:'No banana — carb budget met',                             tag:'0g' },
         { name:'16g natural peanut butter',                               brand:'Good & Gather',   cal:90,  p:4,  c:4,  f:8  },
         { name:'10g creatine',                                                                      cal:0 }
       ]},
-      { id:'m4', badge:{cls:'badge-regular', text:'Meal 4'},        title:'Afternoon',                  titleNote:'',                              cal:486, p:38, c:50, f:15, chip:{emoji:'🥑', label:'Afternoon', logName:'Meal 4 — Afternoon'},          items:[
+      { id:'m4', badge:{cls:'badge-regular', text:'Meal 4'},        title:'Afternoon',                  titleNote:'',                              cal:486, p:38, c:50, f:15, chip:{emoji:'🥑', label:'M4',        logName:'Meal 4 — Afternoon'},          items:[
         { name:'5 oz chicken skewers',                                    brand:'WestEnd',         cal:187, p:30, c:4,  f:4  },
         { name:'125g Bibigo rice',                                        brand:'Bibigo',          cal:185, p:4,  c:42, f:1  },
         { name:'20g raw almonds',                                         brand:'Good & Gather',   cal:114, p:4,  c:4,  f:10 }
       ]},
-      { id:'m5', badge:{cls:'badge-regular', text:'Meal 5'},        title:'Dinner',                     titleNote:'',                              cal:500, p:40, c:47, f:17, chip:{emoji:'🌙', label:'Dinner',    logName:'Meal 5 — Dinner'},             items:[
+      { id:'m5', badge:{cls:'badge-regular', text:'Meal 5'},        title:'Dinner',                     titleNote:'',                              cal:500, p:40, c:47, f:17, chip:{emoji:'🌙', label:'M5',        logName:'Meal 5 — Dinner'},             items:[
         { name:'5 oz wild caught salmon',                                 longevitySwap:true, brand:'Costco', cal:290, p:34, c:0,  f:16 },
         { name:'125g Bibigo rice',                                        brand:'Bibigo',          cal:185, p:4,  c:42, f:1  },
         { name:'50–75g broccoli',                                         longevity:true,          cal:25,  p:2,  c:5,  f:0,  approx:true }
@@ -1735,17 +1746,20 @@ function flClassifyByName(name) {
   return 'snack';
 }
 
-// Resolve a section's display label using today's MEAL_PLAN.
-// TD m4 = "Meal 4 — Pre Workout"; RD m4 = "Meal 4 — Afternoon"; etc.
+// Resolve a section's display label.
+// JR's decision (May 2026): chip labels reference the prescribed meal (M1/M2/M3/etc.)
+// but food log section headers use broader, flexible time-of-day buckets — since
+// what he eats for "Breakfast" isn't always strictly his M1 prescription.
+// On TD, m4/m5 = workout-bookend sections (Pre/Post). On RD, m4/m5 = afternoon/dinner.
 function flSectionLabel(sectionId, dayType) {
-  if (sectionId === 'snack') return 'Snacks';
-  var plan = MEAL_PLAN[dayType || flDay] || MEAL_PLAN.td;
-  var meal = plan.meals.find(function(m) { return m.id === sectionId; });
-  if (meal) {
-    var lbl = meal.badge.text;
-    if (meal.title) lbl += ' — ' + meal.title;
-    return lbl;
-  }
+  var day = dayType || flDay;
+  if (sectionId === 'snack') return '🍿 Snacks';
+  if (sectionId === 'intra') return '⚡ Intra-Workout';
+  if (sectionId === 'm1')    return '🍳 Breakfast';
+  if (sectionId === 'm2')    return '🥗 Lunch';
+  if (sectionId === 'm3')    return '🍱 Midday';
+  if (sectionId === 'm4')    return day === 'rd' ? '🥑 Afternoon'   : '💪 Pre-Workout';
+  if (sectionId === 'm5')    return day === 'rd' ? '🌙 Dinner'      : '🥩 Post-Workout';
   return sectionId;
 }
 
@@ -1819,6 +1833,124 @@ function flAddMeal(mealId, dayType) {
     try { waterSave(); waterRender(); } catch(e) {}
   }
   flSaveAll(); flRender();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// LONG-PRESS "MOVE TO" MENU for food log rows.
+// Touch-and-hold any row (or right-click on desktop) → menu pops up with the
+// section options. Tap one → row moves to that section. No drag, no edit modal.
+// ────────────────────────────────────────────────────────────────────────────
+
+var _flLPTimer = null;
+var _flLPRow = null;
+
+function flShowMoveMenu(idx, evt) {
+  var menu = document.getElementById('fl-move-menu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'fl-move-menu';
+    menu.className = 'fl-move-menu';
+    document.body.appendChild(menu);
+  }
+  var log = flCurrentLog();
+  if (idx < 0 || idx >= log.length) return;
+  var currentSection = log[idx].section || 'snack';
+  var order = flSectionOrder(flDay);
+  var html = '<div class="fl-move-menu-title">Move to…</div>';
+  order.forEach(function(sec) {
+    var label = flSectionLabel(sec, flDay);
+    var isCurrent = (sec === currentSection);
+    html += '<div class="fl-move-option' + (isCurrent ? ' current' : '') + '" onclick="flMoveTo(' + idx + ',\'' + sec + '\')">' + label + (isCurrent ? '  ✓' : '') + '</div>';
+  });
+  menu.innerHTML = html;
+
+  // Position near the touch/click point, but keep it on-screen.
+  // Use pageX/Y if available (better for scroll context), fall back to clientX/Y.
+  var x = (evt && (evt.clientX || (evt.touches && evt.touches[0] && evt.touches[0].clientX))) || window.innerWidth / 2;
+  var y = (evt && (evt.clientY || (evt.touches && evt.touches[0] && evt.touches[0].clientY))) || window.innerHeight / 2;
+  menu.style.left = '0px'; menu.style.top = '0px';
+  menu.classList.add('open');
+  var rect = menu.getBoundingClientRect();
+  var menuW = rect.width, menuH = rect.height;
+  // Clamp inside viewport with 8px margin
+  var left = Math.max(8, Math.min(x, window.innerWidth - menuW - 8));
+  var top  = Math.max(8, Math.min(y, window.innerHeight - menuH - 8));
+  menu.style.left = left + 'px';
+  menu.style.top  = top  + 'px';
+}
+
+function flHideMoveMenu() {
+  var menu = document.getElementById('fl-move-menu');
+  if (menu) menu.classList.remove('open');
+  if (_flLPRow) { _flLPRow.classList.remove('lp-active'); _flLPRow = null; }
+}
+
+function flMoveTo(idx, section) {
+  var log = flCurrentLog();
+  if (idx < 0 || idx >= log.length) { flHideMoveMenu(); return; }
+  log[idx].section = section;
+  flSaveAll(); flRender();
+  flHideMoveMenu();
+}
+
+// Attach long-press handlers to the food log list elements (delegated, so they
+// survive re-renders). Called once on page init.
+function flInitLongPress() {
+  ['fl-log-td', 'fl-log-rd'].forEach(function(listId) {
+    var list = document.getElementById(listId);
+    if (!list || list.dataset.lpInit) return;
+    list.dataset.lpInit = '1';
+
+    function startPress(e, fromContextMenu) {
+      // Skip the action buttons — those have their own handlers.
+      if (e.target && e.target.closest && e.target.closest('.fl-item-stepper, .fl-item-edit, .fl-item-del')) return;
+      var row = e.target && e.target.closest && e.target.closest('.fl-item[data-idx]');
+      if (!row) return;
+      var idx = parseInt(row.dataset.idx, 10);
+      if (isNaN(idx)) return;
+      if (fromContextMenu) {
+        e.preventDefault();
+        flShowMoveMenu(idx, e);
+        return;
+      }
+      _flLPRow = row;
+      row.classList.add('lp-active');
+      _flLPTimer = setTimeout(function() {
+        flShowMoveMenu(idx, e);
+        _flLPTimer = null;
+      }, 500);
+    }
+    function cancelPress() {
+      if (_flLPTimer) { clearTimeout(_flLPTimer); _flLPTimer = null; }
+      if (_flLPRow) { _flLPRow.classList.remove('lp-active'); _flLPRow = null; }
+    }
+
+    list.addEventListener('pointerdown', function(e) { startPress(e, false); });
+    list.addEventListener('pointerup', cancelPress);
+    list.addEventListener('pointercancel', cancelPress);
+    list.addEventListener('pointermove', function(e) {
+      // Cancel long-press if user scrolls/drags more than a few pixels
+      if (_flLPTimer && _flLPRow) {
+        var movement = (e.movementX || 0) + (e.movementY || 0);
+        if (Math.abs(movement) > 4) cancelPress();
+      }
+    });
+    list.addEventListener('contextmenu', function(e) { startPress(e, true); });
+  });
+
+  // Dismiss menu on outside click / scroll / escape
+  if (!document.body.dataset.lpDismissInit) {
+    document.body.dataset.lpDismissInit = '1';
+    document.addEventListener('click', function(e) {
+      var menu = document.getElementById('fl-move-menu');
+      if (!menu || !menu.classList.contains('open')) return;
+      if (!menu.contains(e.target)) flHideMoveMenu();
+    });
+    window.addEventListener('scroll', flHideMoveMenu, true);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') flHideMoveMenu();
+    });
+  }
 }
 
 // Log a "extra" (coffee, gut drink) using its chip section + water (if any).
@@ -2924,7 +3056,7 @@ function flRenderLog() {
       var brandHtml = item.brand ? '<span class="fl-item-brand">' + item.brand + '</span>' : '';
       var nameHtml = item.name + brandHtml + (s > 1 ? ' <span class="fl-item-mult">· ' + s + 'x</span>' : '');
       var macroHtml = Math.round(item.cal * s) + ' cal · ' + Math.round(item.p * s) + 'P · ' + Math.round(item.c * s) + 'C · ' + Math.round(item.f * s) + 'F';
-      return '<div class="fl-item">' +
+      return '<div class="fl-item" data-idx="' + idx + '">' +
         '<span class="fl-item-name">' + nameHtml + '</span>' +
         '<span class="fl-item-macros">' + macroHtml + '</span>' +
         '<span class="fl-item-stepper">' +
@@ -4927,6 +5059,8 @@ ouraCallback();
 
 /* Populate the food log quick-add chips from MEAL_PLAN. Idempotent. */
 try { flRenderChips(); } catch(e) { console.error('flRenderChips failed:', e); }
+/* Wire long-press → "Move to" menu on food log rows (delegated, one-time setup). */
+try { flInitLongPress(); } catch(e) { console.error('flInitLongPress failed:', e); }
 
 /* Establish a clean baseline before any per-day data loads. */
 initNewDay();
