@@ -383,6 +383,10 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .fl-sec-empty { padding: 10px 14px; font-size: 11px; color: #333; font-style: italic; border-bottom: 1px solid #1c1c1c; }
 .fl-sec-empty:last-child { border-bottom: none; }
 .fl-item-brand { font-size: 10px; color: #3a3a3a; margin-left: 6px; }
+/* Plan-reference pill — small green badge next to ingredients logged from a
+   prescribed meal chip (M1/M2/M3/M4/M5/Pre-WO/Intra/Post-WO). Lets JR see
+   at a glance which entries are part of his coach's plan vs custom adds. */
+.fl-item-plan-ref { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 20px; background: #0d2a1a; color: #4caf7d; margin-left: 6px; white-space: nowrap; letter-spacing: 0.04em; vertical-align: middle; }
 /* "Move to" menu — appears on long-press / right-click of a food log row.
    Lets you reassign the row's section without opening the edit modal. */
 .fl-move-menu { position: fixed; z-index: 12000; background: #141414; border: 1px solid #2a2a2a; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding: 6px; min-width: 180px; display: none; }
@@ -1794,6 +1798,9 @@ function flBackfillSections() {
 
 // Log a single item with explicit section (or auto-classify if omitted).
 // Pass opts.batch=true to skip the save+render call (caller will batch).
+// opts.planRef stamps the entry with its prescribed-meal origin (e.g. "M1",
+// "Pre-WO") — shows as a small pill next to the name in Today's Log so JR can
+// see at a glance which entries came from his coach's prescribed plan.
 function flAddItem(name, cal, p, c, f, opts) {
   opts = opts || {};
   var log = flGetDayData(flCurrentDate).log;
@@ -1806,7 +1813,8 @@ function flAddItem(name, cal, p, c, f, opts) {
     servings: Math.max(1, Math.min(10, parseInt(opts.servings) || 1)),
     section: opts.section || flClassifyByTime()
   };
-  if (opts.brand) entry.brand = opts.brand;
+  if (opts.brand)   entry.brand   = opts.brand;
+  if (opts.planRef) entry.planRef = opts.planRef;
   log.push(entry);
   if (!opts.batch) { flSaveAll(); flRender(); }
 }
@@ -1819,11 +1827,15 @@ function flAddMeal(mealId, dayType) {
   var plan = MEAL_PLAN[dayType || flDay] || MEAL_PLAN.td;
   var meal = plan.meals.find(function(m) { return m.id === mealId; });
   if (!meal) return;
+  // planRef = the prescribed meal's chip label (M1/M2/M3/M4/M5/Pre-WO/Intra/Post-WO).
+  // Stamped on every ingredient so it can render as a small pill in Today's Log.
+  var planRef = (meal.chip && meal.chip.label) || null;
   meal.items.forEach(function(it) {
     if (it.noMacroPill && (it.cal == null || it.cal === 0)) return;
     flAddItem(it.name, it.cal || 0, it.p || 0, it.c || 0, it.f || 0, {
       section: mealId,
       brand: it.brand,
+      planRef: planRef,
       batch: true
     });
   });
@@ -3053,8 +3065,9 @@ function flRenderLog() {
     var rowsHtml = entries.map(function(e) {
       var item = e.item; var idx = e.idx;
       var s = item.servings || 1;
-      var brandHtml = item.brand ? '<span class="fl-item-brand">' + item.brand + '</span>' : '';
-      var nameHtml = item.name + brandHtml + (s > 1 ? ' <span class="fl-item-mult">· ' + s + 'x</span>' : '');
+      var brandHtml   = item.brand   ? '<span class="fl-item-brand">' + item.brand + '</span>' : '';
+      var planRefHtml = item.planRef ? '<span class="fl-item-plan-ref">' + item.planRef + '</span>' : '';
+      var nameHtml = item.name + brandHtml + planRefHtml + (s > 1 ? ' <span class="fl-item-mult">· ' + s + 'x</span>' : '');
       var macroHtml = Math.round(item.cal * s) + ' cal · ' + Math.round(item.p * s) + 'P · ' + Math.round(item.c * s) + 'C · ' + Math.round(item.f * s) + 'F';
       return '<div class="fl-item" data-idx="' + idx + '">' +
         '<span class="fl-item-name">' + nameHtml + '</span>' +
