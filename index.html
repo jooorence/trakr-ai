@@ -1985,9 +1985,21 @@ function _renderRestoredMessages(msgsEl, msgs, bubbleClass, userBubbleClass, coa
 function restoreChatSurfaces() {
   if (!loadedChatHistory) return;
 
+  // Defensive: strip any LOG action tags from loaded messages so Claude doesn't
+  // see its own past LOG actions in history. Older sessions may have saved raw
+  // replies (with LOG tags) before the save path was fixed — this sanitizes them.
+  function sanitizeHistory(arr) {
+    return (arr || []).map(function(m) {
+      if (m && m.role === 'assistant' && typeof m.content === 'string') {
+        return { role: 'assistant', content: stripActionTags(m.content) };
+      }
+      return m;
+    });
+  }
+
   // Floating coach sheet (csHistory)
-  var floating = loadedChatHistory['floating'] || [];
-  console.log('[TRAKR] restoreChatSurfaces: floating=' + floating.length + ' brief=' + (loadedChatHistory['brief']||[]).length + ' main=' + (loadedChatHistory['main']||[]).length);
+  var floating = sanitizeHistory(loadedChatHistory['floating']);
+  console.log('[TRAKR] restoreChatSurfaces: floating=' + floating.length + ' brief=' + ((loadedChatHistory['brief']||[]).length) + ' main=' + ((loadedChatHistory['main']||[]).length));
   if (floating.length > 0 && !chatRestored.floating) {
     csHistory = floating.slice();
     chatRestored.floating = true;
@@ -1999,7 +2011,7 @@ function restoreChatSurfaces() {
   }
 
   // Brief chat (in-page Coach tab)
-  var brief = loadedChatHistory['brief'] || [];
+  var brief = sanitizeHistory(loadedChatHistory['brief']);
   if (brief.length > 0 && !chatRestored.brief) {
     briefChatHistory = brief.slice();
     chatRestored.brief = true;
@@ -2009,7 +2021,7 @@ function restoreChatSurfaces() {
   }
 
   // Legacy main coach panel
-  var main = loadedChatHistory['main'] || [];
+  var main = sanitizeHistory(loadedChatHistory['main']);
   if (main.length > 0 && !chatRestored.main) {
     coachHistory = main.slice();
     chatRestored.main = true;
@@ -3210,8 +3222,10 @@ async function briefChatSend() {
     var reply = data.content.map(function(i){return i.text||'';}).join('');
     var typ = document.getElementById('brief-chat-typing');
     if(typ) typ.remove();
-    briefChatHistory.push({role:'assistant', content: reply});
-    dbSaveChatMsg('brief', 'assistant', reply);
+    // Strip LOG tags before storing — prevents Claude from re-emitting on next turn.
+    var briefStripped = stripActionTags(reply);
+    briefChatHistory.push({role:'assistant', content: briefStripped});
+    dbSaveChatMsg('brief', 'assistant', briefStripped);
     reply = _normalizeLogActions(reply);
     // Process all LOG actions
     var clearResult = processClearDay(reply);
@@ -4103,7 +4117,11 @@ async function csSend() {
 
     // Bug 1: strip all LOG tags before display; Bug 2: global match for all items
     var displayText = stripActionTags(reply);
-    dbSaveChatMsg('floating', 'assistant', displayText || reply);
+    // Always save the *stripped* version — never the raw reply (with LOG tags).
+    // Previous bug: `displayText || reply` fell back to raw reply when stripping
+    // emptied the text (e.g. Claude responded with only LOG actions). That raw
+    // text persisted to DB, came back on next page load, and Claude re-emitted.
+    dbSaveChatMsg('floating', 'assistant', displayText);
     var waterMatches = Array.from(reply.matchAll(/LOGWATER:(\{[^}]+\})/g));
     var foodMatches  = Array.from(reply.matchAll(/LOGFOOD:(\{[^}]+\})/g));
     var hasActions   = waterMatches.length > 0 || foodMatches.length > 0;
