@@ -1,7 +1,7 @@
 # TRAKR — Session Context
 
 **Project**: TRAKR — single-user personal health dashboard for JR, deployed at [trakros.com](https://trakros.com).
-**Stack**: single-file `index.html` (~4800 lines), Supabase (Postgres + Auth) for persistence, Netlify Functions (`netlify/functions/`) as backend proxies for Oura OAuth + Claude/Anthropic API.
+**Stack**: single-file `index.html` (~5000 lines), Supabase (Postgres + Auth) for persistence, Netlify Functions (`netlify/functions/`) as backend proxies for Oura OAuth + Claude/Anthropic API.
 **Repo**: [github.com/jooorence/trakr-ai](https://github.com/jooorence/trakr-ai)
 
 This document is the **handoff between Claude sessions**. It is overwritten at the end of each session with the latest state. Git history preserves prior versions.
@@ -25,7 +25,7 @@ JR's start-of-session prompt looks like this:
 3. **Personal app, single user (JR himself).** Decisions favor JR's specific workflow. Hard-code his preferences, don't add multi-user features.
 4. **No mockup-pushing.** Mockups live in `/tmp/trakr_preview/` and never get committed.
 5. **Git workflow**: commit on worktree branch → `--no-ff` merge into `main` → push. Always push to `origin/main`. Pull before starting any session if switching machines.
-6. **Single source of truth pattern**: where the same data is referenced in multiple places (UI + system prompt + helper handlers), put it in ONE JS object and have everything read from it. See `MEAL_PLAN` for the template.
+6. **Single source of truth pattern**: where the same data is referenced in multiple places (UI + system prompt + helper handlers), put it in ONE JS object and have everything read from it. See `MEAL_PLAN` for the template — same pattern coming for training/routines later.
 
 ---
 
@@ -41,167 +41,194 @@ TRAKR AI    → CoachGPT
 ```
 Width: **220px**, dark scrollbars, content area max-width **880px** centered with black gutters.
 Desktop body has `zoom: 1.1` applied via `@media (min-width: 601px)` — everything 10% larger.
-**Body height compensation**: `body { height: calc(100vh / 1.1) }` so zoomed body fits viewport exactly (otherwise body renders 110vh and clips bottom content).
+**Body height compensation**: `body { height: calc(100vh / 1.1) }` so zoomed body fits viewport exactly.
 
 ### Mobile dashboard (≤600px viewport)
 - **Sidebar hidden**, replaced by bottom dock + hamburger top-left
-- **Bottom dock** — translucent rounded pill (liquid-glass style), 64px tall, fixed bottom. Four line-icon nav items: **Home / Food / Train / Meals**. **Floats over content** (content visible through glass blur).
+- **Bottom dock** — translucent rounded pill (liquid-glass style), 64px tall, fixed bottom. Four line-icon nav items: **Home / Food / Train / Meals**. Floats over content (content visible through glass blur).
 - **CoachGPT bubble** — floating circle, teal, pinned bottom-right beside dock.
-- **Hamburger** — top-left. Opens slide-out drawer.
-- **Drawer content** (mobile only, NOT dock duplicates): JR Pagdanganan profile card (tap → Settings), Routines, CoachGPT, Sign Out. Desktop sidebar nav hidden via `.sb-desktop-nav` class swap.
-- **`.page-spacer` div** at bottom of `.main` — 80px empty section gives scroll clearance past the floating dock. Hidden on desktop.
-- **`.main { flex-direction: column; align-items: center; justify-content: flex-start }`** on mobile — required for page-spacer to stack below content (not beside it) and for pages to load at the top (not vertically centered).
-- **iOS auto-zoom fix** — all mobile inputs forced to `font-size: 16px !important`.
+- **Hamburger drawer** — top-left. Shows JR profile (→ Settings) + Routines, CoachGPT, Sign Out. Desktop sidebar items hidden via `.sb-desktop-nav` swap.
+- **`.page-spacer` div** at bottom of `.main` — 80px on mobile, **60px on desktop**. Real DOM element (not padding) so the gap is reliably visible.
+- **`.main { flex-direction: column; align-items: center; justify-content: flex-start }`** — on BOTH desktop and mobile now (changed from row-direction so .page-spacer stacks below active section instead of becoming a side-by-side flex item).
+- **iOS auto-zoom fix** — inputs forced to `font-size: 16px !important`.
 - **Viewport lock** — `maximum-scale=1.0, user-scalable=no`.
 
 ### Desktop CoachGPT bubble position
-Anchored to the bottom-right of the content area with a calibrated formula:
+Anchored to the bottom-right of the content area:
 ```css
 #coach-bubble { right: max(24px, calc((100vw - 1100px) / 2 - 65px)); bottom: 24px; }
 ```
-The `-65px` offset was tuned visually (iterated through -40, -90, -75, -120, -200 with JR before landing on -65). Don't change this without his sign-off.
+The `-65px` offset was tuned visually. Don't change without JR's sign-off.
 
 ### Dashboard tile layout
-**Desktop (2 rows × 3 cols):**
-- Row 1: Cal Logged | Net Cal Burned | Weight (lbs)
-- Row 2: Steps | Water (oz) | Sleep Score
+**Desktop (2 rows × 3 cols):** Cal Logged | Net Cal Burned | Weight (lbs) ┃ Steps | Water (oz) | Sleep Score
+**Mobile (3 rows × 2 cols):** Cal Logged | Steps ┃ Net Cal Burned | Water (oz) ┃ Weight (lbs) | Sleep Score
 
-**Mobile (3 rows × 2 cols):**
-- Row 1: Cal Logged | Steps
-- Row 2: Net Cal Burned | Water (oz)
-- Row 3: Weight (lbs) | Sleep Score
+### Weight tracking — DAILY model (NEW)
+Weight is now tracked **per-day** in `daily_logs.weight` (column added via Supabase migration `add_weight_column_to_daily_logs`). Each day starts blank until logged.
+
+**Dashboard tile behavior:**
+- Today's weight logged → shows the number (big, gold)
+- Not logged today → shows `—` with subscript `last: 203 · 2d ago` (pulled from most recent prior day's weight)
+
+**Storage split:**
+- `daily_logs.weight` = per-date weigh-in (authoritative)
+- `user_settings.weight` = latest known value (powers the subscript when today is unset; doesn't overwrite when current input is 0)
+- `user_settings.goal_weight` = persistent target (unchanged)
+
+`weightUpdate()` saves cur to BOTH tables. `weightLoad()` no longer pre-fills weight input from localStorage (would pretend yesterday's number was today's). `dbLoadAll()` populates input ONLY if today has a logged weight. `initNewDay()` clears `dash-weight-input` at midnight rollover.
 
 ### Macro Progress (Dashboard + Food Log)
 - Bars per macro with `current / target · %`
-- Status hint below shows calorie delta + per-macro deltas
-- **Delta numbers are color-coded by macro**: `158g protein` blue (#5aabff), `191g carbs` orange (#f5a623), `3g fat` purple (#a07dd9). Only the number portion is colored; the macro name stays gray.
+- Status hint below with calorie delta + per-macro deltas
+- **Delta numbers are color-coded by macro**: `158g protein` blue, `191g carbs` orange, `3g fat` purple. Only the number portion is colored.
 - **Targets auto-sync with today's actual day type** — Wed/Sun → RD targets (2086 cal / 187P / 213C / 55F), other days → TD targets (2227 / 190 / 266 / 47). Driven by `getTodaySplit()`.
 
 ### Training Split page
 - Weekly rotation: Mon=Pull1, Tue=Push1, Wed=Rest, Thu=Legs, Fri=Pull2, Sat=Push2, Sun=Rest
 - Full exercise breakdown per day with notes
-- **New "Bonus Day" section** below the rotation: **Arm Day** (biceps/triceps supersets) — not in weekly rotation, swap in via LOGSPLIT only
+- **Bonus Day section**: **Arm Day** (biceps/triceps supersets) — on-demand only, swap in via LOGSPLIT
+- **Auto-scroll on expand**: `toggleDay()` calls `scrollIntoView({behavior:'smooth',block:'start'})` on the parent section ~80ms after expansion so day exercises are immediately readable without manual scroll (fixes Arm Day clipping at viewport bottom)
 
-### `SPLIT_INFO` — central registry of training splits
-6 weekly splits + 1 bonus:
-- `Pull Day 1`, `Push Day 1`, `Legs`, `Pull Day 2`, `Push Day 2` (focus + topLifts)
-- `Rest` (focus only, no lifts)
-- `Arm Day` (bonus, on-demand): focus `Arms — Bi/Tri Supersets`, 4 working supersets:
-  1. Alt. DB Curls + Lying Skull Crushers — 3 × 8–10
-  2. Barbell Curls + DB Skull Crushers — 3 × 8–10
-  3. Preacher Curl 1-arm + Bent-Over Tri Ext — 3 × 10–12
-  4. Cable Curls + Tricep Pulldowns — 3 × 12–15
+### Apple Fitness / Oura sections (mobile)
+- Manual inputs hidden — log via CoachGPT
+- Apple Fitness: ring labels + true uncapped percentages
+- Oura: top quadrant Total Sleep / Steps / Cal Burned / VO₂ max (22px hero), middle row Deep/REM/Light/Awake, bottom row HRV/Readiness/Bedtime. VO₂ max syncs cross-device via oura blob.
 
-### Apple Fitness section (mobile)
-- Manual input fields hidden — log via CoachGPT
-- Ring labels + percentages at readable sizes, true uncapped percentage shown
+### Food Log — MAJOR REFACTOR
+The food log is now MyFitnessPal-style with sections, per-ingredient logging, and a long-press move menu.
 
-### Oura Ring section (mobile)
-- **Top quadrant**: Total Sleep / Steps / Cal Burned / VO₂ max (22px hero numbers)
-- **Middle row**: Deep / REM / Light / Awake (Awake = total − deep − rem − light)
-- **Bottom row**: HRV / Readiness / Bedtime
-- All input fields hidden on mobile (CoachGPT logs data)
-- VO₂ max syncs cross-device via oura blob
+**Quick-Add chips** (prescription reference):
+- TD: Coffee · Gut Drink · M1 · M2 · M3 · Pre-WO · Intra · Post-WO
+- RD: Coffee · Gut Drink · M1 · M2 · M3 · M4 · M5
+- Tap a chip → expands to per-ingredient entries (e.g. M1 chip → 5 rows: eggs, whites, spinach, rice, blueberries), all tagged with section + planRef
+- `flAddMeal(mealId, dayType)` does the expansion + batch save/render
+- `flAddExtra(extraId, dayType)` handles Coffee/Gut Drink (single entry, optional water)
 
-### Food Log
-- **Date navigation** — left/right arrows + calendar picker
-- **Day type auto-syncs** for today: `flGetDayData()` re-derives `split` and `dayType` from `getTodaySplit()` whenever the requested date is today. Stale DB rows can't lock in wrong macros. Other dates keep stored values.
-- **Daily Status row** (4 boxes): Calories | Protein | Carbs | Fat — actual logged values, neutral dark background, white numbers
-- **Macro card with pie chart**: bars + pie + macro key (P/C/F dots)
-- **Slim water strip**: icon + oz + bar + buttons (compact)
-- **Trak Your Food hero card**: green-tinted, AI input + emoji quick-add chips
-- **Allows duplicates**, **servings stepper** per row, **edit modal** with pencil icon
+**Section grouping** (Today's Log, in order):
+- 🍳 Breakfast (m1) · 🥗 Lunch (m2) · 🍱 Midday (m3) · 💪 Pre-Workout (m4 on TD) · ⚡ Intra-Workout (intra, TD only) · 🥩 Post-Workout (m5 on TD) · 🍿 Snacks (always visible, even when empty)
+- On RD: m4 reskins to **🥑 Afternoon**, m5 reskins to **🌙 Dinner**, intra section omitted from order
+- Each section header shows its own cal/P/C/F totals
+- Empty sections render `No items logged yet` (faded italic)
+- Section labels resolved by `flSectionLabel(sectionId, dayType)`
 
-### Meal Plans page
-- **TD / RD tabs** switch between training day and rest day plans
-- **Daily macro card** at top (Protein/Carbs/Fat/Calories — pulled from `MEAL_PLAN[day].daily`)
-- **Meal cards** with foods, brands, longevity tags, banana tags, per-item macros, totals
-- **Rendered from `MEAL_PLAN`** (data object) via `mpRenderDay()` — no longer hardcoded HTML
+**Plan-reference pill**:
+- Items logged via meal chips get a small green `M1` (or M2, Pre-WO, etc.) pill **leading** the food name
+- Pill is the chip's label, stored as `entry.planRef`
+- Custom adds / CoachGPT-logged items / Coffee / Gut Drink have NO pill
+- planRef is fixed origin metadata — moving an item between sections doesn't change the pill
+
+**Long-press → Move to menu**:
+- Touch and hold a food row for ~500ms → popup menu appears with all sections (current section marked ✓)
+- Tap a section → row moves instantly, totals recompute
+- Right-click on desktop opens the same menu
+- Cancels on scroll / drag / outside-click / Escape
+- Implementation: delegated pointer listeners on the parent list; row gets `.lp-active` class while pressed
+
+**Section auto-classification**:
+- `flClassifyByTime()` — fallback for CoachGPT/AI-input entries: 5-10am→m1, 10am-1pm→m2, 1pm-4pm→m3, 4pm-7pm→m4, 7pm-10pm→m5, else→snack
+- `flClassifyByName(name)` — name-pattern fallback: "Meal 1" / "Breakfast" → m1, "Pre Workout" → m4, etc.
+- `flBackfillSections()` — one-time pass over flDateStore to assign `section` to any pre-section entries (legacy data cleanup, idempotent)
+
+**Edit modal** gains a **Section dropdown** so you can manually reassign a row without long-press.
 
 ### CoachGPT
-- Floating bubble (desktop bottom-right beside content, mobile bottom-right beside dock)
+- Floating bubble (desktop bottom-right anchored to content, mobile bottom-right beside dock)
 - Chat sheet expands when bubble tapped
-- **System prompt is dynamic** — includes today's logged data + full meal plan (via `mpPromptText()`) + training split details + LOG action instructions
-- Knows JR's full meal plan now (every food, brand, portion, per-item macros) — can answer "what's in Meal 4?" with specifics
+- **System prompt** is dynamic — includes today's logged data + full meal plan via `mpPromptText()` + training split details + LOG action instructions + section rules
 
-#### LOG actions CoachGPT can emit:
-- `LOGFOOD:{name,cal,p,c,f,servings}` — adds to food log, shows "Ready to log" confirmation card
-- `LOGEDIT:{match,name?,cal,p,c,f}` — **NEW**: edits an existing food log entry. Routes to: not-found message (0 matches), confirm card with Before→After diff (1 match), or picker (2+ matches). All require explicit confirmation.
+#### LOG actions CoachGPT can emit
+- `LOGFOOD:{name,cal,p,c,f,servings,section}` — adds to food log. **`section` field is required** (Claude picks per rules: explicit slot mentioned > meal-plan match > time-of-day fallback). Shows "Ready to log" confirmation card.
+- `LOGEDIT:{match,name?,cal,p,c,f}` — edits an existing entry. Routes to: not-found message (0 matches), confirm card with Before→After diff (1 match), or picker (2+ matches). All require explicit confirmation.
 - `LOGWATER`, `LOGSTEPS`, `LOGCALBURN`, `LOGMOVE`, `LOGEXERCISE`, `LOGSTAND`, `LOGSLEEP`
-- `LOGSPLIT` — change today's training day. Valid: `Push Day 1`, `Push Day 2`, `Pull Day 1`, `Pull Day 2`, `Legs`, `Rest`, **`Arm Day`** (bonus on-demand)
+- `LOGSPLIT` — change today's training day. Valid: `Push Day 1`, `Push Day 2`, `Pull Day 1`, `Pull Day 2`, `Legs`, `Rest`, **`Arm Day`** (bonus)
 - `LOGWEIGHT`, `LOGOURA`, `CLEARDAY`
-- `_normalizeLogActions` strips whitespace between action name and `{`
+- `_normalizeLogActions` strips whitespace between action name and `{`. `stripActionTags` strips ALL log tags from text (used before pushing to chat history).
 
-#### CoachGPT anti-spam (critical)
-- **`csHistory` / `coachHistory` store STRIPPED reply** — `stripActionTags(reply)` removes all LOG tags before pushing to history. Otherwise Claude sees its own past LOG actions on subsequent turns and re-emits them.
-- **`stripActionTags` regex now includes `LOGEDIT`**
-- **App-side dedup** for "Ready to log" cards — if a pending card with the same foods (matched on name+cal+p+c+f+servings) already exists, skip rendering a duplicate.
-- **System prompt explicitly forbids re-emission**: "Once you emit LOGFOOD in a response, that action is now pending. Do NOT re-emit the same LOGFOOD in any subsequent reply unless the user explicitly mentions that food again."
+#### CoachGPT anti-spam (CRITICAL — root-cause-fixed)
+- **`csHistory` / `coachHistory` / `briefChatHistory` store STRIPPED reply** — `stripActionTags(reply)` removes all LOG tags before pushing to in-memory history.
+- **`dbSaveChatMsg('floating'/'main'/'brief', 'assistant', ...)` saves STRIPPED text** — never `displayText || reply` fallback (that leaked raw replies with LOG tags back to DB).
+- **`restoreChatSurfaces()` sanitizes on load** — runs `sanitizeHistory()` over loaded `chat_history` rows so legacy entries (saved before the strip-on-save fix) get cleaned up automatically.
+- **App-side dedup** for "Ready to log" cards — if a pending card with the same foods (matched on name+cal+p+c+f+servings) already exists, skip duplicate render.
+- **System prompt explicitly forbids re-emission**: once Claude emits LOGFOOD, do NOT re-emit on subsequent turns unless user explicitly mentions that food again.
+
+### Cross-device sync — fixed
+The 600ms debounce on `dbSaveDay` / `dbSaveSettings` used to lose updates when switching apps/devices (mobile Safari pauses JS timers when tab loses focus). Fixed via:
+- **`_dbPending` payload merging**: successive calls to `dbSaveDay(key, fields)` now `Object.assign` into a shared pending payload instead of overwriting. Multiple updates batch into one upsert with all fields preserved.
+- **`flushPendingDbSaves()`** fires every pending payload immediately. Wired to:
+  - `document.addEventListener('visibilitychange', ...)` (hidden state)
+  - `window.addEventListener('pagehide', ...)`
+  - `window.addEventListener('beforeunload', ...)`
+- So the moment you switch apps or close the tab, queued saves flush to Supabase before the timer can pause.
 
 ### Sync + persistence
-- **Supabase** — `daily_logs` (date-keyed), `user_settings`, `chat_history`
-- **`_lastOuraBlob`** — in-memory cache. `ouraUpdate()` merges new non-zero values onto it before saving (cross-device safety).
+- **Supabase tables**: `daily_logs` (date-keyed, now includes `weight numeric` column), `user_settings`, `chat_history`
+- **`_lastOuraBlob`** in-memory cache. `ouraUpdate()` merges new non-zero values onto it before saving.
 - **Oura sync** — Netlify proxy, uses client local date
-- **localStorage** mirrors most state
+- **localStorage** mirrors most state. `jr_fl_v2` stores the food log + flDateStore.
 
 ---
 
 ## Architecture decisions worth knowing
 
 ### `MEAL_PLAN` — single source of truth for the meal plan
-**Defined near line 1581.** One JS object with `td` and `rd` variants. Each meal has badge, title, titleNote, total macros, items[] (with name, brand, longevity flag, tag, per-item macros), and `chip` metadata (emoji, label, logName) for food log chips.
+**Defined near line 1581.** One JS object with `td` and `rd` variants. Each meal has badge, title, titleNote, total macros, items[] (with name, brand, longevity flag, tag, per-item macros), and `chip` metadata (emoji, label, logName).
 
-**Three consumers read from it:**
+**Consumers:**
 1. `mpRenderDay(day)` — builds Meal Plans page HTML
 2. `mpPromptText()` — builds the meal-plan text for CoachGPT's system prompt
 3. `flRenderChips()` — populates food log quick-add chips
+4. `flAddMeal(mealId, dayType)` — expands a meal into per-ingredient food log entries
 
-Update `MEAL_PLAN` once and all three update automatically. **This is the pattern to follow for future refactors** (training, routines, rules, etc.).
+Update `MEAL_PLAN` once and everything updates. **Template for future refactors** (training, routines, rules pages).
 
 ### `SPLIT_INFO` — same pattern for training splits
 Already a single source of truth. Drives dashboard training card + LOGSPLIT validation. Full per-exercise notes still live in the Training Split page HTML — future refactor target.
 
+### Food log entry shape
+```js
+{
+  name: "2 large eggs",
+  cal: 140, p: 12, c: 0, f: 10,
+  servings: 1,                      // 1-10, stepper +/- mutates
+  section: "m1",                    // m1, m2, m3, m4, intra, m5, snack
+  planRef: "M1",                    // optional — only present when logged via meal chip
+  brand: "Kirkland"                 // optional — copied from MEAL_PLAN.items
+}
+```
+
 ### Day-type sync logic
-- `dashRefresh()` uses `flTargets[getTodaySplit() === 'Rest' ? 'rd' : 'td']` — dashboard macro targets always reflect today's actual day
+- `dashRefresh()` uses `flTargets[getTodaySplit() === 'Rest' ? 'rd' : 'td']` — dashboard targets always reflect today's actual day
 - `flGetDayData(d)` re-derives `split` + `dayType` from `getTodaySplit()` when `d === today` — food log targets stay correct even with stale DB rows
-- `flRender()` + `dashRefresh()` triggered after LOGSPLIT so macros refresh immediately on day-type change (not just after manual UI button)
+- `flRender()` + `dashRefresh()` triggered after LOGSPLIT so macros refresh immediately on day-type change
 
 ### Activity field chokepoints
-All writes to `steps`, `calExp`, `move`, `exercise`, `stand` go through `setSteps`, `setCalExp`, `setMove`, `setExercise`, `setStand`. They enforce:
-- **Date guard**: writes for non-today date are silently dropped
-- **Source priority**: `user/logaction (3) > oura (2) > apple (1)`
-- **Monotonic guard**: Oura can't overwrite a higher cumulative value with a lower one
-- **`_activitySources` map** tracks which source last wrote each field
+All writes to `steps`, `calExp`, `move`, `exercise`, `stand` go through `setSteps` / `setCalExp` / `setMove` / `setExercise` / `setStand`. Enforces date guard, source priority (`user/logaction (3) > oura (2) > apple (1)`), monotonic guard for cumulative values.
 
 ### `initNewDay()` (clean-slate function)
 - Called on page load AND every 60s by midnight rollover watcher
 - Resets all daily state, calls render functions
-- Also calls `flRenderChips()` on init (chips need MEAL_PLAN-driven render)
-
-### `ouraUpdate()` save guard
-- Won't save when ALL numeric fields are zero/empty (prevents `initNewDay` clearing → save zeros → wipe race)
-- Merges onto `_lastOuraBlob` before saving (cross-device safety)
+- Clears `dash-weight-input` (weight is now per-day, fresh entry expected daily)
 
 ### Mobile breakpoint = 600px
-- Single source of truth for "is this mobile"
 - All mobile-only rules inside `@media (max-width: 600px)`
 
 ---
 
 ## Open items / parked features
 
-1. **Voice input for CoachGPT** — Web Speech API (built into Safari/Chrome). Add 🎤 button, long-press to record, transcribe, fill textarea.
-2. **Photo/screenshot upload in CoachGPT** — `<input type="file" accept="image/*">` → base64 → Claude vision API → extract Oura/Apple Fitness numbers → fire LOGOURA + other LOG actions automatically.
+1. **Voice input for CoachGPT** — Web Speech API. Add 🎤 button, long-press to record, transcribe, fill textarea.
+2. **Photo/screenshot upload in CoachGPT** — `<input type="file" accept="image/*">` → base64 → Claude vision API → extract Oura/Apple Fitness numbers → fire LOG actions automatically.
 3. **Date swipe navigation on dashboard** — Oura-style horizontal carousel. Big lift (requires `dashRefresh(date)` parameterization).
 4. **More single-source-of-truth refactors** — same pattern as `MEAL_PLAN`:
    - Training Split page exercise details (currently hardcoded HTML, partial overlap with `SPLIT_INFO`)
    - Routines (morning + nightly tasks)
-   - Rules / Longevity / Creed / Insights pages (static principle pages)
-5. **PWA install + home-screen icon** — manifest + service worker. Full-screen native feel, enables push notifications.
-6. **Push notifications via PWA** — iOS 16.4+ supports PWA push.
-7. **`vo2_max` Supabase migration** — currently in oura blob. Add `vo2_max numeric` column → flip `vo2Update()` to use `dbSaveSettings`.
-8. **Streaks / habit tracking** — "12 days hitting protein target" badge.
-9. **Camera meal logging** — mobile-only "📸 Snap meal" → Claude vision → estimated macros → confirm UI.
+   - Rules / Longevity / Creed / Insights pages
+5. **PWA install + home-screen icon** — manifest + service worker. Push notifications. iOS 16.4+ supports PWA push.
+6. **Streaks / habit tracking** — "12 days hitting protein target" badge.
+7. **Camera meal logging** — mobile-only "📸 Snap meal" → Claude vision → estimated macros → confirm UI.
+8. **Drag-and-drop food log rows** — currently long-press → menu. Drag would be more visceral. Mobile rough edges: scroll vs drag conflicts, auto-scroll near viewport edges. Layer on top of existing long-press if added.
+9. **Meal completion badges** — auto-detect "M1: 5/5 ✓" by counting planRef='M1' entries vs MEAL_PLAN.td.m1.items in today's log.
 
 ---
 
@@ -209,25 +236,21 @@ All writes to `steps`, `calExp`, `move`, `exercise`, `stand` go through `setStep
 
 | SHA | Description |
 |---|---|
-| `acb3d94` | CoachGPT: LOGEDIT action — edit existing food log entries via chat |
+| `24e8a01` | Desktop: page-spacer 100 → 60px |
+| `e213b25` | Desktop: tighten page-spacer 160 → 100px |
+| `2874338` | Desktop: real .page-spacer element at bottom of every page |
+| `f498d08` | Desktop: bump .main bottom padding to 180px (later replaced by spacer) |
+| `5edaab0` | Training Split: auto-scroll expanded day into view |
+| `4f216be` | Food Log: always show Snacks section |
+| `8056ffe` | Food Log: plan-ref pill leads the row (M1 before food name) |
+| `ca39875` | Food Log: plan-reference pill (M1/M2/Pre-WO/...) on prescribed entries |
+| `0b61b13` | Food Log: M1/M2/M3 chip labels + emoji section headers + long-press move menu |
+| `f722c49` | Food Log: MyFitnessPal-style section grouping + per-ingredient chip expansion |
+| `d40f20b` | Weight: switch to daily tracking model |
+| `7476ef1` | Cross-device sync: flush pending DB saves on app blur/close + merge fields |
+| `6d0c07f` | CoachGPT: kill LOG re-emission for real (DB persistence path was leaking) |
+| `5bea067` | CoachGPT: LOGEDIT action — edit existing food log entries via chat |
 | `5faa365` | Refactor: meal plan as single source of truth (MEAL_PLAN data object) |
-| `ec02aa4` | CoachGPT: expose full meal plan (foods, brands, portions) in system prompt |
-| `693b95f` | CoachGPT: fix root cause of duplicate LOG re-emissions (strip from history) |
-| `b705eb5` | Arm Day: bonus on-demand split for biceps/triceps supersets |
-| `69b9c9f` | CoachGPT: prevent duplicate food confirmation cards (system prompt + dedup) |
-| `8977490` | LOGSPLIT: trigger flRender + dashRefresh so macros update on day change |
-| `b952b6b` | Food Log: today's split + dayType always reflect actual day |
-| `bac37ef` | Dashboard: auto-pick TD vs RD macro targets from today's split |
-| `458c0b6` | Mobile: spacer 120 → 80px |
-| `0de32d7` | Mobile: start scroll from top + reduce spacer to 120px |
-| `b6d2def` | Mobile: stack .main children vertically so spacer goes below content |
-| `5b5fd4b` | Mobile: empty bottom spacer for extra scroll room past floating dock |
-| `dd53b2d` | Mobile: revert to floating dock (no black strip) |
-| `f8588a5` | Desktop bubble: -65 offset (final iteration) |
-| `2aad549` | Desktop: fix bubble corner + bottom scroll clipping (body height compensation) |
-| `e7b1a96` | Macro status: color-code each macro's delta number |
-| `782a786` | Desktop: bump .main bottom padding so last items clear CoachGPT bubble |
-| `bebb122` | Mobile drawer rework: profile at top, dock dupes removed, Sign Out added |
 
 To revert any specific commit: `git revert <sha>` then `git push origin main`. Netlify auto-deploys within ~1-2 min.
 
@@ -236,13 +259,16 @@ To revert any specific commit: `git revert <sha>` then `git push origin main`. N
 ## Things to know that might bite next session
 
 - **Repo is PUBLIC** — Supabase anon keys hardcoded but publishable-tier, protected by RLS. JR is OK with this.
-- **`Fitness and Health Apps Unified Landscape Memo.md`** — untracked file in repo root. Personal note, not committed.
-- **Multi-machine workflow**: always `git pull` before starting work when switching between MacBook Air and MacBook Pro. Both machines now have GitHub auth set up (Air uses `gh` CLI via Homebrew, configured this session).
+- **Multi-machine workflow**: always `git pull` before starting work when switching between MacBook Air and MacBook Pro. Both machines have GitHub auth set up.
 - **`LOGOURA` does not handle `steps` or `calexp`** — those go through `LOGSTEPS`/`LOGCALBURN` with their own guards. Don't add them to LOGOURA.
 - **`LOGEDIT` only edits TODAY's log** — uses `flGetDayData(new Date())`. If editing past dates becomes a use case, parameterize this.
-- **Desktop body zoom + body height compensation is fragile** — if you ever change `body { zoom: 1.1 }` to a different value, also update `body { height: calc(100vh / 1.1) }` to match (otherwise content gets clipped). Currently in `@media (min-width: 601px)`.
-- **MEAL_PLAN edits propagate everywhere automatically** — but they DON'T affect already-logged data. Logging history is in `daily_logs` (Supabase), separate from the plan.
-- **CoachGPT chat history persists** — if duplicate cards reappear, may be stale history from before the dedup fix. User refresh clears.
+- **Desktop body zoom + body height compensation is fragile** — if you ever change `body { zoom: 1.1 }`, also update `body { height: calc(100vh / 1.1) }` to match. Currently in `@media (min-width: 601px)`.
+- **`.main` is flex-column on BOTH desktop and mobile now** — adding sibling elements to `.main` will stack them vertically. Don't add display:flex children that expect row direction.
+- **`.page-spacer` heights differ by viewport**: desktop 60px (global), mobile 80px (override via media query).
+- **MEAL_PLAN edits propagate everywhere** — but they DON'T affect already-logged data. Logging history is in `daily_logs.food_log` (separate from the plan).
+- **Daily weight is on a brand-new column** — `daily_logs.weight` (numeric, nullable). Older rows have NULL there; the dashboard subscript fallback uses `user_settings.weight` (last known).
+- **Long-press handler is delegated** — attached once via `flInitLongPress()`, survives re-renders. Don't attach per-row.
+- **Chat history strip-on-load is one-shot sanitization** — `sanitizeHistory()` cleans loaded entries but doesn't write back to DB. The next time the user sends a message, the new flow saves clean. So legacy DB rows stay raw forever (harmless — they're sanitized in memory on every load).
 
 ---
 
@@ -251,7 +277,7 @@ To revert any specific commit: `git revert <sha>` then `git push origin main`. N
 When JR says "wrap up" / "let's call it" / equivalent:
 
 1. Confirm all code changes are pushed to `origin/main`
-2. **Update this doc** with whatever is now true: new shipped features, new architecture decisions, new open items, latest commit SHAs
+2. **Update this doc** with whatever is now true
 3. Commit: `Update CONTEXT.md after session: [brief topic]`
 4. Push
 
