@@ -2726,6 +2726,13 @@ function toggleDay(id) {
   } else {
     content.classList.add('open');
     if(arrow) arrow.textContent = '▲';
+    // After expansion, scroll the section (and its parent day-header) into
+    // view if it's near the bottom of the viewport — otherwise the user has
+    // to scroll manually, especially for the bottom Arm Day section.
+    setTimeout(function() {
+      var section = content.closest('.day-section') || content;
+      try { section.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) { section.scrollIntoView(); }
+    }, 80); // wait for CSS expand animation to compute final height
   }
 }
 
