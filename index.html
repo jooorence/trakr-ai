@@ -4895,32 +4895,50 @@ function dashRefresh() {
     if(sleepScoreVal) dashSleepEl.style.color = sleepScoreVal >= 85 ? '#4caf7d' : sleepScoreVal >= 70 ? '#f5a623' : '#e05050';
   }
   // Body Weight tile — daily tracking model.
-  // Shows TODAY's weight if logged. Otherwise shows "—" with a subscript noting
-  // the last logged value and how many days ago (so it's never just a blank tile).
+  //  • Today logged   → big number + delta subscript (↓ X lbs from yesterday)
+  //  • Today blank    → "—" + "last: X · Yd ago" subscript
+  //  • Never logged   → just "—"
+  // Subscript colors: down = green, up = orange, same = gray, last = gray.
   var bwTile = document.getElementById('dash-bw-val');
   if (bwTile) {
     var todayKey = getTodayKey();
     var todayData = flDateStore[todayKey];
     var todayWeight = (todayData && todayData.weight) ? parseFloat(todayData.weight) : 0;
+    // Find most recent prior day with a logged weight (used for delta + last-known)
+    var priorDates = Object.keys(flDateStore).filter(function(k) {
+      return k < todayKey && flDateStore[k] && flDateStore[k].weight;
+    }).sort().reverse();
+    var priorEntry = priorDates.length > 0 ? { date: priorDates[0], weight: parseFloat(flDateStore[priorDates[0]].weight) } : null;
+    // Days-ago helper
+    function daysAgo(dateKey) {
+      var dt1 = new Date(dateKey + 'T12:00:00');
+      var dt2 = new Date(todayKey + 'T12:00:00');
+      var d = Math.round((dt2 - dt1) / 86400000);
+      return d === 1 ? 'yesterday' : (d + 'd ago');
+    }
+    var subStyle = 'font-size:10px;font-weight:400;margin-top:4px;letter-spacing:0;text-transform:none;';
     if (todayWeight) {
-      bwTile.textContent = todayWeight;
-    } else {
-      // Find the most recent prior day with a logged weight
-      var dates = Object.keys(flDateStore).filter(function(k) {
-        return k < todayKey && flDateStore[k] && flDateStore[k].weight;
-      }).sort().reverse();
+      // Big number = today. Subscript = delta vs prior weigh-in (if any).
       var subHtml = '';
-      if (dates.length > 0) {
-        var lastDate = dates[0];
-        var lastWeight = parseFloat(flDateStore[lastDate].weight);
-        // Days-ago math: parse YYYY-MM-DD as local noon to avoid TZ edge cases
-        var dt1 = new Date(lastDate + 'T12:00:00');
-        var dt2 = new Date(todayKey + 'T12:00:00');
-        var diffDays = Math.round((dt2 - dt1) / 86400000);
-        var ago = diffDays === 1 ? 'yesterday' : (diffDays + 'd ago');
-        subHtml = '<div style="font-size:10px;color:#555;font-weight:400;margin-top:4px;letter-spacing:0;text-transform:none;">last: ' + lastWeight + ' · ' + ago + '</div>';
+      if (priorEntry) {
+        var delta = Math.round((todayWeight - priorEntry.weight) * 10) / 10;
+        var ago = daysAgo(priorEntry.date);
+        if (delta < 0) {
+          subHtml = '<div style="' + subStyle + 'color:#4caf7d;font-weight:600;">↓ ' + Math.abs(delta) + ' lbs from ' + ago + '</div>';
+        } else if (delta > 0) {
+          subHtml = '<div style="' + subStyle + 'color:#f5a623;font-weight:600;">↑ ' + delta + ' lbs from ' + ago + '</div>';
+        } else {
+          subHtml = '<div style="' + subStyle + 'color:#888;font-weight:500;">same as ' + ago + '</div>';
+        }
       }
-      bwTile.innerHTML = '—' + subHtml;
+      bwTile.innerHTML = todayWeight + subHtml;
+    } else {
+      // No today entry — show "—" plus last-known if we have one.
+      var lastHtml = '';
+      if (priorEntry) {
+        lastHtml = '<div style="' + subStyle + 'color:#555;">last: ' + priorEntry.weight + ' · ' + daysAgo(priorEntry.date) + '</div>';
+      }
+      bwTile.innerHTML = '—' + lastHtml;
     }
   }
   // Net Cal Burned (consumed - burned, signed, +green / -red)
