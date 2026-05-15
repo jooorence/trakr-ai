@@ -87,12 +87,15 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .sb-mobile-signout { padding: 14px 12px; font-size: 13px; color: #e05050; cursor: pointer; border-top: 1px solid #252525; margin-top: auto; }
 
 /* MAIN CONTENT */
-.main { flex: 1; overflow-y: auto; padding: 20px 16px 180px; display: flex; justify-content: center; }
+/* .main uses flex-column so the .page-spacer below stacks under the active
+   section instead of becoming a side-by-side row item. Only ONE section is
+   visible at a time (others are display:none) so the column direction is
+   equivalent to the old row layout for content rendering. */
+.main { flex: 1; overflow-y: auto; padding: 20px 16px 24px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
 .main > * { width: 100%; max-width: 880px; }
-/* Empty spacer at bottom of every page — mobile only.
-   Lives at the end of .main so it appears after whichever section is active.
-   Hidden on desktop (which has its own .main padding-bottom). */
-.page-spacer { display: none; }
+/* Empty spacer at bottom of every page — gives breathing room past the
+   floating CoachGPT bubble + viewport edge. Used on both desktop and mobile. */
+.page-spacer { display: block; height: 160px; flex-shrink: 0; }
 
 /* MACRO DASHBOARD */
 .macro-section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #444; margin: 0 0 8px; }
@@ -587,13 +590,10 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
      (you see it through the glass blur — the iOS bottom-bar look). The 220px
      inner pad ensures the LAST item on each page scrolls fully clear of the
      dock when scrolled to the bottom. */
-  /* Inner padding minimal — .page-spacer (below) provides the bulk of clearance.
-     justify-content: flex-start overrides desktop's center alignment so content
-     starts at the top of .main instead of being vertically centered. */
-  .main { padding-bottom: calc(24px + env(safe-area-inset-bottom));
-          flex-direction: column; align-items: center; justify-content: flex-start; }
-  /* Blank "section" at the bottom of every page — adds scroll room past the floating dock. */
-  .page-spacer { display: block; height: 80px; flex-shrink: 0; }
+  /* Mobile spacer is smaller (80px) since the floating dock occupies less
+     vertical space than the desktop bubble + bottom edge combined. */
+  .main { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .page-spacer { height: 80px; }
 
   /* Body-text font sizes — middle ground between the original (too small) and
      the previous bump (too crammed). Titles + tile values left at their larger
