@@ -806,7 +806,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           <div class="dash-tile"><div class="dash-tile-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="dash-tile-lbl">Steps</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Cal Burned</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="dash-tile-lbl">Water (oz)</div></div>
-          <div class="dash-tile"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div><div id="dash-bw-sub" style="text-align:center;"></div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
           <div class="dash-macro">
             <div class="dash-macro-lbl">Macro Progress</div>
@@ -4947,29 +4947,32 @@ function dashRefresh() {
       var d = Math.round((dt2 - dt1) / 86400000);
       return d === 1 ? 'yesterday' : (d + 'd ago');
     }
-    var subStyle = 'font-size:10px;font-weight:400;margin-top:4px;letter-spacing:0;text-transform:none;text-align:center;white-space:nowrap;display:block;';
+    // Subscript renders in #dash-bw-sub, which sits BELOW the "WEIGHT (LBS)"
+    // label (separate element after .dash-tile-lbl). The big number stays in
+    // #dash-bw-val so vertical order is: number → label → delta/last.
+    var subStyle = 'font-size:10px;font-weight:600;margin-top:2px;letter-spacing:0;text-transform:none;text-align:center;white-space:nowrap;';
+    var subEl = document.getElementById('dash-bw-sub');
     if (todayWeight) {
-      // Big number = today. Subscript = delta vs prior weigh-in (if any).
+      bwTile.textContent = todayWeight;
       var subHtml = '';
       if (priorEntry) {
         var delta = Math.round((todayWeight - priorEntry.weight) * 10) / 10;
-        // Just direction + lbs — comparison is always vs the prior weigh-in.
         if (delta < 0) {
-          subHtml = '<div style="' + subStyle + 'color:#4caf7d;font-weight:600;">↓ ' + Math.abs(delta) + ' lbs</div>';
+          subHtml = '<span style="' + subStyle + 'color:#4caf7d;">↓ ' + Math.abs(delta) + ' lbs</span>';
         } else if (delta > 0) {
-          subHtml = '<div style="' + subStyle + 'color:#f5a623;font-weight:600;">↑ ' + delta + ' lbs</div>';
+          subHtml = '<span style="' + subStyle + 'color:#f5a623;">↑ ' + delta + ' lbs</span>';
         } else {
-          subHtml = '<div style="' + subStyle + 'color:#888;font-weight:500;">no change</div>';
+          subHtml = '<span style="' + subStyle + 'color:#888;font-weight:500;">no change</span>';
         }
       }
-      bwTile.innerHTML = todayWeight + subHtml;
+      if (subEl) subEl.innerHTML = subHtml;
     } else {
-      // No today entry — show "—" plus last-known if we have one.
+      bwTile.textContent = '—';
       var lastHtml = '';
       if (priorEntry) {
-        lastHtml = '<div style="' + subStyle + 'color:#555;">last: ' + priorEntry.weight + ' · ' + daysAgo(priorEntry.date) + '</div>';
+        lastHtml = '<span style="' + subStyle + 'color:#555;font-weight:400;">last: ' + priorEntry.weight + ' · ' + daysAgo(priorEntry.date) + '</span>';
       }
-      bwTile.innerHTML = '—' + lastHtml;
+      if (subEl) subEl.innerHTML = lastHtml;
     }
   }
   // Net Cal Burned (consumed - burned, signed, +green / -red)
