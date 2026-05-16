@@ -724,9 +724,17 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .hub-trow .m { color:#999; line-height:1.5; }
 
 @media (min-width:601px){
-  .hub-shell { height: calc((100vh / 1.1) - 92px); }
+  /* Fit the whole hub within the fold so only the inner panes scroll
+     (rail + chat), never the window. The 180px subtracts the fixed chrome
+     above the shell: .hero (~78) + .main padding (20+24) + .hub-head (~49)
+     + its 14px margin. Measured against the live DOM at zoom 1.1. */
+  .hub-shell { height: calc((100vh / 1.1) - 180px); }
   .hub-rail { overflow-y:auto; padding-right:6px; }
   .hub-chat { height:100%; }
+  /* Lock the window on the coach page — the shell already fits the fold,
+     so kill the shared .page-spacer and any residual .main scroll. */
+  .main.coach-active { overflow:hidden; }
+  .main.coach-active .page-spacer { display:none; }
 }
 @media (max-width:600px){
   .main > #coach { max-width:100%; }
@@ -2773,6 +2781,10 @@ function showSection(id, el) {
   document.getElementById(id).style.display = 'block';
   document.getElementById(id).style.flexDirection = '';
   document.getElementById(id).style.height = '';
+  // Coach page locks window scroll (desktop) so only the hub's inner panes
+  // scroll. Scoped via .main.coach-active in the min-width:601 media block.
+  var mainEl = document.querySelector('.main');
+  if (mainEl) mainEl.classList.toggle('coach-active', id === 'coach');
   if(id==='dashboard') dashRefresh();
   if(id==='mealplans') { mpInit(); mpSwitch('td'); }
   if(id==='insights') insightsRefresh();
