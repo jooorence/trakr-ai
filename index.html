@@ -707,6 +707,16 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .hub-card { background:#141414; border:1px solid #222; border-radius:14px; padding:16px; }
 .hub-card.accent { background:#141414; border-color:#2f9e85; }
 .hub-card.hl { background:#0c211d; border-color:#3fcaa6; }
+.coach-2col { display:flex; gap:18px; align-items:stretch; }
+.coach-2col-l { flex:1; min-width:0; }
+.coach-2col-r { width:240px; flex-shrink:0; border-left:1px solid #1f3a34; padding-left:16px; }
+.coach-verdict { display:inline-block; font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:6px; margin-bottom:9px; }
+.hub-legend { display:flex; gap:12px; font-size:10px; color:#888; margin-top:8px; }
+.hub-legend i { display:inline-block; width:9px; height:2px; vertical-align:middle; margin-right:5px; }
+@media (max-width:600px){
+  .coach-2col { flex-direction:column; gap:14px; }
+  .coach-2col-r { width:100%; border-left:none; border-top:1px solid #1f3a34; padding-left:0; padding-top:14px; }
+}
 .hub-card-lbl { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#40ccbb; opacity:0.75; margin-bottom:10px; }
 .hub-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 .hub-big { font-size:25px; font-weight:700; color:#fff; line-height:1; }
@@ -1490,7 +1500,15 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 
           <div id="brief-coach-wrap" class="hub-card accent">
             <div class="hub-card-lbl">Coach says</div>
-            <div style="font-size:13px;color:#7dd9c8;line-height:1.6;font-style:italic;" id="brief-coach-text">Loading...</div>
+            <div class="coach-2col">
+              <div class="coach-2col-l">
+                <div id="brief-coach-verdict" class="coach-verdict" style="display:none;"></div>
+                <div style="font-size:13px;color:#7dd9c8;line-height:1.6;font-style:italic;" id="brief-coach-text">Loading...</div>
+              </div>
+              <div class="coach-2col-r" id="hub-coach-trend">
+                <div class="hub-mini">Loading&hellip;</div>
+              </div>
+            </div>
           </div>
 
           <div class="hub-card hl" id="hub-projection">
@@ -1520,9 +1538,15 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
             </div>
           </div>
 
-          <div class="hub-card" id="hub-train">
-            <div class="hub-card-lbl">Training adherence</div>
-            <div class="hub-mini">Loading&hellip;</div>
+          <div class="hub-grid2">
+            <div class="hub-card" id="hub-netcal">
+              <div class="hub-card-lbl">Net calories</div>
+              <div class="hub-mini">Loading&hellip;</div>
+            </div>
+            <div class="hub-card" id="hub-train">
+              <div class="hub-card-lbl">Training adherence</div>
+              <div class="hub-mini">Loading&hellip;</div>
+            </div>
           </div>
 
 
@@ -3734,6 +3758,37 @@ function hubSpark(vals, color) {
     + '<circle cx="'+last[0]+'" cy="'+last[1]+'" r="2.5" fill="'+color+'"/></svg>';
 }
 
+// Two overlaid lines sharing one scale + x-axis (index-aligned, nulls skipped).
+function hubSpark2(a, b, ca, cb) {
+  var all = a.concat(b).filter(function(v){ return v != null && !isNaN(v); });
+  if (all.length < 2) return '<div style="height:46px;display:flex;align-items:center;color:#444;font-size:10px;">not enough data</div>';
+  var mn = Math.min.apply(null, all), mx = Math.max.apply(null, all);
+  var rng = (mx - mn) || 1, W = 100, H = 42, n = Math.max(a.length, b.length);
+  function line(arr, col, dash) {
+    var pts = [];
+    arr.forEach(function(v,i){ if (v != null && !isNaN(v)) { var x=(n<=1?0:(i/(n-1))*W); var y=H-((v-mn)/rng)*H+2; pts.push(x.toFixed(1)+','+y.toFixed(1)); } });
+    if (pts.length < 2) return '';
+    return '<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(dash?' stroke-dasharray="3 3"':'')+'/>';
+  }
+  return '<svg style="width:100%;height:46px;display:block;" viewBox="0 0 100 46" preserveAspectRatio="none">' + line(a,ca,true) + line(b,cb,false) + '</svg>';
+}
+
+// Per-day bars; sign-colored (deficit = green, surplus = amber).
+function hubBars(vals) {
+  var present = vals.filter(function(v){ return v != null && !isNaN(v); });
+  if (!present.length) return '<div style="height:40px;display:flex;align-items:center;color:#444;font-size:10px;">not enough data</div>';
+  var mx = Math.max.apply(null, present.map(function(v){ return Math.abs(v); })) || 1;
+  var n = vals.length, bw = 100 / n, pad = bw * 0.18;
+  var bars = vals.map(function(v,i){
+    if (v == null || isNaN(v)) return '';
+    var h = (Math.abs(v) / mx) * 38;
+    var x = i * bw + pad, w = bw - pad * 2;
+    var col = v <= 0 ? '#4caf7d' : '#f5a623';
+    return '<rect x="'+x.toFixed(1)+'" y="'+(40-h).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1" fill="'+col+'"/>';
+  }).join('');
+  return '<svg style="width:100%;height:40px;display:block;margin-top:8px;" viewBox="0 0 100 40" preserveAspectRatio="none">' + bars + '</svg>';
+}
+
 function hubColNum(n, goodNeg) {
   if (n == null) return '#888';
   if (n === 0) return '#888';
@@ -3842,6 +3897,57 @@ function renderHub() {
     tEl.innerHTML =
       '<div class="hub-card-lbl">Training adherence · ' + rngLbl + '</div>' +
       '<div style="display:flex;align-items:baseline;gap:12px;"><div class="hub-big" style="color:' + (pct>=80?'#4caf7d':pct>=50?'#f5a623':'#e05050') + ';">' + ag.trained + '/' + ag.sched + '</div><div class="hub-mini">scheduled training days with logged intake (' + pct + '%)</div></div>';
+  }
+
+  // ── Net calories tile (avg/day + per-day bars) ──
+  var ncEl = document.getElementById('hub-netcal');
+  if (ncEl) {
+    var netSeries = days.map(function(x){ return x.net; });
+    var avgN = ag.avgNet;
+    ncEl.innerHTML =
+      '<div class="hub-card-lbl">Net calories · ' + rngLbl + '</div>' +
+      '<div class="hub-big" style="color:' + (avgN<=0?'#4caf7d':'#e05050') + ';">' + (avgN<=0?'−':'+') + Math.abs(avgN).toLocaleString() + ' <span class="hub-unit">kcal/day avg</span></div>' +
+      '<div class="hub-delta" style="color:#888;">' + (ag.sumNet<=0?'−':'+') + Math.abs(ag.sumNet).toLocaleString() + ' total · ' + ag.loggedCount + ' logged days</div>' +
+      hubBars(netSeries);
+  }
+
+  // ── Coach says: verdict badge + projected-vs-actual trend + calibration ──
+  // Projected weight per day = startW + cumulative net/3500. Actual = scale.
+  var startW = ag.startW, run = 0;
+  var projSeries = days.map(function(x){ if (x.net != null) run += x.net; return startW != null ? +(startW + run / HUB_KCAL_PER_LB).toFixed(2) : null; });
+  var actSeries = days.map(function(x){ return x.weight; });
+  var vEl = document.getElementById('brief-coach-verdict');
+  if (vEl) {
+    var vTxt, vBg, vFg;
+    if (ag.variance == null)        { vTxt='TRACKING';  vBg='#1c2c2a'; vFg='#7dd9c8'; }
+    else if (ag.variance <= -0.3)   { vTxt='AHEAD';     vBg='#0d2a1a'; vFg='#4caf7d'; }
+    else if (ag.variance < 0.3)     { vTxt='ON TRACK';  vBg='#0a2a26'; vFg='#40ccbb'; }
+    else                            { vTxt='BEHIND';    vBg='#2a1f00'; vFg='#f5a623'; }
+    vEl.style.display = 'inline-block';
+    vEl.style.background = vBg; vEl.style.color = vFg;
+    vEl.textContent = vTxt;
+  }
+  var ctEl = document.getElementById('hub-coach-trend');
+  if (ctEl) {
+    // Calibration: back-solve true maintenance from ACTUAL scale change vs logged intake.
+    var sumIntake = days.reduce(function(s,x){ return s + (x.logged ? x.cal : 0); }, 0);
+    var trueMaint = null;
+    if (ag.startW != null && ag.endW != null && ag.loggedCount > 0) {
+      var changeKcal = (ag.endW - ag.startW) * HUB_KCAL_PER_LB;     // negative if lost
+      trueMaint = Math.round((sumIntake - changeKcal) / ag.loggedCount);
+    }
+    var calLine = (trueMaint != null)
+      ? 'True maintenance ≈ <b style="color:#40ccbb;">' + trueMaint.toLocaleString() + '</b> kcal/day (from real scale change vs logged intake; estimate is ' + HUB_MAINT_FALLBACK.toLocaleString() + ').'
+      : 'Log weight + intake across the window to calibrate true maintenance.';
+    var varLine = (ag.variance != null)
+      ? 'Scale is <b style="color:' + (ag.variance<0?'#4caf7d':'#f5a623') + ';">' + Math.abs(ag.variance).toFixed(1) + ' lbs ' + (ag.variance<0?'ahead of':'behind') + '</b> the calorie math.'
+      : '';
+    ctEl.innerHTML =
+      '<div class="hub-card-lbl" style="margin-bottom:6px;">Projected vs actual · ' + rngLbl + '</div>' +
+      hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') +
+      '<div class="hub-legend"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
+      '<div class="hub-mini" style="margin-top:8px;">' + varLine + '</div>' +
+      '<div class="hub-mini" style="margin-top:4px;">' + calLine + '</div>';
   }
 
   // ── Day-by-day table (tap a row to backfill that day's calorie burn) ──
@@ -4010,8 +4116,8 @@ async function briefCoachLine(ctx) {
   try {
     var res = await fetch('/.netlify/functions/claude', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:200,
-        system:'You are CoachGPT, JR\'s coach. In 2-3 short sentences, SUMMARIZE the trend data below in plain English — what his weight/fat-loss trajectory, net calories, protein, sleep, and training adherence are actually saying — then end with one brief faith-centered motivating note. Be specific with the numbers. No lists, no markdown, no JSON, just the sentences.',
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:130,
+        system:'You are CoachGPT, JR\'s coach. In AT MOST 2 short sentences, give the single most important takeaway from the trend data below (the headline — weight/fat trajectory and the one thing to tighten), then ONE short faith-centered note. Be specific with a number or two but tight — this sits next to a chart, do not list every metric. No lists, no markdown, no JSON.',
         messages:[{role:'user', content: dataSummary}] })
     });
     var data = await res.json();
