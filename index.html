@@ -3987,12 +3987,31 @@ async function briefCoachLine(ctx) {
   var el = document.getElementById('brief-coach-text');
   if(!el) return;
   el.textContent = 'Loading...';
+  // Build a compact summary of the trend data shown in the cards below so
+  // "Coach says" actually interprets the hub, not a generic pep line.
+  var dataSummary;
+  try {
+    var days = hubDayMetrics(HUB_RANGE);
+    var ag = hubAggregate(days);
+    var sign = function(n){ return (n<=0?'':'+') + n; };
+    dataSummary =
+      'Window: last ' + HUB_RANGE + ' days. ' +
+      'Weight ' + (ag.startW!=null?ag.startW.toFixed(1):'?') + '→' + (ag.endW!=null?ag.endW.toFixed(1):'?') + ' lbs (change ' + (ag.actualChange!=null?ag.actualChange.toFixed(1):'?') + '). ' +
+      'Cumulative net ' + sign(ag.sumNet) + ' kcal over ' + ag.loggedCount + ' logged days (avg ' + sign(ag.avgNet) + '/day). ' +
+      'Net-calorie projection: ' + (ag.projChange<=0?'lose ':'gain ') + Math.abs(ag.projChange).toFixed(2) + ' lbs fat; projected weight ' + (ag.projWeight!=null?ag.projWeight.toFixed(1):'?') + ' vs actual ' + (ag.endW!=null?ag.endW.toFixed(1):'?') +
+      (ag.variance!=null ? ' (' + (ag.variance<0?'ahead of':'behind') + ' plan by ' + Math.abs(ag.variance).toFixed(1) + ' lbs)' : '') + '. ' +
+      'Avg intake ' + ag.avgCal + ' kcal, protein ' + ag.avgP + 'g (target hit ' + ag.pHit + '/' + ag.loggedCount + '). ' +
+      'Avg sleep ' + (ag.avgSleep!=null?ag.avgSleep:'?') + '. Training ' + ag.trained + '/' + ag.sched + ' scheduled days. ' +
+      'Today (' + ctx.today + ', ' + ctx.split + '): ' + ctx.mealsLogged + ' meal(s) / ' + ctx.itemsLogged + ' items, ' + ctx.cals + ' cal, water ' + ctx.waterOz + ' oz.';
+  } catch(e) {
+    dataSummary = 'Today ' + ctx.today + ', ' + ctx.split + ': ' + ctx.mealsLogged + ' meal(s), ' + ctx.cals + ' cal, water ' + ctx.waterOz + ' oz.';
+  }
   try {
     var res = await fetch('/.netlify/functions/claude', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:100,
-        system:'You are CoachGPT. Give ONE short, direct, motivating line for JR. Today is ' + ctx.today + ', ' + ctx.split + '. He has logged ' + ctx.mealsLogged + ' meal(s) / ' + ctx.itemsLogged + ' food items (' + ctx.cals + ' cal). Water: ' + ctx.waterOz + ' oz. Be warm, faith-centered, concise. No JSON, no formatting, just one line.',
-        messages:[{role:'user', content:'One line of motivation for today.'}] })
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:200,
+        system:'You are CoachGPT, JR\'s coach. In 2-3 short sentences, SUMMARIZE the trend data below in plain English — what his weight/fat-loss trajectory, net calories, protein, sleep, and training adherence are actually saying — then end with one brief faith-centered motivating note. Be specific with the numbers. No lists, no markdown, no JSON, just the sentences.',
+        messages:[{role:'user', content: dataSummary}] })
     });
     var data = await res.json();
     var text = data.content.map(function(i){return i.text||'';}).join('').trim();
