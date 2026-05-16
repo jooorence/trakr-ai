@@ -4947,7 +4947,7 @@ function dashRefresh() {
       var d = Math.round((dt2 - dt1) / 86400000);
       return d === 1 ? 'yesterday' : (d + 'd ago');
     }
-    var subStyle = 'font-size:10px;font-weight:400;margin-top:4px;letter-spacing:0;text-transform:none;';
+    var subStyle = 'font-size:10px;font-weight:400;margin-top:4px;letter-spacing:0;text-transform:none;text-align:center;white-space:nowrap;display:block;';
     if (todayWeight) {
       // Big number = today. Subscript = delta vs prior weigh-in (if any).
       var subHtml = '';
