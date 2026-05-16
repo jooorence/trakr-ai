@@ -136,10 +136,33 @@ The food log is now MyFitnessPal-style with sections, per-ingredient logging, an
 
 **Edit modal** gains a **Section dropdown** so you can manually reassign a row without long-press.
 
+### Intelligence Hub (the side-panel CoachGPT tab) — SHIPPED
+The `CoachGPT` sidebar tab (`#coach` section, formerly the "AI Daily Brief") is now a **trend/intelligence hub**. Floating bubble = day-to-day quick logging; this tab = long-term analysis.
+
+**Layout** — height-locked two-pane shell (`.hub-shell`):
+- Desktop: `height: calc((100vh / 1.1) - 92px)` (inside `@media (min-width:601px)` — respects the body-zoom compensation). Left rail (`.hub-rail`) scrolls internally; chat column (`.hub-chat`) is full-height with the input **pinned at the bottom** (fixed the old chat-input cutoff). `.main > #coach` widened to 1180px.
+- Mobile (`≤600px`): stacks, chat = `72vh`.
+- All existing `brief-*` element IDs were kept so `briefRefreshAll()` still works. Title is now static "Intelligence Hub"; greeting/date moved into the subtitle line.
+
+**Rail card order:** Coach says (top, per JR) → Projection → Weight + Projected-fat (grid2) → Nutrition + Sleep (grid2) → Training adherence → Yesterday → Today priority actions+numbers → split → Day-by-day log → Refresh.
+
+**Net-calorie projection model** (`hubAggregate`): per logged day `net = intake − burn`; cumulative deficit / 3500 = projected lbs; projected weight vs actual weight + ahead/behind variance. "Projected fat change" sparkline is the cumulative-net curve. This is the "fat trend" JR wanted — **derived from net calories, NOT body-fat %**.
+
+**Burn priority (`hubDayMetrics`):** real Oura cal-exp > manual backfill (`daily_logs.cal_exp_manual`) > editable maintenance estimate (`HUB_MAINT_FALLBACK`, default 2600, persisted to `user_settings.maint_cal`, editable inline on the Projection card via `hubSetMaint`). `burnSrc` = `oura|manual|est`.
+
+**Past-day calorie-burn backfill (option A):** tap any row in the **Day-by-day log** → inline input (`hubEditBurn`/`hubSaveBurn`/`hubCancelBurn`, state in `hubEditKey`) → writes `daily_logs.cal_exp_manual` for that exact date via `dbSaveDay` (upsert, **never touches the `oura` jsonb blob**). Recomputes projection live. Solves the "trained past midnight, Oura missed the day" problem. **Conversational backfill ("set May 14 burn to 2900") is option C — PARKED, next pass, same storage.**
+
+**Range toggle** `7 / 30 / 90 Days` (`HUB_RANGE`, `hubSetRange`) drives both the cards and the chat context.
+
+**Trend-aware chat:** `coachSystemPrompt(ctx, withHistory)` — when `withHistory` is true it appends `historicalContextText(HUB_RANGE)` (compact one-line-per-day + aggregate + projection). **Only `briefChatSend` passes `true`** (line ~3989). Floating bubble (`csSend`) and main chat stay today-only per design. Quick chips: Weight trend / Macro trend / Fat-loss check / Compare / Yesterday.
+
+`renderHub()` is called at the end of `briefRefreshAll()`. Sparklines are inline SVG (`hubSpark`), no library.
+
 ### CoachGPT
 - Floating bubble (desktop bottom-right anchored to content, mobile bottom-right beside dock)
 - Chat sheet expands when bubble tapped
 - **System prompt** is dynamic — includes today's logged data + full meal plan via `mpPromptText()` + training split details + LOG action instructions + section rules
+- **Side-panel chat additionally gets historical context** — see Intelligence Hub above (`coachSystemPrompt(ctx, true)`)
 
 #### LOG actions CoachGPT can emit
 - `LOGFOOD:{name,cal,p,c,f,servings,section}` — adds to food log. **`section` field is required** (Claude picks per rules: explicit slot mentioned > meal-plan match > time-of-day fallback). Shows "Ready to log" confirmation card.
@@ -166,7 +189,8 @@ The 600ms debounce on `dbSaveDay` / `dbSaveSettings` used to lose updates when s
 - So the moment you switch apps or close the tab, queued saves flush to Supabase before the timer can pause.
 
 ### Sync + persistence
-- **Supabase tables**: `daily_logs` (date-keyed, now includes `weight numeric` column), `user_settings`, `chat_history`
+- **Supabase tables**: `daily_logs` (date-keyed; `weight numeric`, **`cal_exp_manual numeric`** = manual burn backfill), `user_settings` (+ **`maint_cal integer`** = editable maintenance estimate), `chat_history`
+  - Migration `add_cal_exp_manual_and_maint_cal` applied to the live DB. Both columns nullable/additive — older app versions ignore them.
 - **`_lastOuraBlob`** in-memory cache. `ouraUpdate()` merges new non-zero values onto it before saving.
 - **Oura sync** — Netlify proxy, uses client local date
 - **localStorage** mirrors most state. `jr_fl_v2` stores the food log + flDateStore.
@@ -223,14 +247,14 @@ All writes to `steps`, `calExp`, `move`, `exercise`, `stand` go through `setStep
 
 > **Pick any of these to start next session.** Just tell Claude which number(s) you want to work on.
 
+### ✅ DONE — shipped (commit `8f58a91`)
+
+**0. CoachGPT historical/trend analysis (the "brain" tab)** — SHIPPED as the **Intelligence Hub** (see Current State). Includes: history injection (side-panel only), `7/30/90` range toggle, quick-prompt chips, weight/fat/macro/sleep sparklines, net-calorie projection, editable maintenance, and **past-day burn backfill option A** (tap a day-by-day row).
+
 ### 🔥 Top priority
 
-**0. CoachGPT historical/trend analysis (the "brain" tab)**
-JR's vision: the side-panel CoachGPT tab becomes the long-term analysis brain. Floating bubble = day-to-day quick logging; the tab = "assess my trends across days/weeks." Currently the side-panel system prompt only includes TODAY's data. The fix: build `historicalContextText(daysBack)` that summarizes the last N days from `flDateStore` (date · weight · cal/macros · sleep · training — one line per day) and inject into the **side-panel coach system prompt only**. Two scope options:
-- **(a) Core unlock** (~30 min): just inject last-7-days context. Unlocks all trend queries.
-- **(b) Full feature** (~45 min): (a) + quick-prompt buttons (`7-day weight trend`, `This week's macros`, `Sleep trend`, `Compare to last week`) + `[7d · 14d · 30d]` range toggle.
-- **(c) Bonus** (separate session): weight-trend sparkline rendered in the left panel.
-Token cost: ~+500-1000 tokens/request for a week of history — negligible $.
+**0b. Conversational past-day burn backfill (option C)**
+Let CoachGPT handle "set my calorie burn for May 14 to 2900" → write `daily_logs.cal_exp_manual` for that date. Storage already exists (column + `dbSaveDay`); needs a new LOG action (e.g. `LOGCALBURNDATE:{date,cal}`) since existing `LOGCALBURN` is today-only. Small.
 
 ---
 
@@ -267,6 +291,9 @@ Token cost: ~+500-1000 tokens/request for a week of history — negligible $.
 
 | SHA | Description |
 |---|---|
+| `8f58a91` | Merge: CoachGPT Intelligence Hub — historical trends + net-calorie projection + past-day burn backfill |
+| `1d3bb77` | CoachGPT → Intelligence Hub: trend analysis, projection, editable maintenance, tap-to-backfill |
+| `4063ebf` | Update CONTEXT.md after session: weight tile alignment + queue cleanup |
 | `6bfac85` | Merge: weight tile absolute-position delta subscript (alignment fix) |
 | `2c22f53` | Weight tile: absolute-position delta subscript so number+label stay centered |
 | `41bcea9` | Merge: weight delta below label |
@@ -308,6 +335,11 @@ To revert any specific commit: `git revert <sha>` then `git push origin main`. N
 - **MEAL_PLAN edits propagate everywhere** — but they DON'T affect already-logged data. Logging history is in `daily_logs.food_log` (separate from the plan).
 - **Daily weight is on a brand-new column** — `daily_logs.weight` (numeric, nullable). Older rows have NULL there; the dashboard subscript fallback uses `user_settings.weight` (last known).
 - **Long-press handler is delegated** — attached once via `flInitLongPress()`, survives re-renders. Don't attach per-row.
+- **Intelligence Hub desktop height** is `calc((100vh / 1.1) - 92px)` — the `92px` is eyeballed. If the rail/chat shows a double scrollbar or clips, nudge that number (in the `@media (min-width:601px)` block of the hub CSS). Coupled to body-zoom like everything else.
+- **Hub burn priority is Oura > manual > estimate** — backfilling `cal_exp_manual` on a day Oura already has does NOT override it (by design). If JR wants manual-always-wins, flip the order in `hubDayMetrics`.
+- **`cal_exp_manual` is a dedicated column, never written into the `oura` jsonb blob** — that was the whole point (avoids clobbering deep/REM/HRV for past days). Keep it that way.
+- **`historicalContextText` is side-panel only** — `coachSystemPrompt(ctx, true)` is passed ONLY by `briefChatSend`. Don't add `true` to `csSend` (floating) or the main chat call without a reason; it inflates every quick-log prompt.
+- **Hub reads `flDateStore`** which `dbLoadAll` populates from ALL `daily_logs` rows (incl. new `calExpManual`). For today it overrides weight/calExp/sleep from live inputs but intake comes from the store (kept in sync by `flAdd`).
 - **Chat history strip-on-load is one-shot sanitization** — `sanitizeHistory()` cleans loaded entries but doesn't write back to DB. The next time the user sends a message, the new flow saves clean. So legacy DB rows stay raw forever (harmless — they're sanitized in memory on every load).
 
 ---
