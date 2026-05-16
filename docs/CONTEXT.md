@@ -64,12 +64,16 @@ The `-65px` offset was tuned visually. Don't change without JR's sign-off.
 **Desktop (2 rows × 3 cols):** Cal Logged | Net Cal Burned | Weight (lbs) ┃ Steps | Water (oz) | Sleep Score
 **Mobile (3 rows × 2 cols):** Cal Logged | Steps ┃ Net Cal Burned | Water (oz) ┃ Weight (lbs) | Sleep Score
 
-### Weight tracking — DAILY model (NEW)
-Weight is now tracked **per-day** in `daily_logs.weight` (column added via Supabase migration `add_weight_column_to_daily_logs`). Each day starts blank until logged.
+### Weight tracking — DAILY model
+Weight is tracked **per-day** in `daily_logs.weight` (column added via Supabase migration `add_weight_column_to_daily_logs`). Each day starts blank until logged.
 
 **Dashboard tile behavior:**
-- Today's weight logged → shows the number (big, gold)
+- Today's weight logged → shows the number (big, gold) + subscript below the label showing direction vs prior entry (↓ 0.6 lbs in green / ↑ N lbs in orange / same in gray)
 - Not logged today → shows `—` with subscript `last: 203 · 2d ago` (pulled from most recent prior day's weight)
+- First-ever weigh-in → shows number with no subscript (no prior to compare)
+
+**Weight tile alignment fix (latest session):**
+`#dash-bw-sub` (delta subscript) is `position: absolute; bottom: 6px` so it is out of flow. The big number and "WEIGHT (LBS)" label now center vertically exactly like all other tiles regardless of whether the subscript is visible. Tile has `position: relative; padding-bottom: 22px` to reserve room at the bottom.
 
 **Storage split:**
 - `daily_logs.weight` = per-date weigh-in (authoritative)
@@ -217,18 +221,45 @@ All writes to `steps`, `calExp`, `move`, `exercise`, `stand` go through `setStep
 
 ## Open items / parked features
 
-1. **Voice input for CoachGPT** — Web Speech API. Add 🎤 button, long-press to record, transcribe, fill textarea.
-2. **Photo/screenshot upload in CoachGPT** — `<input type="file" accept="image/*">` → base64 → Claude vision API → extract Oura/Apple Fitness numbers → fire LOG actions automatically.
-3. **Date swipe navigation on dashboard** — Oura-style horizontal carousel. Big lift (requires `dashRefresh(date)` parameterization).
-4. **More single-source-of-truth refactors** — same pattern as `MEAL_PLAN`:
+> **Pick any of these to start next session.** Just tell Claude which number(s) you want to work on.
+
+### 🔥 Top priority
+
+**0. CoachGPT historical/trend analysis (the "brain" tab)**
+JR's vision: the side-panel CoachGPT tab becomes the long-term analysis brain. Floating bubble = day-to-day quick logging; the tab = "assess my trends across days/weeks." Currently the side-panel system prompt only includes TODAY's data. The fix: build `historicalContextText(daysBack)` that summarizes the last N days from `flDateStore` (date · weight · cal/macros · sleep · training — one line per day) and inject into the **side-panel coach system prompt only**. Two scope options:
+- **(a) Core unlock** (~30 min): just inject last-7-days context. Unlocks all trend queries.
+- **(b) Full feature** (~45 min): (a) + quick-prompt buttons (`7-day weight trend`, `This week's macros`, `Sleep trend`, `Compare to last week`) + `[7d · 14d · 30d]` range toggle.
+- **(c) Bonus** (separate session): weight-trend sparkline rendered in the left panel.
+Token cost: ~+500-1000 tokens/request for a week of history — negligible $.
+
+---
+
+### 🟡 Medium priority
+
+**1. Voice input for CoachGPT** — Web Speech API. 🎤 button, long-press to record, auto-fills textarea. Mobile-first but works on desktop too.
+
+**2. Photo/screenshot upload in CoachGPT** — `<input type="file" accept="image/*">` → base64 → Claude vision API → extract Oura/Apple Fitness numbers → fire LOG actions automatically. Also useful for snapping a nutrition label.
+
+**3. Meal completion badges** — auto-detect "M1: 5/5 ✓" by counting `planRef='M1'` entries vs `MEAL_PLAN.td.m1.items` in today's log. Green checkmark on the chip after full meal is logged.
+
+**4. PWA install + home-screen icon** — `manifest.json` + service worker. Push notifications. iOS 16.4+ supports PWA push.
+
+**5. Streaks / habit tracking** — "12 days hitting protein target" badge. Could live on Dashboard or Routines page.
+
+---
+
+### 🔵 Bigger lifts (future sessions)
+
+**6. Date swipe navigation on dashboard** — Oura-style horizontal swipe to view past days. Big lift (requires `dashRefresh(date)` parameterization throughout).
+
+**7. Camera meal logging** — mobile-only "📸 Snap meal" → Claude vision → estimated macros → confirm card UI.
+
+**8. Drag-and-drop food log rows** — currently long-press → move menu. Drag would be more visceral. Mobile scroll-vs-drag conflicts need careful handling.
+
+**9. More single-source-of-truth refactors** — same `MEAL_PLAN` pattern for:
    - Training Split page exercise details (currently hardcoded HTML, partial overlap with `SPLIT_INFO`)
    - Routines (morning + nightly tasks)
    - Rules / Longevity / Creed / Insights pages
-5. **PWA install + home-screen icon** — manifest + service worker. Push notifications. iOS 16.4+ supports PWA push.
-6. **Streaks / habit tracking** — "12 days hitting protein target" badge.
-7. **Camera meal logging** — mobile-only "📸 Snap meal" → Claude vision → estimated macros → confirm UI.
-8. **Drag-and-drop food log rows** — currently long-press → menu. Drag would be more visceral. Mobile rough edges: scroll vs drag conflicts, auto-scroll near viewport edges. Layer on top of existing long-press if added.
-9. **Meal completion badges** — auto-detect "M1: 5/5 ✓" by counting planRef='M1' entries vs MEAL_PLAN.td.m1.items in today's log.
 
 ---
 
@@ -236,14 +267,23 @@ All writes to `steps`, `calExp`, `move`, `exercise`, `stand` go through `setStep
 
 | SHA | Description |
 |---|---|
+| `6bfac85` | Merge: weight tile absolute-position delta subscript (alignment fix) |
+| `2c22f53` | Weight tile: absolute-position delta subscript so number+label stay centered |
+| `41bcea9` | Merge: weight delta below label |
+| `a0280db` | Weight tile: move delta subscript below the WEIGHT (LBS) label |
+| `9d48735` | Merge: simplify weight delta subscript |
+| `c90d651` | Weight tile: simplify delta subscript to just direction + lbs |
+| `3da475e` | Merge: center dash-tile-val content |
+| `9f463bc` | Dashboard tiles: center .dash-tile-val content (fixes off-center weight number) |
+| `545f385` | Weight tile: center the delta subscript (was left-aligned + wrapping) |
+| `ca1c81f` | CoachGPT: kill re-emitting log card (sanitize history at SEND time) + X dismiss |
+| `3cd472e` | Weight tile: add delta subscript (↓ X lbs from yesterday) |
 | `24e8a01` | Desktop: page-spacer 100 → 60px |
 | `e213b25` | Desktop: tighten page-spacer 160 → 100px |
 | `2874338` | Desktop: real .page-spacer element at bottom of every page |
-| `f498d08` | Desktop: bump .main bottom padding to 180px (later replaced by spacer) |
 | `5edaab0` | Training Split: auto-scroll expanded day into view |
 | `4f216be` | Food Log: always show Snacks section |
 | `8056ffe` | Food Log: plan-ref pill leads the row (M1 before food name) |
-| `ca39875` | Food Log: plan-reference pill (M1/M2/Pre-WO/...) on prescribed entries |
 | `0b61b13` | Food Log: M1/M2/M3 chip labels + emoji section headers + long-press move menu |
 | `f722c49` | Food Log: MyFitnessPal-style section grouping + per-ingredient chip expansion |
 | `d40f20b` | Weight: switch to daily tracking model |
