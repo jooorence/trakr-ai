@@ -228,7 +228,9 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .coach-typing span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
 .action-crd { background: #0d1e1c; border: 1px solid #1a4a44; border-radius: 12px; padding: 12px 14px; margin-top: 4px; max-width: 280px; }
-.action-crd-title { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #40ccbb; margin-bottom: 8px; }
+.action-crd-title { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #40ccbb; margin-bottom: 8px; display:flex; align-items:center; justify-content:space-between; }
+.action-crd-dismiss { font-size: 16px; line-height: 1; color: #3a5a56; cursor: pointer; padding: 0 2px; font-weight: 400; }
+.action-crd-dismiss:hover, .action-crd-dismiss:active { color: #7be0a8; }
 .action-crd-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #1a2a28; font-size: 12px; }
 .action-crd-row:last-of-type { border-bottom: none; }
 .action-crd-key { color: #555; }
@@ -304,7 +306,9 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .sc-coach .sc-bubble { background:#1e1e1e; color:#ddd; border-radius:18px 18px 18px 4px; }
 .sc-user .sc-bubble { background:#40ccbb; color:#050f0e; border-radius:18px 18px 4px 18px; font-weight:500; }
 .sc-action-card { background:#0d1e1c; border:1px solid #1a4a44; border-radius:12px; padding:12px 14px; margin-top:4px; }
-.sc-action-title { font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#40ccbb; margin-bottom:8px; }
+.sc-action-title { font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#40ccbb; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+.sc-action-dismiss { font-size:16px; line-height:1; color:#3a5a56; cursor:pointer; padding:0 2px; font-weight:400; }
+.sc-action-dismiss:hover, .sc-action-dismiss:active { color:#7be0a8; }
 .sc-action-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #1a2a28; font-size:12px; }
 .sc-action-row:last-of-type { border-bottom:none; }
 .sc-action-key { color:#555; }
@@ -3305,10 +3309,27 @@ function _normalizeLogActions(text) {
 function stripActionTags(text) {
   return text
     .replace(/LOG(?:FOOD|WATER|STEPS|CALBURN|MOVE|EXERCISE|STAND|SLEEP|SPLIT|WEIGHT|OURA|EDIT)\s*:\s*\{[^}]*\}/g, '')
+    .replace(/CLEARDAY\s*:\s*\{[^}]*\}/g, '')
     .replace(/[ \t]+$/gm, '')
     .replace(/\n{2,}/g, '\n')
     .replace(/  +/g, ' ')
     .trim();
+}
+
+// Defensive sanitizer applied to chat history RIGHT BEFORE it's sent to Claude.
+// Belt-and-suspenders: even if a raw LOG-tagged assistant message slipped into
+// the in-memory history array (e.g. it was pushed before a fix deployed and the
+// page hasn't reloaded), this guarantees Claude never sees its own past LOG
+// actions — which is what makes it re-emit them on every subsequent turn.
+function sanitizeOutboundHistory(history) {
+  if (!Array.isArray(history)) return history;
+  return history.map(function(m) {
+    if (m && m.role === 'assistant' && typeof m.content === 'string') {
+      var cleaned = stripActionTags(m.content);
+      return { role: 'assistant', content: cleaned || '(noted)' };
+    }
+    return m;
+  });
 }
 
 /* Clear all data for today */
@@ -3381,7 +3402,7 @@ async function sendCoachMsg() {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 600,
         system: coachSystemPrompt(ctx),
-        messages: coachHistory
+        messages: sanitizeOutboundHistory(coachHistory)
       })
     });
     var data = await res.json();
@@ -3432,7 +3453,7 @@ async function sendCoachMsg() {
           return '<div class="action-crd-row"><span class="action-crd-key">' + f.name + sx + '</span><span class="action-crd-val">' + Math.round(f.cal*s) + ' cal · ' + Math.round(f.p*s) + 'g P · ' + Math.round((f.c||0)*s) + 'g C · ' + Math.round((f.f||0)*s) + 'g F</span></div>';
         }).join('');
         actionDiv.innerHTML = '<div class="action-crd">'
-          + '<div class="action-crd-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
+          + '<div class="action-crd-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '<span class="action-crd-dismiss" onclick="csDismissCard(this)" title="Dismiss">&times;</span></div>'
           + rows
           + '<div class="action-crd-btns"><div class="action-crd-confirm" onclick="coachConfirmLogAll(this)">Confirm &amp; Log All</div>'
           + '<div class="action-crd-edit">Edit</div></div></div>';
@@ -3602,7 +3623,7 @@ async function briefChatSend() {
   try {
     var res = await fetch('/.netlify/functions/claude', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:600, system: coachSystemPrompt(ctx), messages: briefChatHistory })
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:600, system: coachSystemPrompt(ctx), messages: sanitizeOutboundHistory(briefChatHistory) })
     });
     var data = await res.json();
     var reply = data.content.map(function(i){return i.text||'';}).join('');
@@ -4489,7 +4510,7 @@ async function csSend() {
         model:'claude-sonnet-4-20250514',
         max_tokens:1500,
         system: coachSystemPrompt(ctx),
-        messages: csHistory
+        messages: sanitizeOutboundHistory(csHistory)
       })
     });
     var data = await res.json();
@@ -4561,7 +4582,7 @@ async function csSend() {
             return '<div class="sc-action-row"><span class="sc-action-key">' + f.name + '</span><span class="sc-action-val">' + f.cal + ' cal · ' + f.p + 'g P · ' + (f.c||0) + 'g C · ' + (f.f||0) + 'g F</span></div>';
           }).join('');
           ac.innerHTML = '<div class="sc-action-card">'
-            + '<div class="sc-action-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
+            + '<div class="sc-action-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '<span class="sc-action-dismiss" onclick="csDismissCard(this)" title="Dismiss">&times;</span></div>'
             + rows
             + '<div class="sc-action-btns"><div class="sc-confirm-btn" onclick="csConfirmLogAll(this)">Confirm &amp; Log All</div>'
             + '<div class="sc-edit-btn" onclick="csEditEntry(this)">Edit</div></div></div>';
@@ -4623,9 +4644,19 @@ function csEditEntry(btn) {
       + '<div class="sc-edit-num-wrap"><div class="sc-edit-num-label">Fat</div><input class="sc-edit-num" data-idx="' + i + '" data-field="f" type="number" min="0" value="' + (f.f||0) + '" /></div>'
       + '</div></div>';
   }).join('');
-  ac.innerHTML = '<div class="sc-action-title">Edit Entry</div>'
+  ac.innerHTML = '<div class="sc-action-title">Edit Entry<span class="sc-action-dismiss" onclick="csDismissCard(this)" title="Dismiss">&times;</span></div>'
     + fieldsHtml
     + '<div class="sc-action-btns"><div class="sc-confirm-btn" onclick="csSaveEdit(this)">Save &amp; Review</div></div>';
+}
+
+// Remove a pending action card entirely (X button). Clears data-foods so the
+// dedup logic doesn't treat it as "still pending" and the card stays gone.
+// Works for both the floating bubble (.scmsg) and side-panel coach (.cmsg).
+function csDismissCard(el) {
+  var card = el.closest('.scmsg, .cmsg');
+  if (!card) return;
+  card.removeAttribute('data-foods');
+  card.remove();
 }
 
 function csSaveEdit(btn) {
@@ -4647,7 +4678,7 @@ function csSaveEdit(btn) {
     var safeName = f.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     return '<div class="sc-action-row"><span class="sc-action-key">' + safeName + '</span><span class="sc-action-val">' + f.cal + ' cal · ' + f.p + 'g P · ' + (f.c||0) + 'g C · ' + (f.f||0) + 'g F</span></div>';
   }).join('');
-  ac.innerHTML = '<div class="sc-action-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '</div>'
+  ac.innerHTML = '<div class="sc-action-title">Ready to log ' + foods.length + ' item' + (foods.length > 1 ? 's' : '') + '<span class="sc-action-dismiss" onclick="csDismissCard(this)" title="Dismiss">&times;</span></div>'
     + rowsHtml
     + '<div class="sc-action-btns"><div class="sc-confirm-btn" onclick="csConfirmLogAll(this)">Confirm &amp; Log All</div>'
     + '<div class="sc-edit-btn" onclick="csEditEntry(this)">Edit</div></div>';
