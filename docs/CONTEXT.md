@@ -144,7 +144,7 @@ The `CoachGPT` sidebar tab (`#coach` section, formerly the "AI Daily Brief") is 
 - Mobile (`≤600px`): stacks, chat = `72vh`.
 - All existing `brief-*` element IDs were kept so `briefRefreshAll()` still works. Title is now static "Intelligence Hub"; greeting/date moved into the subtitle line.
 
-**Rail card order:** Coach says (top, per JR) → Projection → Weight + Projected-fat (grid2) → Nutrition + Sleep (grid2) → Training adherence → Yesterday → Today priority actions+numbers → split → Day-by-day log → Refresh.
+**Rail card order:** Coach says (top, per JR) → Projection → Weight + Projected-fat (grid2) → Nutrition + Sleep (grid2) → Training adherence → Today priority actions+numbers → split → Day-by-day log → Refresh. (The "Yesterday" card was removed — redundant with the trend-aware chat, which answers "what did I eat yesterday".)
 
 **Net-calorie projection model** (`hubAggregate`): per logged day `net = intake − burn`; cumulative deficit / 3500 = projected lbs; projected weight vs actual weight + ahead/behind variance. "Projected fat change" sparkline is the cumulative-net curve. This is the "fat trend" JR wanted — **derived from net calories, NOT body-fat %**.
 

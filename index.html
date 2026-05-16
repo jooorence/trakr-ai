@@ -705,7 +705,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .hub-chat { width:380px; flex-shrink:0; background:#0d0d0d; border:1px solid #1a4a44; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; }
 .hub-chat-msgs { flex:1; padding:14px 16px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
 .hub-card { background:#141414; border:1px solid #222; border-radius:14px; padding:16px; }
-.hub-card.accent { border-color:#1a4a44; background:#0a1a18; }
+.hub-card.accent { background:#141414; border-color:#2f9e85; }
 .hub-card-lbl { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#40ccbb; opacity:0.75; margin-bottom:10px; }
 .hub-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 .hub-big { font-size:25px; font-weight:700; color:#fff; line-height:1; }
@@ -1524,10 +1524,6 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
             <div class="hub-mini">Loading&hellip;</div>
           </div>
 
-          <div class="hub-card" id="hub-yesterday">
-            <div class="hub-card-lbl">Yesterday</div>
-            <div class="hub-mini">Loading&hellip;</div>
-          </div>
 
           <div class="hub-card">
             <div class="hub-card-lbl" style="color:#e05050;">Today &mdash; priority actions</div>
@@ -3250,6 +3246,7 @@ function coachBuildContext() {
     calTarget: tgt.cal, proteinTarget: tgt.p, carbTarget: tgt.c, fatTarget: tgt.f,
     waterOz: Math.round(waterOz * 10) / 10,
     itemsLogged: flCurrentLog().length,
+    mealsLogged: (function(){ var s={}; flCurrentLog().forEach(function(it){ s[it.section||'snack']=1; }); return Object.keys(s).length; })(),
     sleepScore: oScore || 'not entered',
     sleepTotal: oTotal || 'not entered'
   };
@@ -3261,7 +3258,8 @@ function coachSystemPrompt(ctx, withHistory) {
   p += "TODAY: " + ctx.today + ", Day " + ctx.dayNum + " of your journey. ";
   p += ctx.split + " — " + ctx.splitFocus + ". Exercises: " + ctx.splitDetail + ". ";
   p += ctx.isRest ? "REST DAY macros: 2086 cal / 187g P / 213g C / 55g F. " : "TRAINING DAY macros: 2227 cal / 190g P / 266g C / 47g F. ";
-  p += "CONFIRMED food log (" + ctx.itemsLogged + " items actually saved): " + ctx.cals + " cal / " + ctx.protein + "g P / " + ctx.carbs + "g C / " + ctx.fat + "g F. THIS IS THE AUTHORITATIVE TOTAL — always use these numbers, never totals from earlier in the conversation. ";
+  p += "CONFIRMED food log: " + ctx.mealsLogged + " meal slot(s) with food, " + ctx.itemsLogged + " individual food line-items saved, totaling " + ctx.cals + " cal / " + ctx.protein + "g P / " + ctx.carbs + "g C / " + ctx.fat + "g F. THIS IS THE AUTHORITATIVE TOTAL — always use these numbers, never totals from earlier in the conversation. ";
+  p += "TERMINOLOGY (critical): a 'meal' = a meal slot (Breakfast/M1, Lunch/M2, Midday/M3, Pre-WO/M4, Intra, Post-WO/M5, Snacks). Individual ingredients/line-items (e.g. '2 large eggs', 'Gut Drink', 'Morning Coffee', 'blueberries') are NOT meals — they are items WITHIN a meal slot. Never say 'you logged 6 meals' when those 6 are line-items in one slot. Report meals as " + ctx.mealsLogged + " and items as " + ctx.itemsLogged + " when asked. ";
   p += "Water: " + ctx.waterOz + " oz (min 135, ideal 169). Sleep score: " + ctx.sleepScore + ". Sleep: " + ctx.sleepTotal + " hrs. ";
   // Inject the meal plan from MEAL_PLAN (the single source of truth used by the
   // Meal Plans page and food log chips). Editing MEAL_PLAN updates this prompt too.
@@ -3845,30 +3843,6 @@ function renderHub() {
       '<div style="display:flex;align-items:baseline;gap:12px;"><div class="hub-big" style="color:' + (pct>=80?'#4caf7d':pct>=50?'#f5a623':'#e05050') + ';">' + ag.trained + '/' + ag.sched + '</div><div class="hub-mini">scheduled training days with logged intake (' + pct + '%)</div></div>';
   }
 
-  // ── Yesterday ──
-  var yEl = document.getElementById('hub-yesterday');
-  if (yEl) {
-    var y = days.length >= 2 ? days[days.length-2] : null;
-    if (y) {
-      var e = flDateStore[y.key];
-      var secLbl = {m1:'Breakfast',m2:'Lunch',m3:'Midday',m4:'Pre-WO',intra:'Intra',m5:'Post-WO',snack:'Snacks'};
-      var bySec = {};
-      ((e&&e.log)||[]).forEach(function(it){ var s=it.section||'snack'; (bySec[s]=bySec[s]||[]).push(it.name); });
-      var secHtml = Object.keys(bySec).map(function(s){
-        return '<div class="hub-row"><span class="k">' + (secLbl[s]||s) + '</span><span class="v" style="text-align:right;max-width:60%;">' + bySec[s].slice(0,4).join(', ') + (bySec[s].length>4?' +'+(bySec[s].length-4):'') + '</span></div>';
-      }).join('');
-      yEl.innerHTML =
-        '<div class="hub-card-lbl">Yesterday — ' + y.dow + ' ' + y.label + ' · ' + y.split + '</div>' +
-        '<div class="hub-row"><span class="k">Calories</span><span class="v">' + y.cal + ' kcal · ' + y.p + 'P / ' + y.c + 'C / ' + y.f + 'F</span></div>' +
-        '<div class="hub-row"><span class="k">Weight</span><span class="v">' + (y.weight!=null?y.weight.toFixed(1)+' lbs':'not logged') + '</span></div>' +
-        '<div class="hub-row"><span class="k">Sleep</span><span class="v">' + (y.sleep!=null?y.sleep:'—') + '</span></div>' +
-        '<div class="hub-row"><span class="k">Net</span><span class="v" style="color:' + hubColNum(y.net,true) + ';">' + (y.net!=null?(y.net<0?'−':'+')+Math.abs(y.net)+' kcal':'—') + '</span></div>' +
-        (secHtml ? '<div style="margin-top:8px;">' + secHtml + '</div>' : '<div class="hub-mini">No food logged.</div>');
-    } else {
-      yEl.innerHTML = '<div class="hub-card-lbl">Yesterday</div><div class="hub-mini">No prior day in range.</div>';
-    }
-  }
-
   // ── Day-by-day table (tap a row to backfill that day's calorie burn) ──
   var tbl = document.getElementById('hub-table');
   if (tbl) {
@@ -3956,7 +3930,7 @@ function briefRefreshAll() {
   // Priority Actions
   var actions = [];
   if(ctx.itemsLogged === 0) actions.push({color:'#e05050', text:'No meals logged yet — start with Meal 1'});
-  else if(ctx.cals < ctx.calTarget * 0.5) actions.push({color:'#f5a623', text: ctx.itemsLogged + ' meal' + (ctx.itemsLogged>1?'s':'') + ' logged — ' + Math.round(ctx.calTarget - ctx.cals) + ' cal remaining'});
+  else if(ctx.cals < ctx.calTarget * 0.5) actions.push({color:'#f5a623', text: ctx.mealsLogged + ' meal' + (ctx.mealsLogged>1?'s':'') + ' logged — ' + Math.round(ctx.calTarget - ctx.cals) + ' cal remaining'});
   if(ctx.waterOz === 0) actions.push({color:'#e05050', text:'Water at 0 oz — 135 oz minimum to hit'});
   else if(ctx.waterOz < 135) actions.push({color:'#f5a623', text:'Water at ' + ctx.waterOz + ' oz — ' + Math.round(135 - ctx.waterOz) + ' oz to minimum'});
   else actions.push({color:'#4caf7d', text:'Water minimum hit — ' + ctx.waterOz + ' oz'});
@@ -4004,7 +3978,7 @@ function briefRefreshAll() {
   // Init chat if first time
   if(!briefChatInited) {
     briefChatInited = true;
-    briefChatAddMsg('coach', 'Hey JR — Day ' + ctx.dayNum + ', ' + ctx.split + '. ' + (ctx.itemsLogged > 0 ? ctx.itemsLogged + ' meals logged, ' + ctx.cals + ' cal so far.' : 'No meals logged yet.') + ' What do you need?');
+    briefChatAddMsg('coach', 'Hey JR — Day ' + ctx.dayNum + ', ' + ctx.split + '. ' + (ctx.itemsLogged > 0 ? ctx.mealsLogged + ' meal' + (ctx.mealsLogged>1?'s':'') + ' logged, ' + ctx.cals + ' cal so far.' : 'No meals logged yet.') + ' What do you need?');
     briefChatHistory = [{role:'assistant', content:'Greeting sent.'}];
   }
 }
@@ -4017,7 +3991,7 @@ async function briefCoachLine(ctx) {
     var res = await fetch('/.netlify/functions/claude', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:100,
-        system:'You are CoachGPT. Give ONE short, direct, motivating line for JR. Today is ' + ctx.today + ', ' + ctx.split + '. He has logged ' + ctx.itemsLogged + ' meals (' + ctx.cals + ' cal). Water: ' + ctx.waterOz + ' oz. Be warm, faith-centered, concise. No JSON, no formatting, just one line.',
+        system:'You are CoachGPT. Give ONE short, direct, motivating line for JR. Today is ' + ctx.today + ', ' + ctx.split + '. He has logged ' + ctx.mealsLogged + ' meal(s) / ' + ctx.itemsLogged + ' food items (' + ctx.cals + ' cal). Water: ' + ctx.waterOz + ' oz. Be warm, faith-centered, concise. No JSON, no formatting, just one line.',
         messages:[{role:'user', content:'One line of motivation for today.'}] })
     });
     var data = await res.json();
@@ -4806,7 +4780,7 @@ function csShowTyping() {
 function csGreet() {
   var ctx = coachBuildContext();
   var greeting = 'Hey — today is ' + ctx.split + ', Day ' + ctx.dayNum + ' of your journey. ' +
-    'You have logged ' + ctx.itemsLogged + ' meals — ' + ctx.cals + ' cal and ' + ctx.protein + 'g protein so far. What do you need?';
+    'You have logged ' + ctx.mealsLogged + ' meal' + (ctx.mealsLogged===1?'':'s') + ' — ' + ctx.cals + ' cal and ' + ctx.protein + 'g protein so far. What do you need?';
   csAddMsg('coach', greeting);
   var pill = document.getElementById('cs-ctx-pill');
   if (pill) pill.textContent = ctx.split + ' · Day ' + ctx.dayNum;
