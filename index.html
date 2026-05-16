@@ -691,6 +691,48 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
   .dash-right .dash-tile:nth-child(5) { order: 3; }
   .dash-right .dash-tile:nth-child(6) { order: 6; }
 }
+
+/* ── INTELLIGENCE HUB (CoachGPT page) ── */
+.main > #coach { max-width: 1180px; }
+.hub-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
+.hub-title { font-size:22px; font-weight:700; color:#40ccbb; }
+.hub-sub { font-size:12px; color:#555; margin-top:4px; }
+.hub-range { display:flex; gap:3px; background:#141414; border:1px solid #1a4a44; border-radius:10px; padding:3px; flex-shrink:0; }
+.hub-range button { background:none; border:none; color:#888; font-size:11px; font-weight:600; padding:6px 12px; border-radius:7px; cursor:pointer; transition:all 0.12s; }
+.hub-range button.on { background:#0a2a26; color:#40ccbb; }
+.hub-shell { display:flex; gap:16px; width:100%; }
+.hub-rail { flex:1; min-width:0; display:flex; flex-direction:column; gap:12px; }
+.hub-chat { width:380px; flex-shrink:0; background:#0d0d0d; border:1px solid #1a4a44; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; }
+.hub-chat-msgs { flex:1; padding:14px 16px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.hub-card { background:#141414; border:1px solid #222; border-radius:14px; padding:16px; }
+.hub-card.accent { border-color:#1a4a44; background:#0a1a18; }
+.hub-card-lbl { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#40ccbb; opacity:0.75; margin-bottom:10px; }
+.hub-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.hub-big { font-size:25px; font-weight:700; color:#fff; line-height:1; }
+.hub-unit { font-size:13px; font-weight:600; color:#777; }
+.hub-delta { font-size:12px; font-weight:600; margin-top:5px; }
+.hub-spark { width:100%; height:38px; display:block; margin-top:10px; }
+.hub-mini { font-size:11px; color:#888; margin-top:6px; line-height:1.5; }
+.hub-row { display:flex; justify-content:space-between; align-items:baseline; padding:6px 0; border-bottom:1px solid #1c1c1c; font-size:12px; }
+.hub-row:last-child { border-bottom:none; }
+.hub-row .k { color:#888; }
+.hub-row .v { color:#ddd; font-weight:600; }
+.hub-table-wrap { max-height:240px; overflow-y:auto; }
+.hub-trow { display:grid; grid-template-columns:64px 1fr; gap:10px; padding:8px 0; border-bottom:1px solid #1c1c1c; font-size:11px; }
+.hub-trow:last-child { border-bottom:none; }
+.hub-trow .d { color:#40ccbb; font-weight:700; }
+.hub-trow .m { color:#999; line-height:1.5; }
+
+@media (min-width:601px){
+  .hub-shell { height: calc((100vh / 1.1) - 92px); }
+  .hub-rail { overflow-y:auto; padding-right:6px; }
+  .hub-chat { height:100%; }
+}
+@media (max-width:600px){
+  .main > #coach { max-width:100%; }
+  .hub-shell { flex-direction:column; }
+  .hub-chat { width:100%; height:72vh; }
+}
 </style>
 </head>
 <body>
@@ -1421,58 +1463,102 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 
   <!-- AI DAILY BRIEF -->
     <div id="coach" style="display:none;">
-      <div style="display:flex;gap:16px;">
-        <!-- LEFT: Briefing -->
-        <div style="flex:1;min-width:0;">
-          <div style="margin-bottom:16px;">
-            <div style="font-size:22px;font-weight:700;color:#40ccbb;" id="brief-greeting">Good morning, JR</div>
-            <div style="font-size:12px;color:#555;margin-top:4px;" id="brief-date-line">Loading...</div>
+      <div class="hub-head">
+        <div>
+          <div class="hub-title" id="brief-greeting">Intelligence Hub</div>
+          <div class="hub-sub" id="brief-date-line">Loading...</div>
+        </div>
+        <div class="hub-range" id="hub-range">
+          <button data-r="7" class="on" onclick="hubSetRange(7,this)">7 Days</button>
+          <button data-r="30" onclick="hubSetRange(30,this)">30 Days</button>
+          <button data-r="90" onclick="hubSetRange(90,this)">90 Days</button>
+        </div>
+      </div>
+
+      <div class="hub-shell">
+        <!-- LEFT: Intelligence rail -->
+        <div class="hub-rail" id="hub-rail">
+
+          <div id="brief-coach-wrap" class="hub-card accent">
+            <div class="hub-card-lbl">Coach says</div>
+            <div style="font-size:13px;color:#7dd9c8;line-height:1.6;font-style:italic;" id="brief-coach-text">Loading...</div>
           </div>
 
-          <div style="background:#141414;border:1px solid #1a4a44;border-radius:14px;padding:16px;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <div style="width:8px;height:8px;border-radius:50%;background:#e05050;"></div>
-              <span style="font-size:13px;font-weight:700;color:#fff;">Priority Actions</span>
+          <div class="hub-card accent" id="hub-projection">
+            <div class="hub-card-lbl">Projection &mdash; net-calorie model</div>
+            <div class="hub-mini">Loading&hellip;</div>
+          </div>
+
+          <div class="hub-grid2">
+            <div class="hub-card" id="hub-weight">
+              <div class="hub-card-lbl">Weight trend</div>
+              <div class="hub-mini">Loading&hellip;</div>
             </div>
+            <div class="hub-card" id="hub-fat">
+              <div class="hub-card-lbl">Projected fat change</div>
+              <div class="hub-mini">Loading&hellip;</div>
+            </div>
+          </div>
+
+          <div class="hub-grid2">
+            <div class="hub-card" id="hub-macros">
+              <div class="hub-card-lbl">Nutrition (avg)</div>
+              <div class="hub-mini">Loading&hellip;</div>
+            </div>
+            <div class="hub-card" id="hub-sleep">
+              <div class="hub-card-lbl">Sleep trend</div>
+              <div class="hub-mini">Loading&hellip;</div>
+            </div>
+          </div>
+
+          <div class="hub-card" id="hub-train">
+            <div class="hub-card-lbl">Training adherence</div>
+            <div class="hub-mini">Loading&hellip;</div>
+          </div>
+
+          <div class="hub-card" id="hub-yesterday">
+            <div class="hub-card-lbl">Yesterday</div>
+            <div class="hub-mini">Loading&hellip;</div>
+          </div>
+
+          <div class="hub-card">
+            <div class="hub-card-lbl" style="color:#e05050;">Today &mdash; priority actions</div>
             <div id="brief-actions" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;" id="brief-numbers"></div>
           </div>
 
-          <div style="background:#141414;border:1px solid #222;border-radius:14px;padding:16px;margin-bottom:12px;">
-            <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:12px;">Today's Numbers</div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;" id="brief-numbers"></div>
-          </div>
-
-          <div style="background:#141414;border:1px solid #222;border-radius:14px;padding:16px;margin-bottom:12px;">
+          <div class="hub-card">
             <div style="font-size:13px;font-weight:700;color:#f5a623;margin-bottom:8px;" id="brief-split-title">Loading...</div>
             <div style="font-size:12px;color:#888;line-height:1.7;" id="brief-split-exercises"></div>
           </div>
 
-          <div id="brief-coach-wrap" style="background:#0a2a26;border:1px solid #1a4a44;border-radius:14px;padding:14px 16px;margin-bottom:12px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#40ccbb;margin-bottom:6px;">Coach says</div>
-            <div style="font-size:13px;color:#7dd9c8;line-height:1.6;font-style:italic;" id="brief-coach-text">Loading...</div>
+          <div class="hub-card" id="hub-table-card">
+            <div class="hub-card-lbl">Day-by-day log</div>
+            <div class="hub-table-wrap" id="hub-table"></div>
           </div>
 
-          <div onclick="briefRefreshAll()" style="background:#141414;border:1px solid #1a4a44;border-radius:10px;padding:10px;text-align:center;cursor:pointer;font-size:12px;color:#40ccbb;">&#8635; Refresh</div>
+          <div onclick="briefRefreshAll()" style="background:#141414;border:1px solid #1a4a44;border-radius:10px;padding:10px;text-align:center;cursor:pointer;font-size:12px;color:#40ccbb;flex-shrink:0;">&#8635; Refresh</div>
         </div>
 
         <!-- RIGHT: Embedded Chat -->
-        <div style="width:380px;flex-shrink:0;background:#0d0d0d;border:1px solid #1a4a44;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;">
+        <div class="hub-chat">
           <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #1a1a1a;flex-shrink:0;">
             <div style="width:32px;height:32px;border-radius:50%;background:#0a2a26;border:2px solid #40ccbb;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#40ccbb;">C</div>
             <div>
               <div style="font-size:13px;font-weight:700;color:#fff;">Chat with CoachGPT</div>
-              <div style="font-size:10px;color:#40ccbb;">Ask anything about your plan</div>
+              <div style="font-size:10px;color:#40ccbb;">Trend-aware &mdash; sees your history</div>
             </div>
           </div>
-          <div id="brief-chat-messages" style="flex:1;padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+          <div id="brief-chat-messages" class="hub-chat-msgs"></div>
           <div style="display:flex;gap:6px;padding:6px 16px 4px;overflow-x:auto;flex-shrink:0;">
-            <div class="cs-chip" onclick="briefChatQuick('What is my training today?')">Today's training</div>
-            <div class="cs-chip" onclick="briefChatQuick('How are my macros tracking?')">Macro check</div>
-            <div class="cs-chip" onclick="briefChatQuick('How much water have I had?')">Water check</div>
-            <div class="cs-chip" onclick="briefChatQuick('Give me a full summary of today')">Today summary</div>
+            <div class="cs-chip" onclick="briefChatQuick('What is my weight trend over this period?')">Weight trend</div>
+            <div class="cs-chip" onclick="briefChatQuick('How are my macros trending vs target?')">Macro trend</div>
+            <div class="cs-chip" onclick="briefChatQuick('Based on my net calories, am I on track for my fat loss?')">Fat-loss check</div>
+            <div class="cs-chip" onclick="briefChatQuick('Compare this week to last week')">Compare</div>
+            <div class="cs-chip" onclick="briefChatQuick('What did I eat yesterday?')">Yesterday</div>
           </div>
           <div style="display:flex;gap:8px;padding:10px 16px 16px;border-top:1px solid #1a1a1a;flex-shrink:0;">
-            <input id="brief-chat-input" placeholder="Ask about your data..." style="flex:1;background:#111e1c;border:1px solid #1a4a44;border-radius:22px;padding:10px 16px;font-size:13px;color:#ddd;outline:none;" onkeydown="if(event.key==='Enter')briefChatSend()" />
+            <input id="brief-chat-input" placeholder="Ask about your trends..." style="flex:1;background:#111e1c;border:1px solid #1a4a44;border-radius:22px;padding:10px 16px;font-size:13px;color:#ddd;outline:none;" onkeydown="if(event.key==='Enter')briefChatSend()" />
             <button onclick="briefChatSend()" style="background:#40ccbb;border:none;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#080f0e;cursor:pointer;flex-shrink:0;">&#8593;</button>
           </div>
         </div>
@@ -2363,7 +2449,9 @@ async function dbLoadAll() {
           log: row.food_log || [],
           water: parseFloat(row.water_oz) || 0,
           weight: (row.weight != null && row.weight !== '') ? parseFloat(row.weight) : null,
-          sleepScore: (row.oura && row.oura.score) ? row.oura.score : null
+          sleepScore: (row.oura && row.oura.score) ? row.oura.score : null,
+          calExp: (row.oura && row.oura.calexp) ? parseFloat(row.oura.calexp) : null,
+          calExpManual: (row.cal_exp_manual != null && row.cal_exp_manual !== '') ? parseFloat(row.cal_exp_manual) : null
         };
       });
       // Load today's water
@@ -2437,6 +2525,7 @@ async function dbLoadAll() {
         else wi.value = '';
       }
       if(gi && sRes.data.goal_weight) gi.value = sRes.data.goal_weight;
+      if(sRes.data.maint_cal) { HUB_MAINT_FALLBACK = parseInt(sRes.data.maint_cal) || HUB_MAINT_FALLBACK; try { localStorage.setItem('jr_maint_cal', String(HUB_MAINT_FALLBACK)); } catch(e) {} }
       weightUpdate();
       // Restore Oura token cross-device — only fetch if token found and not already synced this load
       if (sRes.data.oura_token) {
@@ -3154,7 +3243,7 @@ function coachBuildContext() {
   };
 }
 
-function coachSystemPrompt(ctx) {
+function coachSystemPrompt(ctx, withHistory) {
   var p = "You are CoachGPT, JR's personal AI coach built into TRAKR. You have full context of his plan. ";
   p += "JR: almost 40, father, husband, CEO of Key Flex Ventures, California. Faith-centered, Philippians 4:13. ";
   p += "TODAY: " + ctx.today + ", Day " + ctx.dayNum + " of your journey. ";
@@ -3186,6 +3275,11 @@ function coachSystemPrompt(ctx) {
   p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
   p += 'CLEARDAY:{} must ONLY be included when the user explicitly asks to wipe or reset their ENTIRE day (e.g. "clear my day", "reset everything", "start my day over"). NEVER include CLEARDAY for fixing duplicates, correcting a single entry, adjusting water, editing food items, or any partial change. When in doubt, do not include CLEARDAY. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
+  // Side-panel Intelligence Hub only: inject historical/trend context so the
+  // tab can answer cross-day questions. Floating bubble stays today-only.
+  if (withHistory) {
+    try { p += historicalContextText(typeof HUB_RANGE !== 'undefined' ? HUB_RANGE : 7); } catch(e) {}
+  }
   return p;
 }
 
@@ -3510,6 +3604,329 @@ async function briefGenerate() { briefRefreshAll(); }
 var briefChatHistory = [];
 var briefChatInited = false;
 
+/* ─────────────────────────────────────────────────────────────
+   INTELLIGENCE HUB — historical trend engine
+   Reads flDateStore (populated cross-device by dbLoadAll) and
+   builds per-day metrics + a net-calorie fat/weight projection.
+   ───────────────────────────────────────────────────────────── */
+var HUB_RANGE = 7;                 // active lookback window (days)
+var hubEditKey = null;             // date key currently being burn-edited in the day-by-day log
+var HUB_KCAL_PER_LB = 3500;        // ~kcal per lb of body mass
+var HUB_MAINT_FALLBACK = 2600;     // editable est. maintenance burn when no Oura cal-exp logged
+try { var _hm = parseInt(localStorage.getItem('jr_maint_cal')); if (_hm) HUB_MAINT_FALLBACK = _hm; } catch(e) {}
+
+// Persist + apply an edited maintenance-calorie estimate (used when a day has
+// no logged Oura cal-exp — e.g. late-night workouts past midnight).
+function hubSetMaint(v) {
+  var n = parseInt(v);
+  if (!n || n < 800 || n > 6000) return;
+  HUB_MAINT_FALLBACK = n;
+  try { localStorage.setItem('jr_maint_cal', String(n)); } catch(e) {}
+  try { dbSaveSettings({ maint_cal: n }); } catch(e) {}
+  renderHub();
+}
+
+// Build oldest→newest metric rows for the last `n` days (incl. today).
+function hubDayMetrics(n) {
+  var out = [];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayKey = flDateKey(today);
+  var dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  for (var i = n - 1; i >= 0; i--) {
+    var d = new Date(today); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
+    var key = flDateKey(d);
+    var e = flDateStore[key];
+    var log = (e && e.log) ? e.log : [];
+    var tot = log.reduce(function(a,it){ var s=it.servings||1; a.cal+=(+it.cal||0)*s; a.p+=(+it.p||0)*s; a.c+=(+it.c||0)*s; a.f+=(+it.f||0)*s; return a; }, {cal:0,p:0,c:0,f:0});
+    var split = (e && e.split) ? e.split : flAutoSplit(d);
+    var weight = (e && e.weight != null) ? +e.weight : null;
+    var calExp = (e && e.calExp != null) ? +e.calExp : null;
+    var calExpManual = (e && e.calExpManual != null) ? +e.calExpManual : null;
+    var sleep  = (e && e.sleepScore != null && e.sleepScore !== '') ? +e.sleepScore : null;
+    // For TODAY, prefer live on-screen values (store may not be saved yet).
+    if (key === todayKey) {
+      var wi = document.getElementById('dash-weight-input');
+      if (wi && parseFloat(wi.value)) weight = parseFloat(wi.value);
+      var ce = document.getElementById('oura-calexp');
+      if (ce && parseFloat(ce.value)) calExp = parseFloat(ce.value);
+      var os = document.getElementById('oura-score');
+      if (os && parseFloat(os.value)) sleep = parseFloat(os.value);
+      split = getTodaySplit();
+    }
+    var logged = tot.cal > 0;
+    var isRest = split === 'Rest';
+    // Burn priority: real Oura cal-exp > manual backfill > maintenance estimate.
+    var burn, burnSrc;
+    if (calExp != null && calExp > 0)              { burn = calExp;             burnSrc = 'oura'; }
+    else if (calExpManual != null && calExpManual > 0) { burn = calExpManual;   burnSrc = 'manual'; }
+    else                                           { burn = HUB_MAINT_FALLBACK; burnSrc = 'est'; }
+    var net = logged ? Math.round(tot.cal - burn) : null;  // <0 = deficit
+    out.push({
+      key:key, date:d, dow:dows[d.getDay()],
+      label:(d.getMonth()+1)+'/'+d.getDate(),
+      cal:Math.round(tot.cal), p:Math.round(tot.p), c:Math.round(tot.c), f:Math.round(tot.f),
+      weight:weight, calExp:(calExp!=null?Math.round(calExp):null),
+      calExpManual:(calExpManual!=null?Math.round(calExpManual):null),
+      burn:Math.round(burn), burnSrc:burnSrc, burnEst:burnSrc==='est',
+      net:net, sleep:sleep, split:split, isRest:isRest,
+      dayType:isRest?'rd':'td', logged:logged, isToday:key===todayKey
+    });
+  }
+  return out;
+}
+
+// Aggregate a metric set into headline trend numbers + the projection.
+function hubAggregate(days) {
+  var w = days.filter(function(x){ return x.weight != null; });
+  var startW = w.length ? w[0].weight : null;
+  var endW   = w.length ? w[w.length-1].weight : null;
+  var loggedDays = days.filter(function(x){ return x.logged; });
+  var sumNet = loggedDays.reduce(function(s,x){ return s + (x.net||0); }, 0); // <0 = cumulative deficit
+  var projChange = sumNet / HUB_KCAL_PER_LB;        // lbs (negative = loss)
+  var projWeight = (startW != null) ? (startW + projChange) : null;
+  var actualChange = (startW != null && endW != null) ? (endW - startW) : null;
+  var variance = (projWeight != null && endW != null) ? (endW - projWeight) : null;
+  var calArr = loggedDays.map(function(x){ return x.cal; });
+  var pArr   = loggedDays.map(function(x){ return x.p; });
+  var avgCal = calArr.length ? Math.round(calArr.reduce(function(a,b){return a+b;},0)/calArr.length) : 0;
+  var avgP   = pArr.length   ? Math.round(pArr.reduce(function(a,b){return a+b;},0)/pArr.length)   : 0;
+  var pHit = loggedDays.filter(function(x){ var tg=flTargets[x.dayType].p; return x.p >= tg*0.95; }).length;
+  var sl = days.filter(function(x){ return x.sleep != null; }).map(function(x){ return x.sleep; });
+  var avgSleep = sl.length ? Math.round(sl.reduce(function(a,b){return a+b;},0)/sl.length) : null;
+  var sched = days.filter(function(x){ return !x.isRest; }).length;
+  var trained = days.filter(function(x){ return !x.isRest && x.logged; }).length; // proxy: ate on a training day
+  return {
+    days:days, startW:startW, endW:endW, actualChange:actualChange,
+    sumNet:sumNet, avgNet:loggedDays.length?Math.round(sumNet/loggedDays.length):0,
+    projChange:projChange, projWeight:projWeight, variance:variance,
+    avgCal:avgCal, avgP:avgP, pHit:pHit, loggedCount:loggedDays.length,
+    avgSleep:avgSleep, sched:sched, trained:trained
+  };
+}
+
+// Tiny inline SVG sparkline from a numeric series (nulls skipped).
+function hubSpark(vals, color) {
+  var pts = vals.filter(function(v){ return v != null && !isNaN(v); });
+  if (pts.length < 2) return '<div style="height:38px;display:flex;align-items:center;color:#444;font-size:10px;">not enough data</div>';
+  var mn = Math.min.apply(null, pts), mx = Math.max.apply(null, pts);
+  var rng = (mx - mn) || 1, W = 100, H = 34;
+  var coords = pts.map(function(v,i){
+    var x = pts.length===1 ? 0 : (i/(pts.length-1))*W;
+    var y = H - ((v - mn)/rng)*H + 2;
+    return x.toFixed(1)+','+y.toFixed(1);
+  });
+  var last = coords[coords.length-1].split(',');
+  return '<svg class="hub-spark" viewBox="0 0 100 38" preserveAspectRatio="none">'
+    + '<polyline points="'+coords.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<circle cx="'+last[0]+'" cy="'+last[1]+'" r="2.5" fill="'+color+'"/></svg>';
+}
+
+function hubColNum(n, goodNeg) {
+  if (n == null) return '#888';
+  if (n === 0) return '#888';
+  var good = goodNeg ? n < 0 : n > 0;
+  return good ? '#4caf7d' : '#e05050';
+}
+
+function hubSetRange(n, btn) {
+  HUB_RANGE = n;
+  var bs = document.querySelectorAll('#hub-range button');
+  bs.forEach(function(b){ b.classList.toggle('on', parseInt(b.getAttribute('data-r'))===n); });
+  renderHub();
+}
+
+function renderHub() {
+  if (!document.getElementById('hub-projection')) return;
+  var days = hubDayMetrics(HUB_RANGE);
+  var ag = hubAggregate(days);
+  var rngLbl = HUB_RANGE + 'd';
+
+  // ── Projection (net-calorie model) ──
+  var projEl = document.getElementById('hub-projection');
+  if (projEl) {
+    var dir = ag.sumNet < 0 ? 'deficit' : 'surplus';
+    var lbs = Math.abs(ag.projChange);
+    var vTxt = '—', vCol = '#888';
+    if (ag.variance != null) {
+      var ahead = ag.variance < 0; // lighter than predicted = ahead of plan
+      vCol = ahead ? '#4caf7d' : '#f5a623';
+      vTxt = (ahead ? 'ahead of plan by ' : 'behind plan by ') + Math.abs(ag.variance).toFixed(1) + ' lbs';
+    }
+    projEl.innerHTML =
+      '<div class="hub-card-lbl">Projection — net-calorie model · ' + rngLbl + '</div>' +
+      '<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;">' +
+        '<div><div class="hub-big" style="color:' + (ag.sumNet<0?'#4caf7d':'#e05050') + ';">' +
+          (ag.sumNet<0?'−':'+') + lbs.toFixed(1) + ' <span class="hub-unit">lbs ' + dir + '</span></div>' +
+          '<div class="hub-mini">Net ' + (ag.sumNet<0?'−':'+') + Math.abs(ag.sumNet).toLocaleString() + ' kcal over ' + ag.loggedCount + ' logged day' + (ag.loggedCount===1?'':'s') + ' (avg ' + ag.avgNet + '/day)</div>' +
+        '</div>' +
+        '<div><div class="hub-big" style="color:#40ccbb;">' + (ag.projWeight!=null?ag.projWeight.toFixed(1):'—') + ' <span class="hub-unit">lbs target</span></div>' +
+          '<div class="hub-mini">where the math says you should be' + (ag.startW!=null?' (from ' + ag.startW.toFixed(1) + ')':'') + '</div>' +
+        '</div>' +
+        '<div><div class="hub-big" style="color:#ddd;">' + (ag.endW!=null?ag.endW.toFixed(1):'—') + ' <span class="hub-unit">lbs actual</span></div>' +
+          '<div class="hub-mini" style="color:' + vCol + ';">' + vTxt + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="hub-mini" style="margin-top:10px;color:#666;">Burn uses Oura cal-exp when logged, else maintenance estimate ' +
+        '<input type="number" value="' + HUB_MAINT_FALLBACK + '" min="800" max="6000" step="10" onchange="hubSetMaint(this.value)" ' +
+        'style="width:62px;background:#111;border:1px solid #2a4a44;border-radius:5px;color:#40ccbb;font-size:11px;padding:2px 5px;text-align:center;" /> kcal/day (editable). 1 lb ≈ ' + HUB_KCAL_PER_LB + ' kcal.</div>';
+  }
+
+  // ── Weight trend ──
+  var wEl = document.getElementById('hub-weight');
+  if (wEl) {
+    var wSeries = days.map(function(x){ return x.weight; });
+    var deltaTxt = '—', dCol = '#888';
+    if (ag.actualChange != null) {
+      dCol = ag.actualChange < 0 ? '#4caf7d' : (ag.actualChange > 0 ? '#e05050' : '#888');
+      deltaTxt = (ag.actualChange<=0?'↓ ':'↑ ') + Math.abs(ag.actualChange).toFixed(1) + ' lbs / ' + rngLbl;
+    }
+    wEl.innerHTML =
+      '<div class="hub-card-lbl">Weight trend · ' + rngLbl + '</div>' +
+      '<div class="hub-big">' + (ag.endW!=null?ag.endW.toFixed(1):'—') + ' <span class="hub-unit">lbs</span></div>' +
+      '<div class="hub-delta" style="color:' + dCol + ';">' + deltaTxt + '</div>' +
+      hubSpark(wSeries, '#40ccbb');
+  }
+
+  // ── Projected fat change (net-cal derived) ──
+  var fEl = document.getElementById('hub-fat');
+  if (fEl) {
+    var running = 0;
+    var fSeries = days.map(function(x){ if(x.net!=null){ running += -x.net/HUB_KCAL_PER_LB; } return x.logged ? +running.toFixed(3) : null; });
+    var fChange = ag.projChange; // negative = fat lost
+    fEl.innerHTML =
+      '<div class="hub-card-lbl">Projected fat change · ' + rngLbl + '</div>' +
+      '<div class="hub-big" style="color:' + (fChange<0?'#4caf7d':'#e05050') + ';">' + (fChange<=0?'−':'+') + Math.abs(fChange).toFixed(2) + ' <span class="hub-unit">lbs fat</span></div>' +
+      '<div class="hub-delta" style="color:#888;">from cumulative net calories</div>' +
+      hubSpark(fSeries, '#7dd9c8');
+  }
+
+  // ── Nutrition (avg) ──
+  var mEl = document.getElementById('hub-macros');
+  if (mEl) {
+    var calSeries = days.map(function(x){ return x.logged ? x.cal : null; });
+    mEl.innerHTML =
+      '<div class="hub-card-lbl">Nutrition avg · ' + rngLbl + '</div>' +
+      '<div class="hub-big">' + ag.avgCal + ' <span class="hub-unit">kcal/day</span></div>' +
+      '<div class="hub-delta" style="color:#5aabff;">' + ag.avgP + 'g protein avg · target hit ' + ag.pHit + '/' + ag.loggedCount + ' days</div>' +
+      hubSpark(calSeries, '#f5a623');
+  }
+
+  // ── Sleep trend ──
+  var sEl = document.getElementById('hub-sleep');
+  if (sEl) {
+    var sSeries = days.map(function(x){ return x.sleep; });
+    sEl.innerHTML =
+      '<div class="hub-card-lbl">Sleep trend · ' + rngLbl + '</div>' +
+      '<div class="hub-big">' + (ag.avgSleep!=null?ag.avgSleep:'—') + ' <span class="hub-unit">avg score</span></div>' +
+      '<div class="hub-delta" style="color:#8899ff;">' + (sSeries.filter(function(v){return v!=null;}).length) + ' nights logged</div>' +
+      hubSpark(sSeries, '#8899ff');
+  }
+
+  // ── Training adherence ──
+  var tEl = document.getElementById('hub-train');
+  if (tEl) {
+    var pct = ag.sched ? Math.round((ag.trained/ag.sched)*100) : 0;
+    tEl.innerHTML =
+      '<div class="hub-card-lbl">Training adherence · ' + rngLbl + '</div>' +
+      '<div style="display:flex;align-items:baseline;gap:12px;"><div class="hub-big" style="color:' + (pct>=80?'#4caf7d':pct>=50?'#f5a623':'#e05050') + ';">' + ag.trained + '/' + ag.sched + '</div><div class="hub-mini">scheduled training days with logged intake (' + pct + '%)</div></div>';
+  }
+
+  // ── Yesterday ──
+  var yEl = document.getElementById('hub-yesterday');
+  if (yEl) {
+    var y = days.length >= 2 ? days[days.length-2] : null;
+    if (y) {
+      var e = flDateStore[y.key];
+      var secLbl = {m1:'Breakfast',m2:'Lunch',m3:'Midday',m4:'Pre-WO',intra:'Intra',m5:'Post-WO',snack:'Snacks'};
+      var bySec = {};
+      ((e&&e.log)||[]).forEach(function(it){ var s=it.section||'snack'; (bySec[s]=bySec[s]||[]).push(it.name); });
+      var secHtml = Object.keys(bySec).map(function(s){
+        return '<div class="hub-row"><span class="k">' + (secLbl[s]||s) + '</span><span class="v" style="text-align:right;max-width:60%;">' + bySec[s].slice(0,4).join(', ') + (bySec[s].length>4?' +'+(bySec[s].length-4):'') + '</span></div>';
+      }).join('');
+      yEl.innerHTML =
+        '<div class="hub-card-lbl">Yesterday — ' + y.dow + ' ' + y.label + ' · ' + y.split + '</div>' +
+        '<div class="hub-row"><span class="k">Calories</span><span class="v">' + y.cal + ' kcal · ' + y.p + 'P / ' + y.c + 'C / ' + y.f + 'F</span></div>' +
+        '<div class="hub-row"><span class="k">Weight</span><span class="v">' + (y.weight!=null?y.weight.toFixed(1)+' lbs':'not logged') + '</span></div>' +
+        '<div class="hub-row"><span class="k">Sleep</span><span class="v">' + (y.sleep!=null?y.sleep:'—') + '</span></div>' +
+        '<div class="hub-row"><span class="k">Net</span><span class="v" style="color:' + hubColNum(y.net,true) + ';">' + (y.net!=null?(y.net<0?'−':'+')+Math.abs(y.net)+' kcal':'—') + '</span></div>' +
+        (secHtml ? '<div style="margin-top:8px;">' + secHtml + '</div>' : '<div class="hub-mini">No food logged.</div>');
+    } else {
+      yEl.innerHTML = '<div class="hub-card-lbl">Yesterday</div><div class="hub-mini">No prior day in range.</div>';
+    }
+  }
+
+  // ── Day-by-day table (tap a row to backfill that day's calorie burn) ──
+  var tbl = document.getElementById('hub-table');
+  if (tbl) {
+    var burnTag = { oura:'#4caf7d', manual:'#40ccbb', est:'#777' };
+    tbl.innerHTML = days.slice().reverse().map(function(x){
+      var net = x.net!=null ? '<span style="color:'+hubColNum(x.net,true)+';">'+(x.net<0?'−':'+')+Math.abs(x.net)+'</span>' : '—';
+      if (x.key === hubEditKey) {
+        var cur = x.calExpManual != null ? x.calExpManual : (x.calExp != null ? x.calExp : '');
+        return '<div class="hub-trow"><div class="d">' + x.dow + '<br><span style="color:#555;font-weight:400;">' + x.label + '</span></div>' +
+          '<div class="m"><div style="color:#40ccbb;margin-bottom:6px;">Calorie burn for ' + x.dow + ' ' + x.label + '</div>' +
+          '<input id="hub-burn-input" type="number" inputmode="numeric" value="' + cur + '" placeholder="e.g. 2900" ' +
+          'onkeydown="if(event.key===\'Enter\')hubSaveBurn(\'' + x.key + '\');if(event.key===\'Escape\')hubCancelBurn()" ' +
+          'style="width:90px;background:#111;border:1px solid #2a4a44;border-radius:5px;color:#40ccbb;font-size:12px;padding:4px 6px;text-align:center;" /> ' +
+          '<button onclick="hubSaveBurn(\'' + x.key + '\')" style="background:#0a2a26;border:1px solid #1a4a44;color:#40ccbb;font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;margin-left:4px;">Save</button> ' +
+          '<button onclick="hubCancelBurn()" style="background:none;border:1px solid #333;color:#888;font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;">Cancel</button>' +
+          (x.calExp!=null?'<div style="color:#666;margin-top:5px;">Oura logged ' + x.calExp + ' for this day — a manual value is only used when Oura is missing.</div>':'<div style="color:#666;margin-top:5px;">Manual entry. Leave blank to clear.</div>') +
+          '</div></div>';
+      }
+      return '<div class="hub-trow" onclick="hubEditBurn(\'' + x.key + '\')" style="cursor:pointer;" title="Tap to set calorie burn">' +
+        '<div class="d">' + x.dow + '<br><span style="color:#555;font-weight:400;">' + x.label + '</span></div>' +
+        '<div class="m">' + (x.logged ? x.cal+' kcal · '+x.p+'P/'+x.c+'C/'+x.f+'F' : '<span style="color:#555;">no food logged</span>') +
+        ' · wt ' + (x.weight!=null?x.weight.toFixed(1):'—') +
+        ' · sleep ' + (x.sleep!=null?x.sleep:'—') +
+        ' · burn <span style="color:' + burnTag[x.burnSrc] + ';">' + x.burn + (x.burnSrc==='oura'?'':' '+x.burnSrc) + '</span> <span style="color:#555;">✎</span>' +
+        ' · net ' + net +
+        ' · ' + x.split + (x.isToday?' · <span style="color:#40ccbb;">today</span>':'') + '</div></div>';
+    }).join('');
+  }
+}
+
+// Tap-to-backfill a past day's calorie burn (writes daily_logs.cal_exp_manual;
+// never touches the Oura jsonb blob). Re-render drives the inline editor.
+function hubEditBurn(key) { hubEditKey = key; renderHub(); var inp=document.getElementById('hub-burn-input'); if(inp){ inp.focus(); inp.select(); } }
+function hubCancelBurn() { hubEditKey = null; renderHub(); }
+function hubSaveBurn(key) {
+  var inp = document.getElementById('hub-burn-input');
+  var raw = inp ? inp.value.trim() : '';
+  var n = raw === '' ? null : parseInt(raw);
+  if (n != null && (isNaN(n) || n < 0 || n > 10000)) { if(inp){ inp.style.borderColor='#e05050'; } return; }
+  if (!flDateStore[key]) flDateStore[key] = { split: flAutoSplit(new Date(key + 'T12:00:00')), dayType:'td', log: [] };
+  flDateStore[key].calExpManual = n;
+  try { dbSaveDay(key, { cal_exp_manual: n }); } catch(e) {}
+  hubEditKey = null;
+  renderHub();
+}
+
+// Compact one-line-per-day history block for the side-panel system prompt.
+function historicalContextText(n) {
+  var days = hubDayMetrics(n);
+  var ag = hubAggregate(days);
+  var lines = days.map(function(x){
+    return x.dow + ' ' + x.label + ': ' +
+      (x.logged ? x.cal+'cal '+x.p+'P/'+x.c+'C/'+x.f+'F' : 'no food') +
+      ', burn ' + x.burn + (x.burnSrc==='oura'?'':'('+x.burnSrc+')') +
+      ', net ' + (x.net!=null?(x.net<0?'-':'+')+Math.abs(x.net):'n/a') +
+      ', wt ' + (x.weight!=null?x.weight.toFixed(1):'-') +
+      ', sleep ' + (x.sleep!=null?x.sleep:'-') +
+      ', ' + x.split;
+  });
+  var p = ' HISTORICAL DATA — last ' + n + ' days (oldest first), one line per day. ';
+  p += 'Format: weekday m/d: intake / burn / net kcal / weight lbs / sleep score / training. ';
+  p += lines.join(' | ') + '. ';
+  p += 'AGGREGATE over this window: ';
+  p += 'weight ' + (ag.startW!=null?ag.startW.toFixed(1):'?') + '→' + (ag.endW!=null?ag.endW.toFixed(1):'?') + ' lbs (actual change ' + (ag.actualChange!=null?ag.actualChange.toFixed(1):'?') + '). ';
+  p += 'Cumulative net ' + ag.sumNet + ' kcal over ' + ag.loggedCount + ' logged days (avg ' + ag.avgNet + '/day). ';
+  p += 'Net-calorie projection: ' + (ag.projChange<=0?'lose ':'gain ') + Math.abs(ag.projChange).toFixed(2) + ' lbs → projected weight ' + (ag.projWeight!=null?ag.projWeight.toFixed(1):'?') + ' lbs vs actual ' + (ag.endW!=null?ag.endW.toFixed(1):'?') + ' lbs';
+  if (ag.variance!=null) p += ' (' + (ag.variance<0?'ahead of':'behind') + ' projection by ' + Math.abs(ag.variance).toFixed(1) + ' lbs)';
+  p += '. Avg intake ' + ag.avgCal + ' kcal, avg protein ' + ag.avgP + 'g (target hit ' + ag.pHit + '/' + ag.loggedCount + '). Avg sleep ' + (ag.avgSleep!=null?ag.avgSleep:'?') + '. Training ' + ag.trained + '/' + ag.sched + ' scheduled days. ';
+  p += 'When JR asks about trends, fat loss, or "what weight should I be", use THIS data and the net-calorie projection. A burn (est) marker means no Oura cal-exp that day so a maintenance estimate was used; (manual) means JR backfilled the burn himself (reliable). Mention the estimate caveat if it materially affects the answer. ';
+  return p;
+}
+
 function briefRefreshAll() {
   var ctx = coachBuildContext();
   var now = new Date();
@@ -3518,9 +3935,9 @@ function briefRefreshAll() {
   var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   var el = document.getElementById('brief-greeting');
-  if(el) el.textContent = greeting + ', JR';
+  if(el) el.textContent = 'Intelligence Hub';
   var dl = document.getElementById('brief-date-line');
-  if(dl) dl.textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear() + ' · Day ' + ctx.dayNum + ' · ' + ctx.split;
+  if(dl) dl.textContent = greeting + ', JR · ' + days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear() + ' · Day ' + ctx.dayNum + ' · ' + ctx.split;
 
   // Priority Actions
   var actions = [];
@@ -3563,6 +3980,9 @@ function briefRefreshAll() {
   if(stEl) stEl.textContent = (ctx.isRest ? 'Rest Day' : ctx.split + ' — ' + ctx.splitFocus);
   var seEl = document.getElementById('brief-split-exercises');
   if(seEl) seEl.textContent = ctx.isRest ? 'Recovery day. Hit your nutrition targets, stay hydrated, get quality sleep.' : 'Exercises: ' + ctx.splitDetail;
+
+  // Trend cards (Intelligence Hub)
+  renderHub();
 
   // Coach line (single AI call, cheap)
   briefCoachLine(ctx);
@@ -3623,7 +4043,7 @@ async function briefChatSend() {
   try {
     var res = await fetch('/.netlify/functions/claude', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:600, system: coachSystemPrompt(ctx), messages: sanitizeOutboundHistory(briefChatHistory) })
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:600, system: coachSystemPrompt(ctx, true), messages: sanitizeOutboundHistory(briefChatHistory) })
     });
     var data = await res.json();
     var reply = data.content.map(function(i){return i.text||'';}).join('');
