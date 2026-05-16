@@ -3667,10 +3667,12 @@ function hubDayMetrics(n) {
     }
     var logged = tot.cal > 0;
     var isRest = split === 'Rest';
-    // Burn priority: real Oura cal-exp > manual backfill > maintenance estimate.
+    // Burn priority: explicit manual override > Oura cal-exp > maintenance
+    // estimate. A hand-entered value always wins (matches the app's
+    // user/logaction > oura source precedence for activity fields).
     var burn, burnSrc;
-    if (calExp != null && calExp > 0)              { burn = calExp;             burnSrc = 'oura'; }
-    else if (calExpManual != null && calExpManual > 0) { burn = calExpManual;   burnSrc = 'manual'; }
+    if (calExpManual != null && calExpManual > 0)  { burn = calExpManual;       burnSrc = 'manual'; }
+    else if (calExp != null && calExp > 0)         { burn = calExp;             burnSrc = 'oura'; }
     else                                           { burn = HUB_MAINT_FALLBACK; burnSrc = 'est'; }
     var net = logged ? Math.round(tot.cal - burn) : null;  // <0 = deficit
     out.push({
@@ -3882,7 +3884,7 @@ function renderHub() {
           'style="width:90px;background:#111;border:1px solid #2a4a44;border-radius:5px;color:#40ccbb;font-size:12px;padding:4px 6px;text-align:center;" /> ' +
           '<button onclick="hubSaveBurn(\'' + x.key + '\')" style="background:#0a2a26;border:1px solid #1a4a44;color:#40ccbb;font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;margin-left:4px;">Save</button> ' +
           '<button onclick="hubCancelBurn()" style="background:none;border:1px solid #333;color:#888;font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;">Cancel</button>' +
-          (x.calExp!=null?'<div style="color:#666;margin-top:5px;">Oura logged ' + x.calExp + ' for this day — a manual value is only used when Oura is missing.</div>':'<div style="color:#666;margin-top:5px;">Manual entry. Leave blank to clear.</div>') +
+          (x.calExp!=null?'<div style="color:#666;margin-top:5px;">Oura logged ' + x.calExp + ' for this day — a manual value here overrides it. Leave blank to revert to Oura.</div>':'<div style="color:#666;margin-top:5px;">Manual entry. Leave blank to clear.</div>') +
           '</div></div>';
       }
       return '<div class="hub-trow" onclick="hubEditBurn(\'' + x.key + '\')" style="cursor:pointer;" title="Tap to set calorie burn">' +
