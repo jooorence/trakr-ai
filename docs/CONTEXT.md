@@ -150,7 +150,9 @@ The `CoachGPT` sidebar tab (`#coach` section, formerly the "AI Daily Brief") is 
 
 **Burn priority (`hubDayMetrics`):** real Oura cal-exp > manual backfill (`daily_logs.cal_exp_manual`) > editable maintenance estimate (`HUB_MAINT_FALLBACK`, default 2600, persisted to `user_settings.maint_cal`, editable inline on the Projection card via `hubSetMaint`). `burnSrc` = `oura|manual|est`.
 
-**Past-day calorie-burn backfill (option A):** tap any row in the **Day-by-day log** → inline input (`hubEditBurn`/`hubSaveBurn`/`hubCancelBurn`, state in `hubEditKey`) → writes `daily_logs.cal_exp_manual` for that exact date via `dbSaveDay` (upsert, **never touches the `oura` jsonb blob**). Recomputes projection live. Solves the "trained past midnight, Oura missed the day" problem. **Conversational backfill ("set May 14 burn to 2900") is option C — PARKED, next pass, same storage.**
+**Past-day intake + burn backfill (option A):** tap any row in the **Day-by-day log** → inline editor (`hubEditBurn`/`hubSaveDay`/`hubCancelBurn`, state in `hubEditKey`) with TWO fields: **Intake** (`daily_logs.cal_intake_manual`) and **Burn** (`daily_logs.cal_exp_manual`). `dbSaveDay` upsert, **never touches the `oura` jsonb blob**. Intake field is hidden/locked when the day has logged food (food always wins; manual intake is a fallback so `net` can compute on never-logged days — fixes `net —`). Burn manual overrides Oura. Recomputes everything live. **Conversational backfill ("set May 14 burn to 2900") is option C — PARKED, next pass, same storage.**
+
+`hubDayMetrics` now distinguishes `hasFood` (real macro detail) from `logged` (intake>0, incl. manual). `hubAggregate`: protein avg/`pHit` use `foodCount` (real food days only); `avgCal`/net use `loggedCount` (incl. manual-intake days).
 
 **Range toggle** `7 / 30 / 90 Days` (`HUB_RANGE`, `hubSetRange`) drives both the cards and the chat context.
 
@@ -191,7 +193,7 @@ The 600ms debounce on `dbSaveDay` / `dbSaveSettings` used to lose updates when s
 - So the moment you switch apps or close the tab, queued saves flush to Supabase before the timer can pause.
 
 ### Sync + persistence
-- **Supabase tables**: `daily_logs` (date-keyed; `weight numeric`, **`cal_exp_manual numeric`** = manual burn backfill), `user_settings` (+ **`maint_cal integer`** = editable maintenance estimate), `chat_history`
+- **Supabase tables**: `daily_logs` (date-keyed; `weight numeric`, **`cal_exp_manual numeric`** = manual burn backfill, **`cal_intake_manual numeric`** = manual intake fallback for never-logged days), `user_settings` (+ **`maint_cal integer`** = editable maintenance estimate), `chat_history`
   - Migration `add_cal_exp_manual_and_maint_cal` applied to the live DB. Both columns nullable/additive — older app versions ignore them.
 - **`_lastOuraBlob`** in-memory cache. `ouraUpdate()` merges new non-zero values onto it before saving.
 - **Oura sync** — Netlify proxy, uses client local date

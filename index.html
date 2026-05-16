@@ -2480,7 +2480,8 @@ async function dbLoadAll() {
           weight: (row.weight != null && row.weight !== '') ? parseFloat(row.weight) : null,
           sleepScore: (row.oura && row.oura.score) ? row.oura.score : null,
           calExp: (row.oura && row.oura.calexp) ? parseFloat(row.oura.calexp) : null,
-          calExpManual: (row.cal_exp_manual != null && row.cal_exp_manual !== '') ? parseFloat(row.cal_exp_manual) : null
+          calExpManual: (row.cal_exp_manual != null && row.cal_exp_manual !== '') ? parseFloat(row.cal_exp_manual) : null,
+          calIntakeManual: (row.cal_intake_manual != null && row.cal_intake_manual !== '') ? parseFloat(row.cal_intake_manual) : null
         };
       });
       // Load today's water
@@ -3688,7 +3689,15 @@ function hubDayMetrics(n) {
       if (os && parseFloat(os.value)) sleep = parseFloat(os.value);
       split = getTodaySplit();
     }
-    var logged = tot.cal > 0;
+    var calIntakeManual = (e && e.calIntakeManual != null) ? +e.calIntakeManual : null;
+    // Intake priority: logged food always wins; manual intake is a fallback
+    // for days that were never food-logged so net can still compute.
+    var hasFood = tot.cal > 0;
+    var intakeCal, intakeSrc;
+    if (hasFood)                                            { intakeCal = tot.cal;        intakeSrc = 'food'; }
+    else if (calIntakeManual != null && calIntakeManual > 0){ intakeCal = calIntakeManual; intakeSrc = 'manual'; }
+    else                                                    { intakeCal = 0;              intakeSrc = 'none'; }
+    var logged = intakeCal > 0;
     var isRest = split === 'Rest';
     // Burn priority: explicit manual override > Oura cal-exp > maintenance
     // estimate. A hand-entered value always wins (matches the app's
@@ -3697,11 +3706,13 @@ function hubDayMetrics(n) {
     if (calExpManual != null && calExpManual > 0)  { burn = calExpManual;       burnSrc = 'manual'; }
     else if (calExp != null && calExp > 0)         { burn = calExp;             burnSrc = 'oura'; }
     else                                           { burn = HUB_MAINT_FALLBACK; burnSrc = 'est'; }
-    var net = logged ? Math.round(tot.cal - burn) : null;  // <0 = deficit
+    var net = logged ? Math.round(intakeCal - burn) : null;  // <0 = deficit
     out.push({
       key:key, date:d, dow:dows[d.getDay()],
       label:(d.getMonth()+1)+'/'+d.getDate(),
-      cal:Math.round(tot.cal), p:Math.round(tot.p), c:Math.round(tot.c), f:Math.round(tot.f),
+      cal:Math.round(intakeCal), p:Math.round(tot.p), c:Math.round(tot.c), f:Math.round(tot.f),
+      hasFood:hasFood, intakeSrc:intakeSrc,
+      calIntakeManual:(calIntakeManual!=null?Math.round(calIntakeManual):null),
       weight:weight, calExp:(calExp!=null?Math.round(calExp):null),
       calExpManual:(calExpManual!=null?Math.round(calExpManual):null),
       burn:Math.round(burn), burnSrc:burnSrc, burnEst:burnSrc==='est',
@@ -3723,11 +3734,12 @@ function hubAggregate(days) {
   var projWeight = (startW != null) ? (startW + projChange) : null;
   var actualChange = (startW != null && endW != null) ? (endW - startW) : null;
   var variance = (projWeight != null && endW != null) ? (endW - projWeight) : null;
-  var calArr = loggedDays.map(function(x){ return x.cal; });
-  var pArr   = loggedDays.map(function(x){ return x.p; });
+  var foodDays = days.filter(function(x){ return x.hasFood; }); // real macro detail only
+  var calArr = loggedDays.map(function(x){ return x.cal; });    // incl. manual-intake days
+  var pArr   = foodDays.map(function(x){ return x.p; });
   var avgCal = calArr.length ? Math.round(calArr.reduce(function(a,b){return a+b;},0)/calArr.length) : 0;
   var avgP   = pArr.length   ? Math.round(pArr.reduce(function(a,b){return a+b;},0)/pArr.length)   : 0;
-  var pHit = loggedDays.filter(function(x){ var tg=flTargets[x.dayType].p; return x.p >= tg*0.95; }).length;
+  var pHit = foodDays.filter(function(x){ var tg=flTargets[x.dayType].p; return x.p >= tg*0.95; }).length;
   var sl = days.filter(function(x){ return x.sleep != null; }).map(function(x){ return x.sleep; });
   var avgSleep = sl.length ? Math.round(sl.reduce(function(a,b){return a+b;},0)/sl.length) : null;
   var sched = days.filter(function(x){ return !x.isRest; }).length;
@@ -3736,7 +3748,7 @@ function hubAggregate(days) {
     days:days, startW:startW, endW:endW, actualChange:actualChange,
     sumNet:sumNet, avgNet:loggedDays.length?Math.round(sumNet/loggedDays.length):0,
     projChange:projChange, projWeight:projWeight, variance:variance,
-    avgCal:avgCal, avgP:avgP, pHit:pHit, loggedCount:loggedDays.length,
+    avgCal:avgCal, avgP:avgP, pHit:pHit, loggedCount:loggedDays.length, foodCount:foodDays.length,
     avgSleep:avgSleep, sched:sched, trained:trained
   };
 }
@@ -3875,7 +3887,7 @@ function renderHub() {
     mEl.innerHTML =
       '<div class="hub-card-lbl">Nutrition avg · ' + rngLbl + '</div>' +
       '<div class="hub-big">' + ag.avgCal + ' <span class="hub-unit">kcal/day</span></div>' +
-      '<div class="hub-delta" style="color:#5aabff;">' + ag.avgP + 'g protein avg · target hit ' + ag.pHit + '/' + ag.loggedCount + ' days</div>' +
+      '<div class="hub-delta" style="color:#5aabff;">' + ag.avgP + 'g protein avg · target hit ' + ag.pHit + '/' + ag.foodCount + ' days</div>' +
       hubSpark(calSeries, '#f5a623');
   }
 
@@ -3957,20 +3969,31 @@ function renderHub() {
     tbl.innerHTML = days.slice().reverse().map(function(x){
       var net = x.net!=null ? '<span style="color:'+hubColNum(x.net,true)+';">'+(x.net<0?'−':'+')+Math.abs(x.net)+'</span>' : '—';
       if (x.key === hubEditKey) {
-        var cur = x.calExpManual != null ? x.calExpManual : (x.calExp != null ? x.calExp : '');
+        var curBurn = x.calExpManual != null ? x.calExpManual : (x.calExp != null ? x.calExp : '');
+        var curIntake = x.calIntakeManual != null ? x.calIntakeManual : '';
+        var inStyle = 'width:88px;background:#111;border:1px solid #2a4a44;border-radius:5px;color:#40ccbb;font-size:12px;padding:4px 6px;text-align:center;';
+        var lblStyle = 'display:inline-block;width:62px;color:#888;font-size:11px;';
+        var intakeField = x.hasFood
+          ? '<div style="color:#666;margin:3px 0;"><span style="' + lblStyle + '">Intake</span>' + x.cal + ' kcal (from logged food — can\'t override)</div>'
+          : '<div style="margin:5px 0;"><span style="' + lblStyle + '">Intake</span><input id="hub-intake-input" type="number" inputmode="numeric" value="' + curIntake + '" placeholder="e.g. 2000" ' +
+            'onkeydown="if(event.key===\'Enter\')hubSaveDay(\'' + x.key + '\');if(event.key===\'Escape\')hubCancelBurn()" style="' + inStyle + '" /> <span style="color:#666;">kcal eaten</span></div>';
         return '<div class="hub-trow"><div class="d">' + x.dow + '<br><span style="color:#555;font-weight:400;">' + x.label + '</span></div>' +
-          '<div class="m"><div style="color:#40ccbb;margin-bottom:6px;">Calorie burn for ' + x.dow + ' ' + x.label + '</div>' +
-          '<input id="hub-burn-input" type="number" inputmode="numeric" value="' + cur + '" placeholder="e.g. 2900" ' +
-          'onkeydown="if(event.key===\'Enter\')hubSaveBurn(\'' + x.key + '\');if(event.key===\'Escape\')hubCancelBurn()" ' +
-          'style="width:90px;background:#111;border:1px solid #2a4a44;border-radius:5px;color:#40ccbb;font-size:12px;padding:4px 6px;text-align:center;" /> ' +
-          '<button onclick="hubSaveBurn(\'' + x.key + '\')" style="background:#0a2a26;border:1px solid #1a4a44;color:#40ccbb;font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;margin-left:4px;">Save</button> ' +
-          '<button onclick="hubCancelBurn()" style="background:none;border:1px solid #333;color:#888;font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;">Cancel</button>' +
-          (x.calExp!=null?'<div style="color:#666;margin-top:5px;">Oura logged ' + x.calExp + ' for this day — a manual value here overrides it. Leave blank to revert to Oura.</div>':'<div style="color:#666;margin-top:5px;">Manual entry. Leave blank to clear.</div>') +
+          '<div class="m"><div style="color:#40ccbb;margin-bottom:6px;">Edit ' + x.dow + ' ' + x.label + '</div>' +
+          intakeField +
+          '<div style="margin:5px 0;"><span style="' + lblStyle + '">Burn</span><input id="hub-burn-input" type="number" inputmode="numeric" value="' + curBurn + '" placeholder="e.g. 2900" ' +
+          'onkeydown="if(event.key===\'Enter\')hubSaveDay(\'' + x.key + '\');if(event.key===\'Escape\')hubCancelBurn()" style="' + inStyle + '" /> <span style="color:#666;">kcal burned</span></div>' +
+          '<div style="margin-top:8px;"><button onclick="hubSaveDay(\'' + x.key + '\')" style="background:#0a2a26;border:1px solid #1a4a44;color:#40ccbb;font-size:11px;padding:4px 12px;border-radius:5px;cursor:pointer;">Save</button> ' +
+          '<button onclick="hubCancelBurn()" style="background:none;border:1px solid #333;color:#888;font-size:11px;padding:4px 12px;border-radius:5px;cursor:pointer;margin-left:4px;">Cancel</button></div>' +
+          '<div style="color:#666;margin-top:6px;">' +
+          (x.calExp!=null?'Oura burn for this day is ' + x.calExp + ' — a manual burn overrides it. ':'') +
+          'Intake is only used on days with no logged food. Leave a field blank to clear it.</div>' +
           '</div></div>';
       }
-      return '<div class="hub-trow" onclick="hubEditBurn(\'' + x.key + '\')" style="cursor:pointer;" title="Tap to set calorie burn">' +
+      var intakeTxt = x.hasFood ? (x.cal+' kcal · '+x.p+'P/'+x.c+'C/'+x.f+'F')
+        : (x.intakeSrc==='manual' ? '<span style="color:#40ccbb;">'+x.cal+' kcal manual</span>' : '<span style="color:#555;">no food logged</span>');
+      return '<div class="hub-trow" onclick="hubEditBurn(\'' + x.key + '\')" style="cursor:pointer;" title="Tap to edit intake / burn">' +
         '<div class="d">' + x.dow + '<br><span style="color:#555;font-weight:400;">' + x.label + '</span></div>' +
-        '<div class="m">' + (x.logged ? x.cal+' kcal · '+x.p+'P/'+x.c+'C/'+x.f+'F' : '<span style="color:#555;">no food logged</span>') +
+        '<div class="m">' + intakeTxt +
         ' · wt ' + (x.weight!=null?x.weight.toFixed(1):'—') +
         ' · sleep ' + (x.sleep!=null?x.sleep:'—') +
         ' · burn <span style="color:' + burnTag[x.burnSrc] + ';">' + x.burn + (x.burnSrc==='oura'?'':' '+x.burnSrc) + '</span> <span style="color:#555;">✎</span>' +
@@ -3980,18 +4003,34 @@ function renderHub() {
   }
 }
 
-// Tap-to-backfill a past day's calorie burn (writes daily_logs.cal_exp_manual;
-// never touches the Oura jsonb blob). Re-render drives the inline editor.
-function hubEditBurn(key) { hubEditKey = key; renderHub(); var inp=document.getElementById('hub-burn-input'); if(inp){ inp.focus(); inp.select(); } }
+// Tap-to-edit a past day's intake + burn. Intake → daily_logs.cal_intake_manual
+// (fallback only; logged food always wins). Burn → daily_logs.cal_exp_manual
+// (overrides Oura). Neither touches the Oura jsonb blob.
+function hubEditBurn(key) {
+  hubEditKey = key; renderHub();
+  var inp = document.getElementById('hub-intake-input') || document.getElementById('hub-burn-input');
+  if (inp) { inp.focus(); inp.select(); }
+}
 function hubCancelBurn() { hubEditKey = null; renderHub(); }
-function hubSaveBurn(key) {
-  var inp = document.getElementById('hub-burn-input');
-  var raw = inp ? inp.value.trim() : '';
-  var n = raw === '' ? null : parseInt(raw);
-  if (n != null && (isNaN(n) || n < 0 || n > 10000)) { if(inp){ inp.style.borderColor='#e05050'; } return; }
+function hubSaveDay(key) {
+  function parse(id) {
+    var el = document.getElementById(id);
+    if (!el) return undefined;                 // field not shown (e.g. intake when food logged)
+    var raw = el.value.trim();
+    if (raw === '') return null;               // explicit clear
+    var v = parseInt(raw);
+    if (isNaN(v) || v < 0 || v > 12000) { el.style.borderColor = '#e05050'; return NaN; }
+    return v;
+  }
+  var intake = parse('hub-intake-input');
+  var burn   = parse('hub-burn-input');
+  if (intake !== intake || burn !== burn) return;  // NaN → validation failed
   if (!flDateStore[key]) flDateStore[key] = { split: flAutoSplit(new Date(key + 'T12:00:00')), dayType:'td', log: [] };
-  flDateStore[key].calExpManual = n;
-  try { dbSaveDay(key, { cal_exp_manual: n }); } catch(e) {}
+  var payload = {};
+  if (intake !== undefined) { flDateStore[key].calIntakeManual = intake; payload.cal_intake_manual = intake; }
+  flDateStore[key].calExpManual = burn;
+  payload.cal_exp_manual = burn;
+  try { dbSaveDay(key, payload); } catch(e) {}
   hubEditKey = null;
   renderHub();
 }
@@ -4017,7 +4056,7 @@ function historicalContextText(n) {
   p += 'Cumulative net ' + ag.sumNet + ' kcal over ' + ag.loggedCount + ' logged days (avg ' + ag.avgNet + '/day). ';
   p += 'Net-calorie projection: ' + (ag.projChange<=0?'lose ':'gain ') + Math.abs(ag.projChange).toFixed(2) + ' lbs → projected weight ' + (ag.projWeight!=null?ag.projWeight.toFixed(1):'?') + ' lbs vs actual ' + (ag.endW!=null?ag.endW.toFixed(1):'?') + ' lbs';
   if (ag.variance!=null) p += ' (' + (ag.variance<0?'ahead of':'behind') + ' projection by ' + Math.abs(ag.variance).toFixed(1) + ' lbs)';
-  p += '. Avg intake ' + ag.avgCal + ' kcal, avg protein ' + ag.avgP + 'g (target hit ' + ag.pHit + '/' + ag.loggedCount + '). Avg sleep ' + (ag.avgSleep!=null?ag.avgSleep:'?') + '. Training ' + ag.trained + '/' + ag.sched + ' scheduled days. ';
+  p += '. Avg intake ' + ag.avgCal + ' kcal, avg protein ' + ag.avgP + 'g (target hit ' + ag.pHit + '/' + ag.foodCount + '). Avg sleep ' + (ag.avgSleep!=null?ag.avgSleep:'?') + '. Training ' + ag.trained + '/' + ag.sched + ' scheduled days. ';
   p += 'When JR asks about trends, fat loss, or "what weight should I be", use THIS data and the net-calorie projection. A burn (est) marker means no Oura cal-exp that day so a maintenance estimate was used; (manual) means JR backfilled the burn himself (reliable). Mention the estimate caveat if it materially affects the answer. ';
   return p;
 }
@@ -4107,7 +4146,7 @@ async function briefCoachLine(ctx) {
       'Cumulative net ' + sign(ag.sumNet) + ' kcal over ' + ag.loggedCount + ' logged days (avg ' + sign(ag.avgNet) + '/day). ' +
       'Net-calorie projection: ' + (ag.projChange<=0?'lose ':'gain ') + Math.abs(ag.projChange).toFixed(2) + ' lbs fat; projected weight ' + (ag.projWeight!=null?ag.projWeight.toFixed(1):'?') + ' vs actual ' + (ag.endW!=null?ag.endW.toFixed(1):'?') +
       (ag.variance!=null ? ' (' + (ag.variance<0?'ahead of':'behind') + ' plan by ' + Math.abs(ag.variance).toFixed(1) + ' lbs)' : '') + '. ' +
-      'Avg intake ' + ag.avgCal + ' kcal, protein ' + ag.avgP + 'g (target hit ' + ag.pHit + '/' + ag.loggedCount + '). ' +
+      'Avg intake ' + ag.avgCal + ' kcal, protein ' + ag.avgP + 'g (target hit ' + ag.pHit + '/' + ag.foodCount + '). ' +
       'Avg sleep ' + (ag.avgSleep!=null?ag.avgSleep:'?') + '. Training ' + ag.trained + '/' + ag.sched + ' scheduled days. ' +
       'Today (' + ctx.today + ', ' + ctx.split + '): ' + ctx.mealsLogged + ' meal(s) / ' + ctx.itemsLogged + ' items, ' + ctx.cals + ' cal, water ' + ctx.waterOz + ' oz.';
   } catch(e) {
