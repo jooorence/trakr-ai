@@ -4953,13 +4953,13 @@ function dashRefresh() {
       var subHtml = '';
       if (priorEntry) {
         var delta = Math.round((todayWeight - priorEntry.weight) * 10) / 10;
-        var ago = daysAgo(priorEntry.date);
+        // Just direction + lbs — comparison is always vs the prior weigh-in.
         if (delta < 0) {
-          subHtml = '<div style="' + subStyle + 'color:#4caf7d;font-weight:600;">↓ ' + Math.abs(delta) + ' lbs from ' + ago + '</div>';
+          subHtml = '<div style="' + subStyle + 'color:#4caf7d;font-weight:600;">↓ ' + Math.abs(delta) + ' lbs</div>';
         } else if (delta > 0) {
-          subHtml = '<div style="' + subStyle + 'color:#f5a623;font-weight:600;">↑ ' + delta + ' lbs from ' + ago + '</div>';
+          subHtml = '<div style="' + subStyle + 'color:#f5a623;font-weight:600;">↑ ' + delta + ' lbs</div>';
         } else {
-          subHtml = '<div style="' + subStyle + 'color:#888;font-weight:500;">same as ' + ago + '</div>';
+          subHtml = '<div style="' + subStyle + 'color:#888;font-weight:500;">no change</div>';
         }
       }
       bwTile.innerHTML = todayWeight + subHtml;
