@@ -158,6 +158,8 @@ The `CoachGPT` sidebar tab (`#coach` section, formerly the "AI Daily Brief") is 
 
 `renderHub()` is called at the end of `briefRefreshAll()`. Sparklines are inline SVG (`hubSpark`), no library.
 
+**"Coach says" card** = AI summary of the trend data below it. `briefCoachLine(ctx)` builds a compact `dataSummary` from `hubAggregate(hubDayMetrics(HUB_RANGE))` (weight Δ, cumulative net, projection, protein adherence, sleep, training) + today's status, and asks Claude for a 2–3 sentence plain-English interpretation + a brief faith note. Not a generic pep line anymore.
+
 ### CoachGPT
 - Floating bubble (desktop bottom-right anchored to content, mobile bottom-right beside dock)
 - Chat sheet expands when bubble tapped
