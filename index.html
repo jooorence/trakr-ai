@@ -3693,9 +3693,11 @@ function hubDayMetrics(n) {
     // Intake priority: logged food always wins; manual intake is a fallback
     // for days that were never food-logged so net can still compute.
     var hasFood = tot.cal > 0;
+    // Intake priority: explicit manual entry wins (even over logged food —
+    // logs are often incomplete), else logged food total, else none.
     var intakeCal, intakeSrc;
-    if (hasFood)                                            { intakeCal = tot.cal;        intakeSrc = 'food'; }
-    else if (calIntakeManual != null && calIntakeManual > 0){ intakeCal = calIntakeManual; intakeSrc = 'manual'; }
+    if (calIntakeManual != null && calIntakeManual > 0)     { intakeCal = calIntakeManual; intakeSrc = 'manual'; }
+    else if (hasFood)                                       { intakeCal = tot.cal;        intakeSrc = 'food'; }
     else                                                    { intakeCal = 0;              intakeSrc = 'none'; }
     var logged = intakeCal > 0;
     var isRest = split === 'Rest';
@@ -3711,7 +3713,7 @@ function hubDayMetrics(n) {
       key:key, date:d, dow:dows[d.getDay()],
       label:(d.getMonth()+1)+'/'+d.getDate(),
       cal:Math.round(intakeCal), p:Math.round(tot.p), c:Math.round(tot.c), f:Math.round(tot.f),
-      hasFood:hasFood, intakeSrc:intakeSrc,
+      hasFood:hasFood, intakeSrc:intakeSrc, foodCal:Math.round(tot.cal),
       calIntakeManual:(calIntakeManual!=null?Math.round(calIntakeManual):null),
       weight:weight, calExp:(calExp!=null?Math.round(calExp):null),
       calExpManual:(calExpManual!=null?Math.round(calExpManual):null),
@@ -3973,9 +3975,7 @@ function renderHub() {
         var curIntake = x.calIntakeManual != null ? x.calIntakeManual : '';
         var inStyle = 'width:88px;background:#111;border:1px solid #2a4a44;border-radius:5px;color:#40ccbb;font-size:12px;padding:4px 6px;text-align:center;';
         var lblStyle = 'display:inline-block;width:62px;color:#888;font-size:11px;';
-        var intakeField = x.hasFood
-          ? '<div style="color:#666;margin:3px 0;"><span style="' + lblStyle + '">Intake</span>' + x.cal + ' kcal (from logged food — can\'t override)</div>'
-          : '<div style="margin:5px 0;"><span style="' + lblStyle + '">Intake</span><input id="hub-intake-input" type="number" inputmode="numeric" value="' + curIntake + '" placeholder="e.g. 2000" ' +
+        var intakeField = '<div style="margin:5px 0;"><span style="' + lblStyle + '">Intake</span><input id="hub-intake-input" type="number" inputmode="numeric" value="' + curIntake + '" placeholder="' + (x.hasFood ? ('logged ' + x.foodCal) : 'e.g. 2000') + '" ' +
             'onkeydown="if(event.key===\'Enter\')hubSaveDay(\'' + x.key + '\');if(event.key===\'Escape\')hubCancelBurn()" style="' + inStyle + '" /> <span style="color:#666;">kcal eaten</span></div>';
         return '<div class="hub-trow"><div class="d">' + x.dow + '<br><span style="color:#555;font-weight:400;">' + x.label + '</span></div>' +
           '<div class="m"><div style="color:#40ccbb;margin-bottom:6px;">Edit ' + x.dow + ' ' + x.label + '</div>' +
@@ -3985,12 +3985,14 @@ function renderHub() {
           '<div style="margin-top:8px;"><button onclick="hubSaveDay(\'' + x.key + '\')" style="background:#0a2a26;border:1px solid #1a4a44;color:#40ccbb;font-size:11px;padding:4px 12px;border-radius:5px;cursor:pointer;">Save</button> ' +
           '<button onclick="hubCancelBurn()" style="background:none;border:1px solid #333;color:#888;font-size:11px;padding:4px 12px;border-radius:5px;cursor:pointer;margin-left:4px;">Cancel</button></div>' +
           '<div style="color:#666;margin-top:6px;">' +
-          (x.calExp!=null?'Oura burn for this day is ' + x.calExp + ' — a manual burn overrides it. ':'') +
-          'Intake is only used on days with no logged food. Leave a field blank to clear it.</div>' +
+          (x.hasFood?'Logged food totals ' + x.foodCal + ' kcal — a value here overrides it. ':'') +
+          (x.calExp!=null?'Oura burn is ' + x.calExp + ' — a manual burn overrides it. ':'') +
+          'Leave a field blank to clear the override.</div>' +
           '</div></div>';
       }
-      var intakeTxt = x.hasFood ? (x.cal+' kcal · '+x.p+'P/'+x.c+'C/'+x.f+'F')
-        : (x.intakeSrc==='manual' ? '<span style="color:#40ccbb;">'+x.cal+' kcal manual</span>' : '<span style="color:#555;">no food logged</span>');
+      var intakeTxt = x.intakeSrc==='manual'
+        ? '<span style="color:#40ccbb;">'+x.cal+' kcal manual</span>' + (x.hasFood ? ' · '+x.p+'P/'+x.c+'C/'+x.f+'F' : '')
+        : (x.hasFood ? (x.cal+' kcal · '+x.p+'P/'+x.c+'C/'+x.f+'F') : '<span style="color:#555;">no food logged</span>');
       return '<div class="hub-trow" onclick="hubEditBurn(\'' + x.key + '\')" style="cursor:pointer;" title="Tap to edit intake / burn">' +
         '<div class="d">' + x.dow + '<br><span style="color:#555;font-weight:400;">' + x.label + '</span></div>' +
         '<div class="m">' + intakeTxt +
