@@ -2963,6 +2963,24 @@ function flSetServings(idx, n) {
 }
 
 var _flEditIdx = -1;
+// Quantity scaling — MyFitnessPal-style. cal/p/c/f are the macros for the
+// CURRENT amount/unit; changing amount (or switching g↔oz) rescales them
+// linearly from a captured reference. Serving mode = legacy behavior.
+var GRAMS_PER_OZ = 28.3495;
+var _flEditRef = { grams: null, cal: 0, p: 0, c: 0, f: 0 };
+var _flEditNameWeight = null; // {raw, num, unit} parsed from name, for keeping name in sync
+
+function flParseWeight(name) {
+  var m = (name || '').match(/(\d+(?:\.\d+)?)\s*(grams?|g|ounces?|oz)\b/i);
+  if (!m) return null;
+  var u = /^o/i.test(m[2]) ? 'oz' : 'g';
+  return { raw: m[0], num: parseFloat(m[1]), unit: u };
+}
+function flToGrams(amt, unit) {
+  if (!amt || isNaN(amt)) return 0;
+  return unit === 'oz' ? amt * GRAMS_PER_OZ : amt; // 'g' (serving handled by caller)
+}
+
 function flEdit(idx) {
   var log = flCurrentLog();
   if (idx < 0 || idx >= log.length) return;
@@ -2976,7 +2994,88 @@ function flEdit(idx) {
   document.getElementById('fl-edit-servings').value = item.servings || 1;
   var secEl = document.getElementById('fl-edit-section');
   if (secEl) secEl.value = item.section || flClassifyByName(item.name) || 'snack';
+
+  // Determine measure mode: stored unit > weight parsed from name > serving.
+  var parsed = flParseWeight(item.name);
+  _flEditNameWeight = parsed;
+  var unit, amount;
+  if (item.unit === 'g' || item.unit === 'oz') { unit = item.unit; amount = item.amount || (parsed ? parsed.num : 1); }
+  else if (item.unit === 'serving')            { unit = 'serving'; amount = item.amount || 1; }
+  else if (parsed)                             { unit = parsed.unit; amount = parsed.num; }
+  else                                         { unit = 'serving'; amount = 1; }
+  var uEl = document.getElementById('fl-edit-unit');
+  uEl.value = unit; uEl.setAttribute('data-prev', unit);
+  document.getElementById('fl-edit-amount').value = (unit === 'serving') ? '' : amount;
+  // Reference = current macros at this amount (in grams). Serving mode: no scaling.
+  _flEditRef = {
+    grams: unit === 'serving' ? null : flToGrams(amount, unit),
+    cal: parseFloat(item.cal) || 0, p: parseFloat(item.p) || 0,
+    c: parseFloat(item.c) || 0,    f: parseFloat(item.f) || 0
+  };
+  flEditSyncUnitUI();
   document.getElementById('fl-edit-modal').style.display = 'flex';
+}
+
+// Show/hide the Amount field based on the selected measure.
+function flEditSyncUnitUI() {
+  var unit = document.getElementById('fl-edit-unit').value;
+  var wrap = document.getElementById('fl-edit-amount-wrap');
+  if (wrap) wrap.style.display = (unit === 'serving') ? 'none' : '';
+}
+
+// Dropdown changed. g↔oz keeps the physical quantity (convert the number,
+// macros unchanged). Switching into a weight mode (re)captures the current
+// macros as the reference for the shown amount.
+function flEditUnitChange() {
+  var unitEl = document.getElementById('fl-edit-unit');
+  var amtEl  = document.getElementById('fl-edit-amount');
+  var newUnit = unitEl.value;
+  var prevUnit = unitEl.getAttribute('data-prev') || 'serving';
+  if ((prevUnit === 'g' && newUnit === 'oz')) amtEl.value = (parseFloat(amtEl.value) / GRAMS_PER_OZ).toFixed(2);
+  else if (prevUnit === 'oz' && newUnit === 'g') amtEl.value = (parseFloat(amtEl.value) * GRAMS_PER_OZ).toFixed(1);
+  else if (newUnit !== 'serving' && (!parseFloat(amtEl.value))) {
+    amtEl.value = _flEditNameWeight && _flEditNameWeight.unit === newUnit ? _flEditNameWeight.num : (newUnit === 'oz' ? 4 : 100);
+  }
+  if (newUnit !== 'serving') {
+    // Reference = whatever macros are shown now, at the now-displayed amount.
+    _flEditRef = {
+      grams: flToGrams(parseFloat(amtEl.value), newUnit),
+      cal: parseFloat(document.getElementById('fl-edit-cal').value) || 0,
+      p: parseFloat(document.getElementById('fl-edit-p').value) || 0,
+      c: parseFloat(document.getElementById('fl-edit-c').value) || 0,
+      f: parseFloat(document.getElementById('fl-edit-f').value) || 0
+    };
+  }
+  unitEl.setAttribute('data-prev', newUnit);
+  flEditSyncUnitUI();
+}
+
+// Amount typed — rescale macros from the reference (weight modes only).
+function flEditRecalc() {
+  var unit = document.getElementById('fl-edit-unit').value;
+  if (unit === 'serving' || !_flEditRef.grams) return;
+  var g = flToGrams(parseFloat(document.getElementById('fl-edit-amount').value), unit);
+  if (!g) return;
+  var k = g / _flEditRef.grams;
+  var r1 = function(n){ return Math.round(n * 10) / 10; };
+  document.getElementById('fl-edit-cal').value = r1(_flEditRef.cal * k);
+  document.getElementById('fl-edit-p').value   = r1(_flEditRef.p   * k);
+  document.getElementById('fl-edit-c').value   = r1(_flEditRef.c   * k);
+  document.getElementById('fl-edit-f').value   = r1(_flEditRef.f   * k);
+}
+
+// User hand-edited a macro in weight mode → that becomes the new reference
+// for the currently-shown amount, so later amount changes scale from it.
+function flEditMacroTouched() {
+  var unit = document.getElementById('fl-edit-unit').value;
+  if (unit === 'serving') return;
+  var g = flToGrams(parseFloat(document.getElementById('fl-edit-amount').value), unit);
+  if (!g) return;
+  _flEditRef = { grams: g,
+    cal: parseFloat(document.getElementById('fl-edit-cal').value) || 0,
+    p: parseFloat(document.getElementById('fl-edit-p').value) || 0,
+    c: parseFloat(document.getElementById('fl-edit-c').value) || 0,
+    f: parseFloat(document.getElementById('fl-edit-f').value) || 0 };
 }
 
 function flCloseEdit() {
@@ -2997,6 +3096,21 @@ function flSaveEdit() {
   item.servings = Math.max(1, Math.min(10, parseInt(document.getElementById('fl-edit-servings').value)||1));
   var secEl = document.getElementById('fl-edit-section');
   if (secEl && secEl.value) item.section = secEl.value;
+  // Persist measure so re-editing scales from the right base.
+  var unit = document.getElementById('fl-edit-unit').value;
+  var amt  = parseFloat(document.getElementById('fl-edit-amount').value);
+  item.unit = unit;
+  if (unit === 'serving' || !amt) { item.amount = null; }
+  else {
+    item.amount = amt;
+    // Keep a weight token in the name in sync (e.g. "1.8oz …" → "3oz …").
+    var abbr = unit === 'oz' ? 'oz' : 'g';
+    if (_flEditNameWeight) {
+      item.name = item.name.replace(_flEditNameWeight.raw, (Number.isInteger(amt) ? amt : amt) + abbr);
+    } else if (!flParseWeight(item.name)) {
+      item.name = item.name + ' (' + (Number.isInteger(amt) ? amt : amt) + abbr + ')';
+    }
+  }
   flSaveAll(); flRender();
   flCloseEdit();
 }
@@ -5798,11 +5912,19 @@ setInterval(function() {
       </select>
     </div>
     <div class="fl-edit-grid">
-      <div class="fl-edit-field"><div class="fl-edit-label">Calories (per serving)</div><input id="fl-edit-cal" class="fl-edit-input" type="number" step="0.1"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Measure</div>
+        <select id="fl-edit-unit" class="fl-edit-input" onchange="flEditUnitChange()">
+          <option value="serving">Serving</option>
+          <option value="g">Grams</option>
+          <option value="oz">Ounces</option>
+        </select>
+      </div>
+      <div class="fl-edit-field" id="fl-edit-amount-wrap"><div class="fl-edit-label">Amount</div><input id="fl-edit-amount" class="fl-edit-input" type="number" step="0.1" oninput="flEditRecalc()"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Calories</div><input id="fl-edit-cal" class="fl-edit-input" type="number" step="0.1" oninput="flEditMacroTouched()"></div>
       <div class="fl-edit-field"><div class="fl-edit-label">Servings</div><input id="fl-edit-servings" class="fl-edit-input" type="number" min="1" max="10" step="1"></div>
-      <div class="fl-edit-field"><div class="fl-edit-label">Protein (g)</div><input id="fl-edit-p" class="fl-edit-input" type="number" step="0.1"></div>
-      <div class="fl-edit-field"><div class="fl-edit-label">Carbs (g)</div><input id="fl-edit-c" class="fl-edit-input" type="number" step="0.1"></div>
-      <div class="fl-edit-field"><div class="fl-edit-label">Fat (g)</div><input id="fl-edit-f" class="fl-edit-input" type="number" step="0.1"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Protein (g)</div><input id="fl-edit-p" class="fl-edit-input" type="number" step="0.1" oninput="flEditMacroTouched()"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Carbs (g)</div><input id="fl-edit-c" class="fl-edit-input" type="number" step="0.1" oninput="flEditMacroTouched()"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Fat (g)</div><input id="fl-edit-f" class="fl-edit-input" type="number" step="0.1" oninput="flEditMacroTouched()"></div>
     </div>
     <div class="fl-edit-actions">
       <button class="fl-edit-btn fl-edit-cancel" onclick="flCloseEdit()">Cancel</button>
