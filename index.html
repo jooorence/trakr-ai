@@ -4076,6 +4076,7 @@ function renderHub() {
       if (x.key === hubEditKey) {
         var curBurn = x.calExpManual != null ? x.calExpManual : (x.calExp != null ? x.calExp : '');
         var curIntake = x.calIntakeManual != null ? x.calIntakeManual : '';
+        var curWeight = x.weight != null ? x.weight : '';
         var inStyle = 'width:88px;background:#111;border:1px solid #2a4a44;border-radius:5px;color:#40ccbb;font-size:12px;padding:4px 6px;text-align:center;';
         var lblStyle = 'display:inline-block;width:62px;color:#888;font-size:11px;';
         var intakeField = '<div style="margin:5px 0;"><span style="' + lblStyle + '">Intake</span><input id="hub-intake-input" type="number" inputmode="numeric" value="' + curIntake + '" placeholder="' + (x.hasFood ? ('logged ' + x.foodCal) : 'e.g. 2000') + '" ' +
@@ -4085,6 +4086,8 @@ function renderHub() {
           intakeField +
           '<div style="margin:5px 0;"><span style="' + lblStyle + '">Burn</span><input id="hub-burn-input" type="number" inputmode="numeric" value="' + curBurn + '" placeholder="e.g. 2900" ' +
           'onkeydown="if(event.key===\'Enter\')hubSaveDay(\'' + x.key + '\');if(event.key===\'Escape\')hubCancelBurn()" style="' + inStyle + '" /> <span style="color:#666;">kcal burned</span></div>' +
+          '<div style="margin:5px 0;"><span style="' + lblStyle + '">Weight</span><input id="hub-weight-input" type="number" inputmode="decimal" step="0.1" value="' + curWeight + '" placeholder="e.g. 202.4" ' +
+          'onkeydown="if(event.key===\'Enter\')hubSaveDay(\'' + x.key + '\');if(event.key===\'Escape\')hubCancelBurn()" style="' + inStyle + '" /> <span style="color:#666;">lbs</span></div>' +
           '<div style="margin-top:8px;"><button onclick="hubSaveDay(\'' + x.key + '\')" style="background:#0a2a26;border:1px solid #1a4a44;color:#40ccbb;font-size:11px;padding:4px 12px;border-radius:5px;cursor:pointer;">Save</button> ' +
           '<button onclick="hubCancelBurn()" style="background:none;border:1px solid #333;color:#888;font-size:11px;padding:4px 12px;border-radius:5px;cursor:pointer;margin-left:4px;">Cancel</button></div>' +
           '<div style="color:#666;margin-top:6px;">' +
@@ -4118,21 +4121,25 @@ function hubEditBurn(key) {
 }
 function hubCancelBurn() { hubEditKey = null; renderHub(); }
 function hubSaveDay(key) {
-  function parse(id) {
+  function parse(id, opts) {
+    opts = opts || {};
     var el = document.getElementById(id);
     if (!el) return undefined;                 // field not shown (e.g. intake when food logged)
     var raw = el.value.trim();
     if (raw === '') return null;               // explicit clear
-    var v = parseInt(raw);
-    if (isNaN(v) || v < 0 || v > 12000) { el.style.borderColor = '#e05050'; return NaN; }
+    var v = opts.float ? parseFloat(raw) : parseInt(raw);
+    var lo = opts.min != null ? opts.min : 0, hi = opts.max != null ? opts.max : 12000;
+    if (isNaN(v) || v < lo || v > hi) { el.style.borderColor = '#e05050'; return NaN; }
     return v;
   }
   var intake = parse('hub-intake-input');
   var burn   = parse('hub-burn-input');
-  if (intake !== intake || burn !== burn) return;  // NaN → validation failed
+  var weight = parse('hub-weight-input', { float:true, min:50, max:700 });
+  if (intake !== intake || burn !== burn || weight !== weight) return;  // NaN → validation failed
   if (!flDateStore[key]) flDateStore[key] = { split: flAutoSplit(new Date(key + 'T12:00:00')), dayType:'td', log: [] };
   var payload = {};
   if (intake !== undefined) { flDateStore[key].calIntakeManual = intake; payload.cal_intake_manual = intake; }
+  if (weight !== undefined) { flDateStore[key].weight = weight; payload.weight = weight; }
   flDateStore[key].calExpManual = burn;
   payload.cal_exp_manual = burn;
   try { dbSaveDay(key, payload); } catch(e) {}
