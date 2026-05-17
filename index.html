@@ -1619,8 +1619,8 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
             <div class="cs-chip" onclick="briefChatQuick('Compare this week to last week')">Compare</div>
             <div class="cs-chip" onclick="briefChatQuick('What did I eat yesterday?')">Yesterday</div>
           </div>
-          <div style="display:flex;gap:8px;padding:10px 16px 16px;border-top:1px solid #1a1a1a;flex-shrink:0;">
-            <input id="brief-chat-input" placeholder="Ask about your trends..." style="flex:1;background:#111e1c;border:1px solid #1a4a44;border-radius:22px;padding:10px 16px;font-size:13px;color:#ddd;outline:none;" onkeydown="if(event.key==='Enter')briefChatSend()" />
+          <div style="display:flex;gap:8px;padding:10px 16px 16px;border-top:1px solid #1a1a1a;flex-shrink:0;align-items:flex-end;">
+            <textarea id="brief-chat-input" rows="1" placeholder="Ask about your trends...  (Enter to send · Shift+Enter for a new line)" style="flex:1;background:#111e1c;border:1px solid #1a4a44;border-radius:16px;padding:10px 16px;font-size:13px;color:#ddd;outline:none;resize:none;font-family:inherit;line-height:1.45;min-height:42px;max-height:150px;overflow-y:auto;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();briefChatSend();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,150)+'px';"></textarea>
             <button onclick="briefChatSend()" style="background:#40ccbb;border:none;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#080f0e;cursor:pointer;flex-shrink:0;">&#8593;</button>
           </div>
         </div>
@@ -4398,6 +4398,7 @@ async function briefChatSend() {
   var text = input.value.trim();
   if(!text) return;
   input.value = '';
+  input.style.height = '';
   briefChatAddMsg('user', text);
   briefChatHistory.push({role:'user', content: text});
   dbSaveChatMsg('brief', 'user', text);
