@@ -4121,8 +4121,12 @@ function renderHub() {
       var sDp = days[0].date, eDp = days[days.length-1].date;
       var aChg = ag.actualChange;
       var aColp = aChg <= 0 ? '#4caf7d' : '#f5a623';
+      var netVal = ag.avgNet;                                  // actual avg net kcal/day
+      var netCol = netVal <= 0 ? '#4caf7d' : '#f5a623';
+      var netTxt = (netVal <= 0 ? '−' : '+') + Math.abs(netVal).toLocaleString();
       var pRow = 'display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#9a9a9a;margin-top:5px;';
       pTable =
+        '<div class="hub-mini">Ran <b style="color:' + netCol + ';">' + netTxt + ' kcal/day</b>:</div>' +
         '<div style="' + pRow + '"><span>' + fmtDp(sDp) + ' · ' + rngLbl + ' ago</span><b style="color:#e8e8e8;">' + ag.startW.toFixed(1) + ' lbs</b></div>' +
         '<div style="' + pRow + '"><span>' + fmtDp(eDp) + ' · today</span><b style="color:#e8e8e8;">' + ag.endW.toFixed(1) + ' lbs</b></div>' +
         '<div class="hub-mini">= <b style="color:' + aColp + ';">' + (aChg <= 0 ? '−' : '+') + Math.abs(aChg).toFixed(1) + ' lbs</b> in ' + rngLbl + ' actual.</div>';
@@ -4130,9 +4134,11 @@ function renderHub() {
       pTable = '<div class="hub-mini">Log weight across the window to see the actual change.</div>';
     }
     pastEl.innerHTML =
-      '<div class="hub-card-lbl">Past &rarr; now · ' + rngLbl + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+        '<div class="hub-card-lbl" style="margin-bottom:0;">Past &rarr; now · ' + rngLbl + '</div>' +
+        '<div class="hub-legend" style="margin-top:0;"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
+      '</div>' +
       hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') +
-      '<div class="hub-legend"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
       pTable;
   }
 
