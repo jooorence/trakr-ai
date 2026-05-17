@@ -1490,6 +1490,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
         </div>
         <div class="hub-range" id="hub-range">
           <button data-r="7" class="on" onclick="hubSetRange(7,this)">7 Days</button>
+          <button data-r="14" onclick="hubSetRange(14,this)">14 Days</button>
           <button data-r="30" onclick="hubSetRange(30,this)">30 Days</button>
           <button data-r="90" onclick="hubSetRange(90,this)">90 Days</button>
         </div>
@@ -3260,6 +3261,13 @@ function flRenderBars() {
 
 function flRenderLog() {
   var listId = flDay === 'td' ? 'fl-log-td' : 'fl-log-rd';
+  // Keep the active day's log container visible and hide the other. These
+  // were never toggled anywhere, so on rest days flRenderLog() wrote into
+  // fl-log-rd while fl-log-td (stuck visible) showed a stale placeholder.
+  var tdL = document.getElementById('fl-log-td');
+  var rdL = document.getElementById('fl-log-rd');
+  if (tdL) tdL.style.display = flDay === 'td' ? '' : 'none';
+  if (rdL) rdL.style.display = flDay === 'rd' ? '' : 'none';
   var list = document.getElementById(listId);
   if (!list) return;
   var log = flCurrentLog();
