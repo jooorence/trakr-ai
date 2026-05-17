@@ -4112,7 +4112,7 @@ function renderHub() {
       return '<div class="hub-trow" onclick="hubEditBurn(\'' + x.key + '\')" style="cursor:pointer;" title="Tap to edit intake / burn">' +
         '<div class="d">' + x.dow + '<br><span style="color:#555;font-weight:400;">' + x.label + '</span></div>' +
         '<div class="m">' + intakeTxt +
-        ' · wt ' + (x.weight!=null?x.weight.toFixed(1):'—') +
+        ' · wt ' + (x.weight!=null?'<span style="color:#40ccbb;">'+x.weight.toFixed(1)+' manual</span>':'—') +
         ' · sleep ' + (x.sleep!=null?x.sleep:'—') +
         ' · burn <span style="color:' + burnTag[x.burnSrc] + ';">' + x.burn + (x.burnSrc==='oura'?'':' '+x.burnSrc) + '</span>' +
         ' · net ' + net +
