@@ -3990,6 +3990,11 @@ function renderHub() {
       vCol = ahead ? '#4caf7d' : '#f5a623';
       vTxt = (ahead ? 'ahead of plan by ' : 'behind plan by ') + Math.abs(ag.variance).toFixed(1) + ' lbs';
     }
+    // True maintenance: back-solved from ACTUAL scale change vs logged intake.
+    var sumIntakeP = days.reduce(function(s,x){ return s + (x.logged ? x.cal : 0); }, 0);
+    var trueMaintP = (ag.startW != null && ag.endW != null && ag.loggedCount > 0)
+      ? Math.round((sumIntakeP - (ag.endW - ag.startW) * HUB_KCAL_PER_LB) / ag.loggedCount)
+      : null;
     projEl.innerHTML =
       '<div class="hub-card-lbl">Projection — net-calorie model · ' + rngLbl + '</div>' +
       '<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;">' +
@@ -4002,6 +4007,9 @@ function renderHub() {
         '</div>' +
         '<div><div class="hub-big" style="color:#ddd;">' + (ag.endW!=null?ag.endW.toFixed(1):'—') + ' <span class="hub-unit">lbs actual</span></div>' +
           '<div class="hub-mini" style="color:' + vCol + ';">' + vTxt + '</div>' +
+        '</div>' +
+        '<div><div class="hub-big" style="color:#40ccbb;">' + (trueMaintP!=null?trueMaintP.toLocaleString():'—') + ' <span class="hub-unit">true maint</span></div>' +
+          '<div class="hub-mini">real burn — scale change vs logged intake (est. ' + HUB_MAINT_FALLBACK.toLocaleString() + ')</div>' +
         '</div>' +
       '</div>' +
       '<div class="hub-mini" style="margin-top:10px;color:#666;">Burn uses Oura cal-exp when logged, else maintenance estimate ' +
@@ -4106,25 +4114,26 @@ function renderHub() {
   // ── LEFT: Past → now (the calorie math reconciling to today's scale) ──
   var pastEl = document.getElementById('hub-coach-past');
   if (pastEl) {
-    // Calibration: back-solve true maintenance from ACTUAL scale change vs logged intake.
-    var sumIntake = days.reduce(function(s,x){ return s + (x.logged ? x.cal : 0); }, 0);
-    var trueMaint = null;
-    if (ag.startW != null && ag.endW != null && ag.loggedCount > 0) {
-      var changeKcal = (ag.endW - ag.startW) * HUB_KCAL_PER_LB;     // negative if lost
-      trueMaint = Math.round((sumIntake - changeKcal) / ag.loggedCount);
+    var pTable;
+    if (ag.startW != null && ag.endW != null && ag.actualChange != null && days.length) {
+      var MOp = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var fmtDp = function(d){ return MOp[d.getMonth()] + ' ' + d.getDate(); };
+      var sDp = days[0].date, eDp = days[days.length-1].date;
+      var aChg = ag.actualChange;
+      var aColp = aChg <= 0 ? '#4caf7d' : '#f5a623';
+      var pRow = 'display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#9a9a9a;margin-top:5px;';
+      pTable =
+        '<div style="' + pRow + '"><span>' + fmtDp(sDp) + ' · ' + rngLbl + ' ago</span><b style="color:#e8e8e8;">' + ag.startW.toFixed(1) + ' lbs</b></div>' +
+        '<div style="' + pRow + '"><span>' + fmtDp(eDp) + ' · today</span><b style="color:#e8e8e8;">' + ag.endW.toFixed(1) + ' lbs</b></div>' +
+        '<div class="hub-mini">= <b style="color:' + aColp + ';">' + (aChg <= 0 ? '−' : '+') + Math.abs(aChg).toFixed(1) + ' lbs</b> in ' + rngLbl + ' actual.</div>';
+    } else {
+      pTable = '<div class="hub-mini">Log weight across the window to see the actual change.</div>';
     }
-    var calLine = (trueMaint != null)
-      ? 'True maintenance ≈ <b style="color:#40ccbb;">' + trueMaint.toLocaleString() + '</b> kcal/day (from real scale change vs logged intake; estimate is ' + HUB_MAINT_FALLBACK.toLocaleString() + ').'
-      : 'Log weight + intake across the window to calibrate true maintenance.';
-    var varLine = (ag.variance != null)
-      ? 'Scale is <b style="color:' + (ag.variance<0?'#4caf7d':'#f5a623') + ';">' + Math.abs(ag.variance).toFixed(1) + ' lbs ' + (ag.variance<0?'ahead of':'behind') + '</b> the calorie math.'
-      : '';
     pastEl.innerHTML =
       '<div class="hub-card-lbl">Past &rarr; now · ' + rngLbl + '</div>' +
       hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') +
       '<div class="hub-legend"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
-      '<div class="hub-mini" style="margin-top:8px;">' + varLine + '</div>' +
-      '<div class="hub-mini" style="margin-top:4px;">' + calLine + '</div>';
+      pTable;
   }
 
   // ── RIGHT: Now → +7d (hold the current pace, project forward with dates) ──
