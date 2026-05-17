@@ -1533,8 +1533,8 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
               <div class="hub-card-lbl">Nutrition (avg)</div>
               <div class="hub-mini">Loading&hellip;</div>
             </div>
-            <div class="hub-card" id="hub-sleep">
-              <div class="hub-card-lbl">Sleep trend</div>
+            <div class="hub-card" id="hub-burnav">
+              <div class="hub-card-lbl">Avg burn</div>
               <div class="hub-mini">Loading&hellip;</div>
             </div>
           </div>
@@ -1544,11 +1544,12 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
               <div class="hub-card-lbl">Net calories</div>
               <div class="hub-mini">Loading&hellip;</div>
             </div>
-            <div class="hub-card" id="hub-train">
-              <div class="hub-card-lbl">Training adherence</div>
+            <div class="hub-card" id="hub-sleep">
+              <div class="hub-card-lbl">Sleep trend</div>
               <div class="hub-mini">Loading&hellip;</div>
             </div>
           </div>
+
 
 
           <div class="hub-card" id="hub-table-card">
@@ -3850,12 +3851,14 @@ function hubAggregate(days) {
   var avgSleep = sl.length ? Math.round(sl.reduce(function(a,b){return a+b;},0)/sl.length) : null;
   var sched = days.filter(function(x){ return !x.isRest; }).length;
   var trained = days.filter(function(x){ return !x.isRest && x.logged; }).length; // proxy: ate on a training day
+  var burnDays = loggedDays.filter(function(x){ return x.burn != null; });
+  var avgBurn = burnDays.length ? Math.round(burnDays.reduce(function(s,x){ return s + x.burn; }, 0) / burnDays.length) : null;
   return {
     days:days, startW:startW, endW:endW, actualChange:actualChange,
     sumNet:sumNet, avgNet:loggedDays.length?Math.round(sumNet/loggedDays.length):0,
     projChange:projChange, projWeight:projWeight, variance:variance,
     avgCal:avgCal, avgP:avgP, pHit:pHit, loggedCount:loggedDays.length, foodCount:foodDays.length,
-    avgSleep:avgSleep, sched:sched, trained:trained
+    avgSleep:avgSleep, sched:sched, trained:trained, avgBurn:avgBurn
   };
 }
 
@@ -3997,6 +4000,20 @@ function renderHub() {
       hubSpark(calSeries, '#f5a623');
   }
 
+  // ── Avg burn ──
+  var baEl = document.getElementById('hub-burnav');
+  if (baEl) {
+    var burnSeries = days.map(function(x){ return x.burn; });
+    var ouraCount = days.filter(function(x){ return x.burnSrc === 'oura'; }).length;
+    var manualCount = days.filter(function(x){ return x.burnSrc === 'manual'; }).length;
+    var srcNote = ouraCount + ' Oura' + (manualCount ? ' · ' + manualCount + ' manual' : '') + ' · ' + (days.length - ouraCount - manualCount) + ' est';
+    baEl.innerHTML =
+      '<div class="hub-card-lbl">Avg burn · ' + rngLbl + '</div>' +
+      '<div class="hub-big">' + (ag.avgBurn != null ? ag.avgBurn.toLocaleString() : '—') + ' <span class="hub-unit">kcal/day</span></div>' +
+      '<div class="hub-delta" style="color:#888;">' + srcNote + '</div>' +
+      hubSpark(burnSeries, '#40ccbb');
+  }
+
   // ── Sleep trend ──
   var sEl = document.getElementById('hub-sleep');
   if (sEl) {
@@ -4008,14 +4025,6 @@ function renderHub() {
       hubSpark(sSeries, '#8899ff');
   }
 
-  // ── Training adherence ──
-  var tEl = document.getElementById('hub-train');
-  if (tEl) {
-    var pct = ag.sched ? Math.round((ag.trained/ag.sched)*100) : 0;
-    tEl.innerHTML =
-      '<div class="hub-card-lbl">Training adherence · ' + rngLbl + '</div>' +
-      '<div style="display:flex;align-items:baseline;gap:12px;"><div class="hub-big" style="color:' + (pct>=80?'#4caf7d':pct>=50?'#f5a623':'#e05050') + ';">' + ag.trained + '/' + ag.sched + '</div><div class="hub-mini">scheduled training days with logged intake (' + pct + '%)</div></div>';
-  }
 
   // ── Net calories tile (avg/day + per-day bars) ──
   var ncEl = document.getElementById('hub-netcal');
