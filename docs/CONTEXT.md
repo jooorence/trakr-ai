@@ -225,9 +225,14 @@ Already a single source of truth. Drives dashboard training card + LOGSPLIT vali
   servings: 1,                      // 1-10, stepper +/- mutates
   section: "m1",                    // m1, m2, m3, m4, intra, m5, snack
   planRef: "M1",                    // optional — only present when logged via meal chip
-  brand: "Kirkland"                 // optional — copied from MEAL_PLAN.items
+  brand: "Kirkland",                // optional — copied from MEAL_PLAN.items
+  unit: "oz",                       // optional — 'serving'|'g'|'oz' (MFP-style quantity scaling)
+  amount: 1.8                       // optional — quantity in `unit`; null/absent = serving mode
 }
 ```
+
+### Quantity scaling in the Food Log Edit modal (MFP-style)
+Edit modal has a **Measure** dropdown (Serving / Grams / Ounces) + **Amount** field. `cal/p/c/f` are the macros for the current amount; editing Amount or switching g↔oz **live-rescales** them linearly from a captured reference (`_flEditRef`), conversion `GRAMS_PER_OZ=28.3495`. Helpers: `flParseWeight` (reads a weight token out of the name to auto-seed), `flToGrams`, `flEdit`/`flEditUnitChange`/`flEditRecalc`/`flEditMacroTouched`/`flSaveEdit`. Serving mode = legacy behavior (Amount hidden, no scaling) — old entries with no `unit`/`amount` are fully backward-compatible. On save, a weight token in the name is kept in sync (`1.8oz …` → `3oz …`). Totals math (`cal*servings`) is untouched. No DB change — `unit`/`amount` are just optional entry props in the `food_log` jsonb.
 
 ### Day-type sync logic
 - `dashRefresh()` uses `flTargets[getTodaySplit() === 'Rest' ? 'rd' : 'td']` — dashboard targets always reflect today's actual day
