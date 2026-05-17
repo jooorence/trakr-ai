@@ -3995,6 +3995,12 @@ function renderHub() {
     var trueMaintP = (ag.startW != null && ag.endW != null && ag.loggedCount > 0)
       ? Math.round((sumIntakeP - (ag.endW - ag.startW) * HUB_KCAL_PER_LB) / ag.loggedCount)
       : null;
+    // How the measured maintenance compares to the assumed estimate.
+    var tmDelta = (trueMaintP != null) ? trueMaintP - HUB_MAINT_FALLBACK : null;
+    var tmCol = (tmDelta == null) ? '#888' : (tmDelta >= 0 ? '#4caf7d' : '#f5a623');
+    var tmTxt = (tmDelta == null)
+      ? 'log weight + intake to measure'
+      : Math.abs(tmDelta).toLocaleString() + ' kcal/day ' + (tmDelta >= 0 ? 'above' : 'below') + ' estimate';
     projEl.innerHTML =
       '<div class="hub-card-lbl">Projection — net-calorie model · ' + rngLbl + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;align-items:start;">' +
@@ -4005,11 +4011,11 @@ function renderHub() {
         '<div><div class="hub-big" style="color:#40ccbb;">' + (ag.projWeight!=null?ag.projWeight.toFixed(1):'—') + ' <span class="hub-unit">lbs target</span></div>' +
           '<div class="hub-mini">where the math says you should be' + (ag.startW!=null?' (from ' + ag.startW.toFixed(1) + ')':'') + '</div>' +
         '</div>' +
+        '<div><div class="hub-big" style="color:#40ccbb;">' + (trueMaintP!=null?trueMaintP.toLocaleString():'—') + ' <span class="hub-unit">true maintenance</span></div>' +
+          '<div class="hub-mini" style="color:' + tmCol + ';">' + tmTxt + '</div>' +
+        '</div>' +
         '<div><div class="hub-big" style="color:#ddd;">' + (ag.endW!=null?ag.endW.toFixed(1):'—') + ' <span class="hub-unit">lbs actual</span></div>' +
           '<div class="hub-mini" style="color:' + vCol + ';">' + vTxt + '</div>' +
-        '</div>' +
-        '<div><div class="hub-big" style="color:#40ccbb;">' + (trueMaintP!=null?trueMaintP.toLocaleString():'—') + ' <span class="hub-unit">true maintenance</span></div>' +
-          '<div class="hub-mini">real burn — scale change vs logged intake (est. ' + HUB_MAINT_FALLBACK.toLocaleString() + ')</div>' +
         '</div>' +
       '</div>' +
       '<div class="hub-mini" style="margin-top:10px;color:#666;">Burn uses Oura cal-exp when logged, else maintenance estimate ' +
@@ -4121,15 +4127,20 @@ function renderHub() {
       var sDp = days[0].date, eDp = days[days.length-1].date;
       var aChg = ag.actualChange;
       var aColp = aChg <= 0 ? '#4caf7d' : '#f5a623';
-      var netVal = ag.avgNet;                                  // actual avg net kcal/day
-      var netCol = netVal <= 0 ? '#4caf7d' : '#f5a623';
-      var netTxt = (netVal <= 0 ? '−' : '+') + Math.abs(netVal).toLocaleString();
+      // Two nets: the calorie-math net (logged intake − burn) vs the net the
+      // scale actually implies (real lbs change → kcal). Their gap = model error.
+      var mathNet = ag.avgNet;                                            // logged net/day
+      var actNet = ag.loggedCount > 0 ? Math.round(aChg * HUB_KCAL_PER_LB / ag.loggedCount) : null; // scale-implied net/day
+      var mathLbs = ag.projChange;                                        // what the math predicts
+      var kc = function(n){ return (n <= 0 ? '−' : '+') + Math.abs(Math.round(n)).toLocaleString(); };
+      var lb = function(n){ return (n <= 0 ? '−' : '+') + Math.abs(n).toFixed(1); };
+      var MATHC = '#40ccbb', ACTC = '#e8e8e8';                            // match chart line colors
       var pRow = 'display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#9a9a9a;margin-top:5px;';
       pTable =
-        '<div class="hub-mini">Ran <b style="color:' + netCol + ';">' + netTxt + ' kcal/day</b>:</div>' +
+        '<div class="hub-mini">Ran <b style="color:' + MATHC + ';">' + kc(mathNet) + '</b> math · <b style="color:' + ACTC + ';">' + (actNet!=null?kc(actNet):'—') + '</b> actual /day</div>' +
         '<div style="' + pRow + '"><span>' + fmtDp(sDp) + ' · ' + rngLbl + ' ago</span><b style="color:#e8e8e8;">' + ag.startW.toFixed(1) + ' lbs</b></div>' +
         '<div style="' + pRow + '"><span>' + fmtDp(eDp) + ' · today</span><b style="color:#e8e8e8;">' + ag.endW.toFixed(1) + ' lbs</b></div>' +
-        '<div class="hub-mini">= <b style="color:' + aColp + ';">' + (aChg <= 0 ? '−' : '+') + Math.abs(aChg).toFixed(1) + ' lbs</b> in ' + rngLbl + ' actual.</div>';
+        '<div class="hub-mini">= <b style="color:' + MATHC + ';">' + lb(mathLbs) + '</b> math · <b style="color:' + ACTC + ';">' + lb(aChg) + '</b> actual lbs</div>';
     } else {
       pTable = '<div class="hub-mini">Log weight across the window to see the actual change.</div>';
     }
