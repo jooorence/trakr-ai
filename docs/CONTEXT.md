@@ -144,7 +144,7 @@ The `CoachGPT` sidebar tab (`#coach` section, formerly the "AI Daily Brief") is 
 - Mobile (`≤600px`): stacks, chat = `72vh`.
 - All existing `brief-*` element IDs were kept so `briefRefreshAll()` still works. Title is now static "Intelligence Hub"; greeting/date moved into the subtitle line.
 
-**Rail card order:** Coach says (top, per JR) → Projection → Weight + Projected-fat (grid2) → Nutrition + Sleep (grid2) → Training adherence → Today priority actions+numbers → split → Day-by-day log → Refresh. (The "Yesterday" card was removed — redundant with the trend-aware chat, which answers "what did I eat yesterday".)
+**Rail card order:** Coach says (top, per JR) → Projection → Weight + Projected-fat (grid2) → Nutrition + Sleep (grid2) → Net calories + Training adherence (grid2) → Day-by-day log → Refresh. (Removed as redundant with the Dashboard/chat: the "Yesterday" card, and the "Today — priority actions/numbers" + "split exercises" cards — the Hub is trends-only; today snapshot lives on the Dashboard. The `brief-actions`/`brief-numbers`/`brief-split-*` JS in `briefRefreshAll` is now harmlessly no-op'd by `if(el)` guards.)
 
 **Net-calorie projection model** (`hubAggregate`): per logged day `net = intake − burn`; cumulative deficit / 3500 = projected lbs; projected weight vs actual weight + ahead/behind variance. "Projected fat change" sparkline is the cumulative-net curve. This is the "fat trend" JR wanted — **derived from net calories, NOT body-fat %**.
 
@@ -271,7 +271,7 @@ Let CoachGPT handle "set my calorie burn for May 14 to 2900" → write `daily_lo
 
 **1. Voice input for CoachGPT** — Web Speech API. 🎤 button, long-press to record, auto-fills textarea. Mobile-first but works on desktop too.
 
-**2. Photo/screenshot upload in CoachGPT** — `<input type="file" accept="image/*">` → base64 → Claude vision API → extract Oura/Apple Fitness numbers → fire LOG actions automatically. Also useful for snapping a nutrition label.
+**2. Photo/screenshot upload in CoachGPT** *(parked — JR confirmed "nice to have")* — paste (Cmd+V clipboard image) OR file/camera attach in the CoachGPT chat → base64 → Claude vision → **primary use: read Oura/Apple Fitness screenshots and auto-offer LOG actions**; also nutrition labels. Image is sent in-the-moment, not stored. Support paste + picker, side-panel chat first (maybe floating bubble too). **Separate, bigger sub-feature:** a *kept progress-photo timeline* ("how I looked over time") — needs a Supabase Storage bucket + gallery UI; only build if JR explicitly wants saved physique photos (one-off "show coach a pic for feedback" is just the same in-the-moment flow as the screenshot reader).
 
 **3. Meal completion badges** — auto-detect "M1: 5/5 ✓" by counting `planRef='M1'` entries vs `MEAL_PLAN.td.m1.items` in today's log. Green checkmark on the chip after full meal is logged.
 
