@@ -3997,7 +3997,7 @@ function renderHub() {
       : null;
     projEl.innerHTML =
       '<div class="hub-card-lbl">Projection — net-calorie model · ' + rngLbl + '</div>' +
-      '<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;align-items:start;">' +
         '<div><div class="hub-big" style="color:' + (ag.sumNet<0?'#4caf7d':'#e05050') + ';">' +
           (ag.sumNet<0?'−':'+') + lbs.toFixed(1) + ' <span class="hub-unit">lbs ' + dir + '</span></div>' +
           '<div class="hub-mini">Net ' + (ag.sumNet<0?'−':'+') + Math.abs(ag.sumNet).toLocaleString() + ' kcal over ' + ag.loggedCount + ' logged day' + (ag.loggedCount===1?'':'s') + ' (avg ' + ag.avgNet + '/day)</div>' +
@@ -4008,7 +4008,7 @@ function renderHub() {
         '<div><div class="hub-big" style="color:#ddd;">' + (ag.endW!=null?ag.endW.toFixed(1):'—') + ' <span class="hub-unit">lbs actual</span></div>' +
           '<div class="hub-mini" style="color:' + vCol + ';">' + vTxt + '</div>' +
         '</div>' +
-        '<div><div class="hub-big" style="color:#40ccbb;">' + (trueMaintP!=null?trueMaintP.toLocaleString():'—') + ' <span class="hub-unit">true maint</span></div>' +
+        '<div><div class="hub-big" style="color:#40ccbb;">' + (trueMaintP!=null?trueMaintP.toLocaleString():'—') + ' <span class="hub-unit">true maintenance</span></div>' +
           '<div class="hub-mini">real burn — scale change vs logged intake (est. ' + HUB_MAINT_FALLBACK.toLocaleString() + ')</div>' +
         '</div>' +
       '</div>' +
