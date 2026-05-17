@@ -705,12 +705,17 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .hub-chat { width:380px; flex-shrink:0; background:#0d0d0d; border:1px solid #1a4a44; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; }
 .hub-chat-msgs { flex:1; padding:14px 16px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
 .hub-card { background:#141414; border:1px solid #222; border-radius:14px; padding:16px; }
-.hub-card.accent { background:#141414; border-color:#2f9e85; }
+.hub-card.accent { background:#141414; border-color:#2f9e85; padding:18px 20px; }
 .hub-card.hl { background:#0c211d; border-color:#3fcaa6; }
-.coach-2col { display:flex; gap:18px; align-items:stretch; }
+/* Trajectory card: clean but compact — a tight landscape band, not a tall block. */
+.hub-card.accent .hub-card-lbl { margin-bottom:10px; }
+.hub-card.accent .hub-mini { font-size:11px; line-height:1.5; margin-top:7px; }
+.hub-card.accent .hub-spark { height:38px; margin-top:10px; }
+.hub-card.accent .hub-legend { margin-top:8px; font-size:10px; }
+.coach-2col { display:flex; gap:24px; align-items:stretch; }
 .coach-2col-l { flex:1; min-width:0; }
-.coach-2col-r { width:240px; flex-shrink:0; border-left:1px solid #1f3a34; padding-left:16px; }
-.coach-verdict { display:inline-block; font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:6px; margin-bottom:9px; }
+.coach-2col-r { flex:1; min-width:0; border-left:1px solid #1f3a34; padding-left:24px; }
+.coach-verdict { display:inline-block; font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:6px; margin-bottom:11px; }
 .hub-legend { display:flex; gap:12px; font-size:10px; color:#888; margin-top:8px; }
 .hub-legend i { display:inline-block; width:9px; height:2px; vertical-align:middle; margin-right:5px; }
 @media (max-width:600px){
@@ -1535,13 +1540,13 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
         <div class="hub-rail" id="hub-rail">
 
           <div id="brief-coach-wrap" class="hub-card accent">
-            <div class="hub-card-lbl">Coach says</div>
+            <div class="hub-card-lbl">Trajectory</div>
+            <div id="brief-coach-verdict" class="coach-verdict" style="display:none;"></div>
             <div class="coach-2col">
-              <div class="coach-2col-l">
-                <div id="brief-coach-verdict" class="coach-verdict" style="display:none;"></div>
-                <div style="font-size:13px;color:#7dd9c8;line-height:1.6;font-style:italic;" id="brief-coach-text">Loading...</div>
+              <div class="coach-2col-l" id="hub-coach-past">
+                <div class="hub-mini">Loading&hellip;</div>
               </div>
-              <div class="coach-2col-r" id="hub-coach-trend">
+              <div class="coach-2col-r" id="hub-coach-future">
                 <div class="hub-mini">Loading&hellip;</div>
               </div>
             </div>
@@ -4080,7 +4085,7 @@ function renderHub() {
       hubBars(netSeries);
   }
 
-  // ── Coach says: verdict badge + projected-vs-actual trend + calibration ──
+  // ── Trajectory card: verdict badge + Past→now (left) / Now→+7d (right) ──
   // Projected weight per day = startW + cumulative net/3500. Actual = scale.
   var startW = ag.startW, run = 0;
   var projSeries = days.map(function(x){ if (x.net != null) run += x.net; return startW != null ? +(startW + run / HUB_KCAL_PER_LB).toFixed(2) : null; });
@@ -4096,8 +4101,9 @@ function renderHub() {
     vEl.style.background = vBg; vEl.style.color = vFg;
     vEl.textContent = vTxt;
   }
-  var ctEl = document.getElementById('hub-coach-trend');
-  if (ctEl) {
+  // ── LEFT: Past → now (the calorie math reconciling to today's scale) ──
+  var pastEl = document.getElementById('hub-coach-past');
+  if (pastEl) {
     // Calibration: back-solve true maintenance from ACTUAL scale change vs logged intake.
     var sumIntake = days.reduce(function(s,x){ return s + (x.logged ? x.cal : 0); }, 0);
     var trueMaint = null;
@@ -4111,12 +4117,44 @@ function renderHub() {
     var varLine = (ag.variance != null)
       ? 'Scale is <b style="color:' + (ag.variance<0?'#4caf7d':'#f5a623') + ';">' + Math.abs(ag.variance).toFixed(1) + ' lbs ' + (ag.variance<0?'ahead of':'behind') + '</b> the calorie math.'
       : '';
-    ctEl.innerHTML =
-      '<div class="hub-card-lbl" style="margin-bottom:6px;">Projected vs actual · ' + rngLbl + '</div>' +
+    pastEl.innerHTML =
+      '<div class="hub-card-lbl">Past &rarr; now · ' + rngLbl + '</div>' +
       hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') +
       '<div class="hub-legend"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
       '<div class="hub-mini" style="margin-top:8px;">' + varLine + '</div>' +
       '<div class="hub-mini" style="margin-top:4px;">' + calLine + '</div>';
+  }
+
+  // ── RIGHT: Now → +7d (hold the current pace, project forward with dates) ──
+  var futEl = document.getElementById('hub-coach-future');
+  if (futEl) {
+    var pace = ag.avgNet;          // kcal/day over the selected window; <0 = deficit
+    var baseW = ag.endW;           // latest scale weight = the "now" anchor
+    if (baseW != null && pace != null && ag.loggedCount > 0) {
+      var wkChange = (pace * 7) / HUB_KCAL_PER_LB;          // lbs over the next 7 days
+      var futW = +(baseW + wkChange).toFixed(1);
+      var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var fmtD = function(d){ return MO[d.getMonth()] + ' ' + d.getDate(); };
+      var t0 = new Date(); t0.setHours(0,0,0,0);
+      var t7 = new Date(t0); t7.setDate(t7.getDate() + 7);
+      var fSpark = [];
+      for (var fi = 0; fi <= 7; fi++) fSpark.push(+(baseW + (wkChange * fi / 7)).toFixed(2));
+      var paceCol = pace <= 0 ? '#4caf7d' : '#f5a623';
+      var paceTxt = (pace <= 0 ? '−' : '+') + Math.abs(pace).toLocaleString();
+      var deltaCol = wkChange <= 0 ? '#4caf7d' : '#f5a623';
+      var rowCss = 'display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#9a9a9a;margin-top:5px;';
+      futEl.innerHTML =
+        '<div class="hub-card-lbl">Now &rarr; +7d · forecast</div>' +
+        hubSpark(fSpark, '#5aabff') +
+        '<div class="hub-mini">Holding <b style="color:' + paceCol + ';">' + paceTxt + ' kcal/day</b>:</div>' +
+        '<div style="' + rowCss + '"><span>' + fmtD(t0) + ' · today</span><b style="color:#e8e8e8;">' + baseW.toFixed(1) + ' lbs</b></div>' +
+        '<div style="' + rowCss + '"><span>' + fmtD(t7) + '</span><b style="color:#e8e8e8;">' + futW.toFixed(1) + ' lbs</b></div>' +
+        '<div class="hub-mini">= <b style="color:' + deltaCol + ';">' + (wkChange <= 0 ? '−' : '+') + Math.abs(wkChange).toFixed(1) + ' lbs</b> in 7 days at this pace.</div>';
+    } else {
+      futEl.innerHTML =
+        '<div class="hub-card-lbl">Now &rarr; +7d · forecast</div>' +
+        '<div class="hub-mini">Log weight + intake across the window to project forward.</div>';
+    }
   }
 
   // ── Day-by-day table (tap a row to backfill that day's calorie burn) ──
@@ -4283,23 +4321,35 @@ function briefRefreshAll() {
   // Trend cards (Intelligence Hub)
   renderHub();
 
-  // Coach line (single AI call, cheap)
-  briefCoachLine(ctx);
-
-  // Init chat if first time
+  // Init chat if first time — the trend-aware coaching reflection (formerly
+  // the static "Coach says" paragraph) is now the chat's opening message.
   if(!briefChatInited) {
     briefChatInited = true;
-    briefChatAddMsg('coach', 'Hey JR — Day ' + ctx.dayNum + ', ' + ctx.split + '. ' + (ctx.itemsLogged > 0 ? ctx.mealsLogged + ' meal' + (ctx.mealsLogged>1?'s':'') + ' logged, ' + ctx.cals + ' cal so far.' : 'No meals logged yet.') + ' What do you need?');
     briefChatHistory = [{role:'assistant', content:'Greeting sent.'}];
+    briefCoachOpener(ctx);
   }
 }
 
-async function briefCoachLine(ctx) {
-  var el = document.getElementById('brief-coach-text');
-  if(!el) return;
-  el.textContent = 'Loading...';
-  // Build a compact summary of the trend data shown in the cards below so
-  // "Coach says" actually interprets the hub, not a generic pep line.
+// The trend-aware coaching reflection that opens the Hub chat. Builds a
+// compact summary of the same data the Trajectory/cards show, asks the model
+// for a tight headline + faith note, and posts it as the first coach message.
+async function briefCoachOpener(ctx) {
+  var msgs = document.getElementById('brief-chat-messages');
+  if(!msgs) return;
+  // Typing bubble while the opener loads.
+  var typ = document.createElement('div');
+  typ.id = 'brief-opener-typing';
+  typ.className = 'scmsg sc-coach';
+  typ.innerHTML = '<div class="sc-bubble" style="background:#1e1e1e;padding:12px 16px;"><span style="display:inline-flex;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#555;animation:blink 1.2s infinite;display:inline-block;"></span><span style="width:7px;height:7px;border-radius:50%;background:#555;animation:blink 1.2s 0.2s infinite;display:inline-block;"></span><span style="width:7px;height:7px;border-radius:50%;background:#555;animation:blink 1.2s 0.4s infinite;display:inline-block;"></span></span></div>';
+  msgs.appendChild(typ);
+  msgs.scrollTop = msgs.scrollHeight;
+  function done(text) {
+    var t = document.getElementById('brief-opener-typing');
+    if (t) t.remove();
+    briefChatAddMsg('coach', text);
+    briefChatHistory = [{role:'assistant', content: text}];
+    try { dbSaveChatMsg('brief', 'assistant', text); } catch(e) {}
+  }
   var dataSummary;
   try {
     var days = hubDayMetrics(HUB_RANGE);
@@ -4320,14 +4370,14 @@ async function briefCoachLine(ctx) {
   try {
     var res = await fetch('/.netlify/functions/claude', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:130,
-        system:'You are CoachGPT, JR\'s coach. In AT MOST 2 short sentences, give the single most important takeaway from the trend data below (the headline — weight/fat trajectory and the one thing to tighten), then ONE short faith-centered note. Be specific with a number or two but tight — this sits next to a chart, do not list every metric. No lists, no markdown, no JSON.',
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:140,
+        system:'You are CoachGPT, JR\'s coach, opening the chat with a quick trend read. In AT MOST 2 short sentences give the single most important takeaway from the data (weight/fat trajectory and the one thing to tighten), then ONE short faith-centered note, then invite him to ask anything. Be specific with a number or two but tight and warm. No lists, no markdown, no JSON.',
         messages:[{role:'user', content: dataSummary}] })
     });
     var data = await res.json();
     var text = data.content.map(function(i){return i.text||'';}).join('').trim();
-    el.textContent = text || 'Philippians 4:13 — you got this.';
-  } catch(e) { el.textContent = 'Philippians 4:13 — you got this.'; }
+    done(text || 'Philippians 4:13 — you got this. What do you want to dig into?');
+  } catch(e) { done('Philippians 4:13 — you got this. What do you want to dig into?'); }
 }
 
 function briefChatAddMsg(role, html) {
