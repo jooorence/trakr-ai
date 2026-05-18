@@ -878,7 +878,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Deficit</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="dash-tile-lbl">Water (oz)</div></div>
           <div class="dash-tile" style="position:relative;padding-bottom:22px;"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div><div id="dash-bw-sub" style="position:absolute;bottom:6px;left:0;right:0;text-align:center;"></div></div>
-          <div class="dash-tile"><div class="dash-tile-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#a07dd9;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
           <div class="dash-macro">
             <div class="dash-macro-lbl">Macro Progress</div>
             <div class="dash-mb-row"><span class="dash-mb-label" style="color:#5aabff;">Protein</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-p-bar" style="background:#5aabff;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-p-num">0g</b> · <span id="dash-p-pct">0%</span></span></div>
@@ -4872,7 +4872,7 @@ function ouraUpdate() {
     var _dsr = document.getElementById('dash-sleep-rem');
     if(_dsr) _dsr.textContent = rem ? rem.toFixed(1) + 'h' : '—';
     var dashGoalEl = document.getElementById('dash-goal-val');
-    if(dashGoalEl) { dashGoalEl.textContent = score; dashGoalEl.style.color = scoreColor; }
+    if(dashGoalEl) { dashGoalEl.textContent = score; dashGoalEl.style.color = '#a07dd9'; }
   }
 
   var hrvEl = document.getElementById('oura-hrv-display');
@@ -5811,7 +5811,7 @@ function dashRefresh() {
   if(dashStepsEl) dashStepsEl.textContent = stepsVal ? stepsVal.toLocaleString() : '—';
   if(dashSleepEl) {
     dashSleepEl.textContent = sleepScoreVal || '—';
-    if(sleepScoreVal) dashSleepEl.style.color = sleepScoreVal >= 85 ? '#4caf7d' : sleepScoreVal >= 70 ? '#f5a623' : '#e05050';
+    dashSleepEl.style.color = '#a07dd9';
   }
   // Body Weight tile — daily tracking model.
   //  • Today logged   → big number + delta subscript (↓ X lbs from yesterday)
