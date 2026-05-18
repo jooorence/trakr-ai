@@ -700,6 +700,11 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .hub-range { display:flex; gap:3px; background:#141414; border:1px solid #1a4a44; border-radius:10px; padding:3px; flex-shrink:0; }
 .hub-range button { background:none; border:none; color:#888; font-size:11px; font-weight:600; padding:6px 12px; border-radius:7px; cursor:pointer; transition:all 0.12s; }
 .hub-range button.on { background:#0a2a26; color:#40ccbb; }
+.hub-range input { width:40px; background:none; border:none; color:#888; font-size:11px; font-weight:600; padding:6px 6px; border-radius:7px; outline:none; text-align:center; transition:all 0.12s; -moz-appearance:textfield; }
+.hub-range input:focus { width:52px; background:#0a2a26; color:#40ccbb; }
+.hub-range input::-webkit-outer-spin-button, .hub-range input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.hub-range input.on { background:#0a2a26; color:#40ccbb; }
+.hub-range input::placeholder { color:#888; font-size:13px; opacity:0.85; }
 .hub-shell { display:flex; gap:16px; width:100%; }
 .hub-rail { flex:1; min-width:0; display:flex; flex-direction:column; gap:12px; }
 .hub-chat { width:420px; flex-shrink:0; background:#0d0d0d; border:1px solid #1a4a44; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; }
@@ -1532,6 +1537,9 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           <button data-r="14" onclick="hubSetRange(14,this)">14 Days</button>
           <button data-r="30" onclick="hubSetRange(30,this)">30 Days</button>
           <button data-r="90" onclick="hubSetRange(90,this)">90 Days</button>
+          <input id="hub-range-custom" type="number" min="2" max="365" placeholder="&#9998;"
+            onkeydown="if(event.key==='Enter'){hubSetCustomRange(this.value);this.blur();}"
+            onchange="hubSetCustomRange(this.value)" title="Custom range — type any number of days" />
         </div>
       </div>
 
@@ -3965,6 +3973,22 @@ function hubSetRange(n, btn) {
   HUB_RANGE = n;
   var bs = document.querySelectorAll('#hub-range button');
   bs.forEach(function(b){ b.classList.toggle('on', parseInt(b.getAttribute('data-r'))===n); });
+  var ci = document.getElementById('hub-range-custom');
+  if (ci) { ci.classList.remove('on'); ci.value = ''; }
+  renderHub();
+}
+
+// Custom lookback: type any day count (e.g. 4). The whole Hub — past panel,
+// forecast horizon, verdict band — already keys off HUB_RANGE, so no other
+// logic changes are needed.
+function hubSetCustomRange(v) {
+  var n = parseInt(v, 10);
+  if (!n || n < 2) return;
+  if (n > 365) n = 365;
+  HUB_RANGE = n;
+  document.querySelectorAll('#hub-range button').forEach(function(b){ b.classList.remove('on'); });
+  var ci = document.getElementById('hub-range-custom');
+  if (ci) { ci.classList.add('on'); ci.value = n; }
   renderHub();
 }
 
