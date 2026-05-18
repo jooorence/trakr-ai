@@ -3449,6 +3449,7 @@ function coachSystemPrompt(ctx, withHistory) {
   p += mpPromptText();
   p += "When user mentions any meal by name or alias (M1/M2/M3/M4/M5, gut drink, morning coffee, breakfast, lunch, midday, pre workout, intra, post workout, etc.), ALWAYS use the EXACT macros from this meal plan — never estimate or use partial macros. ";
   p += "SPLIT DETAILS by day: Mon=Pull Day 1 (Heavy Back), Tue=Push Day 1 (Heavy Chest), Wed=Rest, Thu=Legs (Heavy), Fri=Pull Day 2 (Medium Back), Sat=Push Day 2 (Medium Shoulders — NOT a chest day), Sun=Rest. ";
+  p += 'CRITICAL — WHEN TO LOG (read first): Emit a LOG action ONLY for a NEW value the user explicitly states in their CURRENT/most-recent message as something they just did/ate/measured. NEVER emit ANY LOG action when the user is asking a question, recalling the past, or saying anything that is not them reporting fresh data right now. NEVER derive LOG actions from context, the FOOD LOG HISTORY block, the HISTORICAL DATA block, earlier conversation turns, or numbers already shown to you — those are READ-ONLY reference, not things to log. If the latest user message is a question (e.g. "what did I eat yesterday?", "how am I doing?"), output ZERO LOG actions. When in doubt, do NOT log. ';
   p += 'CRITICAL INSTRUCTION: When the user mentions any loggable data, you MUST output ALL LOG action lines at the very beginning of your reply, before any other text. This is required — never put LOG actions after your response text. ';
   p += 'CRITICAL — FOOD LOGGING LANGUAGE: Food is NOT logged until the user taps "Confirm & Log All" on the confirmation card. NEVER say "[food] logged!" or "I\'ve logged [food]" or state updated totals as if the food is saved. Instead say something like "Tap confirm above to log [food]" or "Hit confirm to save that." Only reference updated totals AFTER the user explicitly confirms. ';
   p += 'CRITICAL — NEVER RE-EMIT PENDING LOG ACTIONS: Once you emit LOGFOOD (or LOGWATER, LOGOURA, etc.) in a response, that action is now pending the user\'s confirmation. Do NOT re-emit the same LOGFOOD in any subsequent reply unless the user explicitly mentions that food again. If the user asks about something unrelated (e.g. changing day type, asking a question), respond to that — DO NOT repeat previous LOG actions. The user can still tap Confirm on the earlier card. ';
@@ -4315,7 +4316,7 @@ function foodHistoryText(maxDays) {
     return ' FOOD LOG HISTORY — every logged day (oldest first), actual items. ' +
       'Each item shown as name (cal,P,C,F) for the amount eaten; "x2" = 2 servings. ' +
       'Section codes: m1=Meal1/Breakfast, m2=Meal2/Lunch, m3=Meal3/Midday, m4=Meal4/Pre-WO(TD)/Afternoon(RD), intra=Intra, m5=Meal5/Post-WO(TD)/Dinner(RD), snack=off-plan. ' +
-      'Use this to answer ANY question about what JR ate or his macros on a past day — you DO have this data, never say you lack access to previous days. Days not listed had no food logged. ' +
+      'Use this to answer ANY question about what JR ate or his macros on a past day — you DO have this data, never say you lack access to previous days. Days not listed had no food logged. THIS BLOCK IS READ-ONLY REFERENCE — never emit LOGFOOD or any LOG action for items shown here; they are already logged. ' +
       lines.join('  ||  ') + '. ';
   } catch(e) { return ''; }
 }
