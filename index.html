@@ -683,7 +683,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
      height = 100vh exactly. Otherwise zoom inflates body past viewport and
      clips the bottom of every page. */
   body { zoom: 1.1; height: calc(100vh / 1.1); }
-  /* Desktop tile order: Cal Logged | Net Cal Burned | Steps / Weight | Water | Sleep Score */
+  /* Desktop tile order: Cal Logged | Net Deficit | Steps / Weight | Water | Sleep Score */
   .dash-right .dash-tile:nth-child(1) { order: 1; }
   .dash-right .dash-tile:nth-child(2) { order: 4; }
   .dash-right .dash-tile:nth-child(3) { order: 2; }
@@ -857,7 +857,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           <div class="dash-train-row"><span>Training</span><b style="color:#f5a623;" id="exp-training">—</b></div>
           <div class="dash-train-row"><span>Steps</span><b id="exp-steps">—</b></div>
           <div class="dash-train-row"><span>Cal burned</span><b id="exp-burned">—</b></div>
-          <div class="dash-train-row"><span>Net cal burned</span><b id="exp-net">—</b></div>
+          <div class="dash-train-row"><span>Net deficit</span><b id="exp-net">—</b></div>
           <div class="dash-train-divider"></div>
           <div class="dash-train-lbl">Longevity</div>
           <div class="dash-train-row"><span>Readiness</span><b id="dash-readiness-val">—</b></div>
@@ -871,7 +871,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
         <div class="dash-right">
           <div class="dash-tile"><div class="dash-tile-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="dash-tile-lbl">Cal Logged</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="dash-tile-lbl">Steps</div></div>
-          <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Cal Burned</div></div>
+          <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Deficit</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="dash-tile-lbl">Water (oz)</div></div>
           <div class="dash-tile" style="position:relative;padding-bottom:22px;"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div><div id="dash-bw-sub" style="position:absolute;bottom:6px;left:0;right:0;text-align:center;"></div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#8899ff;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
@@ -5752,7 +5752,7 @@ function dashRefresh() {
       if (subEl) subEl.innerHTML = lastHtml;
     }
   }
-  // Net Cal Burned (consumed - burned, signed, +green / -red)
+  // Net Deficit (consumed - burned, signed, +green / -red)
   var netStat = document.getElementById('dash-net-val');
   if(calexpVal) {
     var net = Math.round((t.cal || 0) - calexpVal);
