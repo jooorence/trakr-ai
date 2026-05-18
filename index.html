@@ -4108,7 +4108,13 @@ function renderHub() {
     else                                { vTxt='SCALE LAGGING'; vBg='#2a1f00'; vFg='#f5a623'; }
     vEl.style.display = 'inline-block';
     vEl.style.background = vBg; vEl.style.color = vFg;
-    vEl.textContent = vTxt;
+    // Within ON TRACK but leaning ahead of the projection — surface it as a
+    // subtle gold tag (don't flip the verdict; it's still inside the noise band).
+    if (vTxt === 'ON TRACK' && ag.variance != null && ag.variance < -0.3) {
+      vEl.innerHTML = vTxt + ' <span style="color:#f5c44b;font-weight:700;">&middot; &uarr; ahead</span>';
+    } else {
+      vEl.textContent = vTxt;
+    }
   }
   // ── LEFT: Past → now (the calorie math reconciling to today's scale) ──
   var pastEl = document.getElementById('hub-coach-past');
@@ -4126,14 +4132,26 @@ function renderHub() {
       var lb = function(n){ return (n <= 0 ? '−' : '+') + Math.abs(n).toFixed(1); };
       var dirWord = aChg < 0 ? 'Down' : (aChg > 0 ? 'Up' : 'Flat');
       var headCol = aChg <= 0 ? '#4caf7d' : '#f5a623';
-      var gap = aChg - mathLbs;                                           // scale minus math
+      var gap = aChg - mathLbs;            // <0 = scale ahead of math (lost more), >0 = behind
       // Same window-aware noise band as the verdict badge so they never disagree.
       var gBand = HUB_RANGE <= 7 ? 1.5 : (HUB_RANGE <= 14 ? 1.2 : 1.0);
       var agree = Math.abs(gap) <= gBand;
-      var vCol2 = agree ? '#4caf7d' : '#f5a623';
-      var verdict = agree
-        ? 'The calorie math predicted ' + lb(mathLbs) + ' lbs — the scale agrees within ' + Math.abs(gap).toFixed(1) + ' lb, so your logging is trustworthy.'
-        : 'The math predicted ' + lb(mathLbs) + ' lbs but the scale moved ' + lb(aChg) + ' — a ' + Math.abs(gap).toFixed(1) + ' lb gap (likely water, under-logging, or your real burn differs). Trust the scale.';
+      var ahead = gap < -0.3;              // meaningfully ahead of the projection
+      var GOLD = '#f5c44b';
+      var vCol2, verdict;
+      if (ahead && agree) {
+        vCol2 = '#4caf7d';
+        verdict = 'The calorie math predicted ' + lb(mathLbs) + ' lbs — the scale is running <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b>. Still within normal noise, but the trend’s in your favor.';
+      } else if (ahead && !agree) {
+        vCol2 = '#4caf7d';
+        verdict = 'The math predicted ' + lb(mathLbs) + ' lbs but the scale moved ' + lb(aChg) + ' — you’re <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b> of projection. Some may be water, but you’re outpacing the plan.';
+      } else if (agree) {
+        vCol2 = '#4caf7d';
+        verdict = 'The calorie math predicted ' + lb(mathLbs) + ' lbs — the scale agrees within ' + Math.abs(gap).toFixed(1) + ' lb, so your logging is trustworthy.';
+      } else {
+        vCol2 = '#f5a623';
+        verdict = 'The math predicted ' + lb(mathLbs) + ' lbs but the scale moved ' + lb(aChg) + ' — a ' + Math.abs(gap).toFixed(1) + ' lb gap (likely water, under-logging, or your real burn differs). Trust the scale.';
+      }
       pTable =
         '<div style="font-size:14px;font-weight:700;color:' + headCol + ';margin-bottom:3px;">' + dirWord + ' ' + Math.abs(aChg).toFixed(1) + ' lbs in ' + rngLbl + '</div>' +
         '<div class="hub-mini" style="color:#888;">' + fmtDp(sDp) + ' &middot; ' + ag.startW.toFixed(1) + ' lbs &nbsp;&rarr;&nbsp; ' + fmtDp(eDp) + ' &middot; ' + ag.endW.toFixed(1) + ' lbs</div>' +
