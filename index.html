@@ -866,7 +866,6 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           <div class="dash-train-divider"></div>
           <div class="dash-train-lbl">Longevity</div>
           <div class="dash-train-row"><span>Readiness</span><b id="dash-readiness-val">—</b></div>
-          <div class="dash-train-row"><span>HRV</span><b id="dash-hrv-val">—</b></div>
           <div class="dash-train-row"><span>VO₂ max</span><b id="dash-vo2-val">—</b></div>
           <!-- Hidden mirror of the legacy training-name field so the LOGSPLIT
                handler that targets dash-training-val + .nextElementSibling still works. -->
@@ -5881,13 +5880,11 @@ function dashRefresh() {
   var hrvVal = parseFloat((document.getElementById('oura-hrv')||{}).value) || 0;
   var vo2Val = parseFloat((document.getElementById('oura-vo2')||{}).value) || 0;
   var rEl = document.getElementById('dash-readiness-val');
-  var hEl = document.getElementById('dash-hrv-val');
   var vEl = document.getElementById('dash-vo2-val');
   if (rEl) {
     rEl.textContent = readinessVal || '—';
     rEl.style.color = readinessVal >= 85 ? '#4caf7d' : readinessVal >= 70 ? '#f5a623' : readinessVal > 0 ? '#e05050' : '#888';
   }
-  if (hEl) hEl.textContent = hrvVal ? hrvVal + ' ms' : '—';
   if (vEl) {
     vEl.textContent = vo2Val ? vo2Val.toFixed(1) : '—';
     vEl.style.color = vo2Val >= 45 ? '#4caf7d' : vo2Val >= 35 ? '#f5a623' : vo2Val > 0 ? '#e05050' : '#888';
