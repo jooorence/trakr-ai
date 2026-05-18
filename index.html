@@ -3468,8 +3468,11 @@ function coachSystemPrompt(ctx, withHistory) {
   p += 'Always include the LOG action when the user shares a number for any of these — even if mentioned casually. ';
   p += 'CLEARDAY:{} must ONLY be included when the user explicitly asks to wipe or reset their ENTIRE day (e.g. "clear my day", "reset everything", "start my day over"). NEVER include CLEARDAY for fixing duplicates, correcting a single entry, adjusting water, editing food items, or any partial change. When in doubt, do not include CLEARDAY. ';
   p += "Be direct, warm, concise. Speak like a trusted coach. Never confuse Push Day 2 for a chest day — it is a shoulder-focused day.";
-  // Side-panel Intelligence Hub only: inject historical/trend context so the
-  // tab can answer cross-day questions. Floating bubble stays today-only.
+  // Full food-log continuity for BOTH chats — every logged day's actual items
+  // so CoachGPT can recall "what did I eat / what was that shake" on any day.
+  try { p += foodHistoryText(120); } catch(e) {}
+  // Side-panel Intelligence Hub additionally gets the aggregate trend block
+  // (net-calorie projection math) for "what weight should I be" questions.
   if (withHistory) {
     try { p += historicalContextText(typeof HUB_RANGE !== 'undefined' ? HUB_RANGE : 7); } catch(e) {}
   }
@@ -3796,6 +3799,16 @@ async function briefGenerate() { briefRefreshAll(); }
 
 var briefChatHistory = [];
 var briefChatInited = false;
+var _briefOpenerSig = null;   // signature of the data the live opener was built from
+// Cheap fingerprint of the trend numbers the opener reflects. If this changes
+// (e.g. weight edited) while the chat is still just the greeting, the opener
+// is regenerated so it never disagrees with the Trajectory card.
+function _briefSig() {
+  try {
+    var ag = hubAggregate(hubDayMetrics(HUB_RANGE));
+    return [HUB_RANGE, ag.endW, ag.actualChange, ag.avgNet, ag.loggedCount, ag.projChange].join('|');
+  } catch(e) { return null; }
+}
 
 /* ─────────────────────────────────────────────────────────────
    INTELLIGENCE HUB — historical trend engine
@@ -4250,6 +4263,45 @@ function hubSaveDay(key) {
   renderHub();
 }
 
+// Full per-day FOOD LOG history (actual items, not just totals) so CoachGPT
+// has real continuity — "what was the protein shake I had Tuesday" etc.
+// Reads flDateStore (populated cross-device by dbLoadAll). Compact format,
+// capped at maxDays most-recent logged days to bound prompt size.
+function foodHistoryText(maxDays) {
+  try {
+    var cap = maxDays || 120;
+    var keys = Object.keys(flDateStore).filter(function(k){
+      var e = flDateStore[k];
+      return e && e.log && e.log.length > 0;
+    }).sort(); // YYYY-MM-DD sorts chronologically
+    if (!keys.length) return '';
+    if (keys.length > cap) keys = keys.slice(keys.length - cap);
+    var DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var lines = keys.map(function(k){
+      var e = flDateStore[k];
+      var d = new Date(k + 'T12:00:00');
+      var grouped = {};
+      var tot = {cal:0,p:0,c:0,f:0};
+      e.log.forEach(function(it){
+        var sec = it.section || 'snack';
+        var s = it.servings || 1;
+        if (!grouped[sec]) grouped[sec] = [];
+        var nm = it.name + (s !== 1 ? ' x' + s : '');
+        grouped[sec].push(nm + ' (' + Math.round((it.cal||0)*s) + ',' + Math.round((it.p||0)*s) + ',' + Math.round((it.c||0)*s) + ',' + Math.round((it.f||0)*s) + ')');
+        tot.cal += (it.cal||0)*s; tot.p += (it.p||0)*s; tot.c += (it.c||0)*s; tot.f += (it.f||0)*s;
+      });
+      var secs = Object.keys(grouped).map(function(sec){ return sec + ' — ' + grouped[sec].join(', '); }).join('; ');
+      return DOW[d.getDay()] + ' ' + (d.getMonth()+1) + '/' + d.getDate() + ': ' + secs +
+        ' | tot ' + Math.round(tot.cal) + 'c ' + Math.round(tot.p) + 'P ' + Math.round(tot.c) + 'C ' + Math.round(tot.f) + 'F';
+    });
+    return ' FOOD LOG HISTORY — every logged day (oldest first), actual items. ' +
+      'Each item shown as name (cal,P,C,F) for the amount eaten; "x2" = 2 servings. ' +
+      'Section codes: m1=Meal1/Breakfast, m2=Meal2/Lunch, m3=Meal3/Midday, m4=Meal4/Pre-WO(TD)/Afternoon(RD), intra=Intra, m5=Meal5/Post-WO(TD)/Dinner(RD), snack=off-plan. ' +
+      'Use this to answer ANY question about what JR ate or his macros on a past day — you DO have this data, never say you lack access to previous days. Days not listed had no food logged. ' +
+      lines.join('  ||  ') + '. ';
+  } catch(e) { return ''; }
+}
+
 // Compact one-line-per-day history block for the side-panel system prompt.
 function historicalContextText(n) {
   var days = hubDayMetrics(n);
@@ -4335,19 +4387,28 @@ function briefRefreshAll() {
 
   // Init chat if first time — the trend-aware coaching reflection (formerly
   // the static "Coach says" paragraph) is now the chat's opening message.
+  var hasUserTurn = briefChatHistory.some(function(m){ return m.role === 'user'; });
   if(!briefChatInited) {
     briefChatInited = true;
     briefChatHistory = [{role:'assistant', content:'Greeting sent.'}];
     briefCoachOpener(ctx);
+  } else if(!hasUserTurn) {
+    // Still just the greeting (no real conversation). If the trend data
+    // changed since the opener was written (e.g. weight edited), refresh it
+    // so it never contradicts the Trajectory card.
+    var sig = _briefSig();
+    if(sig && sig !== _briefOpenerSig) briefCoachOpener(ctx, true);
   }
 }
 
 // The trend-aware coaching reflection that opens the Hub chat. Builds a
 // compact summary of the same data the Trajectory/cards show, asks the model
 // for a tight headline + faith note, and posts it as the first coach message.
-async function briefCoachOpener(ctx) {
+async function briefCoachOpener(ctx, replace) {
   var msgs = document.getElementById('brief-chat-messages');
   if(!msgs) return;
+  // Refreshing a stale greeting: wipe the old opener so we don't stack two.
+  if(replace) { msgs.innerHTML = ''; briefChatHistory = []; }
   // Typing bubble while the opener loads.
   var typ = document.createElement('div');
   typ.id = 'brief-opener-typing';
@@ -4360,7 +4421,11 @@ async function briefCoachOpener(ctx) {
     if (t) t.remove();
     briefChatAddMsg('coach', text);
     briefChatHistory = [{role:'assistant', content: text}];
-    try { dbSaveChatMsg('brief', 'assistant', text); } catch(e) {}
+    // The opener is a live reflection of current data, not frozen history —
+    // it is regenerated whenever the trend changes and is intentionally NOT
+    // persisted (persisting it is what made a stale greeting reappear next
+    // day). Real conversation messages still persist via briefChatSend.
+    _briefOpenerSig = _briefSig();
   }
   var dataSummary;
   try {
