@@ -1554,11 +1554,6 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
             </div>
           </div>
 
-          <div class="hub-card hl" id="hub-projection">
-            <div class="hub-card-lbl">Projection &mdash; net-calorie model</div>
-            <div class="hub-mini">Loading&hellip;</div>
-          </div>
-
           <div class="hub-grid2">
             <div class="hub-card" id="hub-weight">
               <div class="hub-card-lbl">Weight trend</div>
@@ -3974,55 +3969,10 @@ function hubSetRange(n, btn) {
 }
 
 function renderHub() {
-  if (!document.getElementById('hub-projection')) return;
+  if (!document.getElementById('hub-coach-past')) return;
   var days = hubDayMetrics(HUB_RANGE);
   var ag = hubAggregate(days);
   var rngLbl = HUB_RANGE + 'd';
-
-  // ── Projection (net-calorie model) ──
-  var projEl = document.getElementById('hub-projection');
-  if (projEl) {
-    var dir = ag.sumNet < 0 ? 'deficit' : 'surplus';
-    var lbs = Math.abs(ag.projChange);
-    var vTxt = '—', vCol = '#888';
-    if (ag.variance != null) {
-      var ahead = ag.variance < 0; // lighter than predicted = ahead of plan
-      vCol = ahead ? '#4caf7d' : '#f5a623';
-      vTxt = (ahead ? 'ahead of plan by ' : 'behind plan by ') + Math.abs(ag.variance).toFixed(1) + ' lbs';
-    }
-    // Net calories: the math net (logged intake − burn) vs the net the scale
-    // actually implies (real lbs change → kcal). Their gap = model error.
-    var mathNetP = ag.avgNet;                                            // logged net/day
-    var actNetP = (ag.actualChange != null && ag.loggedCount > 0)
-      ? Math.round(ag.actualChange * HUB_KCAL_PER_LB / ag.loggedCount)
-      : null;                                                            // scale-implied net/day
-    var nKc = function(n){ return (n <= 0 ? '−' : '+') + Math.abs(Math.round(n)).toLocaleString(); };
-    var behindP = (actNetP != null) ? (actNetP - mathNetP) : null;       // >0 = real deficit fell short
-    var nCol = (behindP == null) ? '#888' : (behindP <= 0 ? '#4caf7d' : '#f5a623');
-    var nTxt = (actNetP == null)
-      ? 'log weight + intake to measure'
-      : 'math ' + nKc(mathNetP) + ' · ' + Math.abs(behindP).toLocaleString() + '/day ' + (behindP <= 0 ? 'ahead' : 'behind');
-    projEl.innerHTML =
-      '<div class="hub-card-lbl">Projection — net-calorie model · ' + rngLbl + '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;align-items:start;">' +
-        '<div><div class="hub-big" style="color:' + (ag.sumNet<0?'#4caf7d':'#e05050') + ';">' +
-          (ag.sumNet<0?'−':'+') + lbs.toFixed(1) + ' <span class="hub-unit">lbs ' + dir + '</span></div>' +
-          '<div class="hub-mini">Net ' + (ag.sumNet<0?'−':'+') + Math.abs(ag.sumNet).toLocaleString() + ' kcal over ' + ag.loggedCount + ' logged day' + (ag.loggedCount===1?'':'s') + ' (avg ' + ag.avgNet + '/day)</div>' +
-        '</div>' +
-        '<div><div class="hub-big" style="color:#40ccbb;">' + (ag.projWeight!=null?ag.projWeight.toFixed(1):'—') + ' <span class="hub-unit">lbs target</span></div>' +
-          '<div class="hub-mini">where the math says you should be' + (ag.startW!=null?' (from ' + ag.startW.toFixed(1) + ')':'') + '</div>' +
-        '</div>' +
-        '<div><div class="hub-big" style="color:#ddd;">' + (actNetP!=null?nKc(actNetP):'—') + ' <span class="hub-unit">net actual</span></div>' +
-          '<div class="hub-mini" style="color:' + nCol + ';">' + nTxt + '</div>' +
-        '</div>' +
-        '<div><div class="hub-big" style="color:#ddd;">' + (ag.endW!=null?ag.endW.toFixed(1):'—') + ' <span class="hub-unit">lbs actual</span></div>' +
-          '<div class="hub-mini" style="color:' + vCol + ';">' + vTxt + '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="hub-mini" style="margin-top:10px;color:#666;">Burn uses Oura cal-exp when logged, else maintenance estimate ' +
-        '<input type="number" value="' + HUB_MAINT_FALLBACK + '" min="800" max="6000" step="10" onchange="hubSetMaint(this.value)" ' +
-        'style="width:62px;background:#111;border:1px solid #2a4a44;border-radius:5px;color:#40ccbb;font-size:11px;padding:2px 5px;text-align:center;" /> kcal/day (editable). 1 lb ≈ ' + HUB_KCAL_PER_LB + ' kcal.</div>';
-  }
 
   // ── Weight trend ──
   var wEl = document.getElementById('hub-weight');
@@ -4129,20 +4079,22 @@ function renderHub() {
       var sDp = days[0].date, eDp = days[days.length-1].date;
       var aChg = ag.actualChange;
       var aColp = aChg <= 0 ? '#4caf7d' : '#f5a623';
-      // Two nets: the calorie-math net (logged intake − burn) vs the net the
-      // scale actually implies (real lbs change → kcal). Their gap = model error.
-      var mathNet = ag.avgNet;                                            // logged net/day
-      var actNet = ag.loggedCount > 0 ? Math.round(aChg * HUB_KCAL_PER_LB / ag.loggedCount) : null; // scale-implied net/day
+      // Plain-English read: the headline weight change, the actual dates, and
+      // whether the calorie math agrees with the scale (= is logging trustworthy).
       var mathLbs = ag.projChange;                                        // what the math predicts
-      var kc = function(n){ return (n <= 0 ? '−' : '+') + Math.abs(Math.round(n)).toLocaleString(); };
       var lb = function(n){ return (n <= 0 ? '−' : '+') + Math.abs(n).toFixed(1); };
-      var MATHC = '#40ccbb', ACTC = '#e8e8e8';                            // match chart line colors
-      var pRow = 'display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#9a9a9a;margin-top:5px;';
+      var dirWord = aChg < 0 ? 'Down' : (aChg > 0 ? 'Up' : 'Flat');
+      var headCol = aChg <= 0 ? '#4caf7d' : '#f5a623';
+      var gap = aChg - mathLbs;                                           // scale minus math
+      var agree = Math.abs(gap) <= 0.6;
+      var vCol2 = agree ? '#4caf7d' : '#f5a623';
+      var verdict = agree
+        ? 'The calorie math predicted ' + lb(mathLbs) + ' lbs — the scale agrees within ' + Math.abs(gap).toFixed(1) + ' lb, so your logging is trustworthy.'
+        : 'The math predicted ' + lb(mathLbs) + ' lbs but the scale moved ' + lb(aChg) + ' — a ' + Math.abs(gap).toFixed(1) + ' lb gap (likely water, under-logging, or your real burn differs). Trust the scale.';
       pTable =
-        '<div class="hub-mini">Ran <b style="color:' + ACTC + ';">' + (actNet!=null?kc(actNet):'—') + '</b> actual · <b style="color:' + MATHC + ';">' + kc(mathNet) + '</b> math /day</div>' +
-        '<div style="' + pRow + '"><span>' + fmtDp(sDp) + ' · ' + rngLbl + ' ago</span><b style="color:#e8e8e8;">' + ag.startW.toFixed(1) + ' lbs</b></div>' +
-        '<div style="' + pRow + '"><span>' + fmtDp(eDp) + ' · today</span><b style="color:#e8e8e8;">' + ag.endW.toFixed(1) + ' lbs</b></div>' +
-        '<div class="hub-mini">= <b style="color:' + ACTC + ';">' + lb(aChg) + '</b> actual · <b style="color:' + MATHC + ';">' + lb(mathLbs) + '</b> math lbs</div>';
+        '<div style="font-size:14px;font-weight:700;color:' + headCol + ';margin-bottom:3px;">' + dirWord + ' ' + Math.abs(aChg).toFixed(1) + ' lbs in ' + rngLbl + '</div>' +
+        '<div class="hub-mini" style="color:#888;">' + fmtDp(sDp) + ' &middot; ' + ag.startW.toFixed(1) + ' lbs &nbsp;&rarr;&nbsp; ' + fmtDp(eDp) + ' &middot; ' + ag.endW.toFixed(1) + ' lbs</div>' +
+        '<div class="hub-mini" style="color:' + vCol2 + ';margin-top:7px;">' + verdict + '</div>';
     } else {
       pTable = '<div class="hub-mini">Log weight across the window to see the actual change.</div>';
     }
@@ -4176,10 +4128,8 @@ function renderHub() {
       futEl.innerHTML =
         '<div class="hub-card-lbl">Now &rarr; +7d · forecast</div>' +
         hubSpark(fSpark, '#5aabff') +
-        '<div class="hub-mini">Holding <b style="color:' + paceCol + ';">' + paceTxt + ' kcal/day</b>:</div>' +
-        '<div style="' + rowCss + '"><span>' + fmtD(t0) + ' · today</span><b style="color:#e8e8e8;">' + baseW.toFixed(1) + ' lbs</b></div>' +
-        '<div style="' + rowCss + '"><span>' + fmtD(t7) + '</span><b style="color:#e8e8e8;">' + futW.toFixed(1) + ' lbs</b></div>' +
-        '<div class="hub-mini">= <b style="color:' + deltaCol + ';">' + (wkChange <= 0 ? '−' : '+') + Math.abs(wkChange).toFixed(1) + ' lbs</b> in 7 days at this pace.</div>';
+        '<div style="font-size:14px;color:#cfd8d6;margin-top:8px;">Hold this pace and you\'ll be about <b style="color:#5aabff;">' + futW.toFixed(1) + ' lbs</b> by ' + fmtD(t7) + '.</div>' +
+        '<div class="hub-mini" style="margin-top:5px;">That\'s <b style="color:' + deltaCol + ';">' + (wkChange <= 0 ? '−' : '+') + Math.abs(wkChange).toFixed(1) + ' lbs/week</b> at your current ' + paceTxt + ' kcal/day net.</div>';
     } else {
       futEl.innerHTML =
         '<div class="hub-card-lbl">Now &rarr; +7d · forecast</div>' +
