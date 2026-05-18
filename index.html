@@ -3990,17 +3990,18 @@ function renderHub() {
       vCol = ahead ? '#4caf7d' : '#f5a623';
       vTxt = (ahead ? 'ahead of plan by ' : 'behind plan by ') + Math.abs(ag.variance).toFixed(1) + ' lbs';
     }
-    // True maintenance: back-solved from ACTUAL scale change vs logged intake.
-    var sumIntakeP = days.reduce(function(s,x){ return s + (x.logged ? x.cal : 0); }, 0);
-    var trueMaintP = (ag.startW != null && ag.endW != null && ag.loggedCount > 0)
-      ? Math.round((sumIntakeP - (ag.endW - ag.startW) * HUB_KCAL_PER_LB) / ag.loggedCount)
-      : null;
-    // How the measured maintenance compares to the assumed estimate.
-    var tmDelta = (trueMaintP != null) ? trueMaintP - HUB_MAINT_FALLBACK : null;
-    var tmCol = (tmDelta == null) ? '#888' : (tmDelta >= 0 ? '#4caf7d' : '#f5a623');
-    var tmTxt = (tmDelta == null)
+    // Net calories: the math net (logged intake − burn) vs the net the scale
+    // actually implies (real lbs change → kcal). Their gap = model error.
+    var mathNetP = ag.avgNet;                                            // logged net/day
+    var actNetP = (ag.actualChange != null && ag.loggedCount > 0)
+      ? Math.round(ag.actualChange * HUB_KCAL_PER_LB / ag.loggedCount)
+      : null;                                                            // scale-implied net/day
+    var nKc = function(n){ return (n <= 0 ? '−' : '+') + Math.abs(Math.round(n)).toLocaleString(); };
+    var behindP = (actNetP != null) ? (actNetP - mathNetP) : null;       // >0 = real deficit fell short
+    var nCol = (behindP == null) ? '#888' : (behindP <= 0 ? '#4caf7d' : '#f5a623');
+    var nTxt = (actNetP == null)
       ? 'log weight + intake to measure'
-      : Math.abs(tmDelta).toLocaleString() + ' kcal/day ' + (tmDelta >= 0 ? 'above' : 'below') + ' estimate';
+      : 'math ' + nKc(mathNetP) + ' · ' + Math.abs(behindP).toLocaleString() + '/day ' + (behindP <= 0 ? 'ahead' : 'behind');
     projEl.innerHTML =
       '<div class="hub-card-lbl">Projection — net-calorie model · ' + rngLbl + '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;align-items:start;">' +
@@ -4011,8 +4012,8 @@ function renderHub() {
         '<div><div class="hub-big" style="color:#40ccbb;">' + (ag.projWeight!=null?ag.projWeight.toFixed(1):'—') + ' <span class="hub-unit">lbs target</span></div>' +
           '<div class="hub-mini">where the math says you should be' + (ag.startW!=null?' (from ' + ag.startW.toFixed(1) + ')':'') + '</div>' +
         '</div>' +
-        '<div><div class="hub-big" style="color:#40ccbb;">' + (trueMaintP!=null?trueMaintP.toLocaleString():'—') + ' <span class="hub-unit">true maintenance</span></div>' +
-          '<div class="hub-mini" style="color:' + tmCol + ';">' + tmTxt + '</div>' +
+        '<div><div class="hub-big" style="color:#ddd;">' + (actNetP!=null?nKc(actNetP):'—') + ' <span class="hub-unit">net actual</span></div>' +
+          '<div class="hub-mini" style="color:' + nCol + ';">' + nTxt + '</div>' +
         '</div>' +
         '<div><div class="hub-big" style="color:#ddd;">' + (ag.endW!=null?ag.endW.toFixed(1):'—') + ' <span class="hub-unit">lbs actual</span></div>' +
           '<div class="hub-mini" style="color:' + vCol + ';">' + vTxt + '</div>' +
@@ -4067,13 +4068,14 @@ function renderHub() {
   var baEl = document.getElementById('hub-burnav');
   if (baEl) {
     var burnSeries = days.map(function(x){ return x.burn; });
-    var ouraCount = days.filter(function(x){ return x.burnSrc === 'oura'; }).length;
-    var manualCount = days.filter(function(x){ return x.burnSrc === 'manual'; }).length;
-    var srcNote = ouraCount + ' Oura' + (manualCount ? ' · ' + manualCount + ' manual' : '') + ' · ' + (days.length - ouraCount - manualCount) + ' est';
+    var sumIntakeB = days.reduce(function(s,x){ return s + (x.logged ? x.cal : 0); }, 0);
+    var trueMaintB = (ag.startW != null && ag.endW != null && ag.loggedCount > 0)
+      ? Math.round((sumIntakeB - (ag.endW - ag.startW) * HUB_KCAL_PER_LB) / ag.loggedCount)
+      : null;
     baEl.innerHTML =
       '<div class="hub-card-lbl">Avg burn · ' + rngLbl + '</div>' +
       '<div class="hub-big">' + (ag.avgBurn != null ? ag.avgBurn.toLocaleString() : '—') + ' <span class="hub-unit">kcal/day</span></div>' +
-      '<div class="hub-delta" style="color:#888;">' + srcNote + '</div>' +
+      '<div class="hub-delta" style="color:#888;">actual maintenance &asymp; ' + (trueMaintB != null ? trueMaintB.toLocaleString() : '—') + ' kcal/day</div>' +
       hubSpark(burnSeries, '#40ccbb');
   }
 
@@ -4137,10 +4139,10 @@ function renderHub() {
       var MATHC = '#40ccbb', ACTC = '#e8e8e8';                            // match chart line colors
       var pRow = 'display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#9a9a9a;margin-top:5px;';
       pTable =
-        '<div class="hub-mini">Ran <b style="color:' + MATHC + ';">' + kc(mathNet) + '</b> math · <b style="color:' + ACTC + ';">' + (actNet!=null?kc(actNet):'—') + '</b> actual /day</div>' +
+        '<div class="hub-mini">Ran <b style="color:' + ACTC + ';">' + (actNet!=null?kc(actNet):'—') + '</b> actual · <b style="color:' + MATHC + ';">' + kc(mathNet) + '</b> math /day</div>' +
         '<div style="' + pRow + '"><span>' + fmtDp(sDp) + ' · ' + rngLbl + ' ago</span><b style="color:#e8e8e8;">' + ag.startW.toFixed(1) + ' lbs</b></div>' +
         '<div style="' + pRow + '"><span>' + fmtDp(eDp) + ' · today</span><b style="color:#e8e8e8;">' + ag.endW.toFixed(1) + ' lbs</b></div>' +
-        '<div class="hub-mini">= <b style="color:' + MATHC + ';">' + lb(mathLbs) + '</b> math · <b style="color:' + ACTC + ';">' + lb(aChg) + '</b> actual lbs</div>';
+        '<div class="hub-mini">= <b style="color:' + ACTC + ';">' + lb(aChg) + '</b> actual · <b style="color:' + MATHC + ';">' + lb(mathLbs) + '</b> math lbs</div>';
     } else {
       pTable = '<div class="hub-mini">Log weight across the window to see the actual change.</div>';
     }
