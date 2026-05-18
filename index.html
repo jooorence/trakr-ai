@@ -4296,6 +4296,7 @@ function foodHistoryText(maxDays) {
     if (!keys.length) return '';
     if (keys.length > cap) keys = keys.slice(keys.length - cap);
     var DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var f2 = function(v){ return '' + (Math.round((+v||0)*100)/100); }; // exact per-serving, ≤2dp, no rounding drift
     var lines = keys.map(function(k){
       var e = flDateStore[k];
       var d = new Date(k + 'T12:00:00');
@@ -4306,7 +4307,10 @@ function foodHistoryText(maxDays) {
         var s = it.servings || 1;
         if (!grouped[sec]) grouped[sec] = [];
         var nm = it.name + (s !== 1 ? ' x' + s : '');
-        grouped[sec].push(nm + ' (' + Math.round((it.cal||0)*s) + ',' + Math.round((it.p||0)*s) + ',' + Math.round((it.c||0)*s) + ',' + Math.round((it.f||0)*s) + ')');
+        // Show the stored PER-SERVING macros verbatim — never the
+        // servings-multiplied total (forcing a divide-back introduces
+        // rounding error and prose/card mismatch when re-logging).
+        grouped[sec].push(nm + ' (' + f2(it.cal) + ',' + f2(it.p) + ',' + f2(it.c) + ',' + f2(it.f) + '/svg)');
         tot.cal += (it.cal||0)*s; tot.p += (it.p||0)*s; tot.c += (it.c||0)*s; tot.f += (it.f||0)*s;
       });
       var secs = Object.keys(grouped).map(function(sec){ return sec + ' — ' + grouped[sec].join(', '); }).join('; ');
@@ -4314,7 +4318,7 @@ function foodHistoryText(maxDays) {
         ' | tot ' + Math.round(tot.cal) + 'c ' + Math.round(tot.p) + 'P ' + Math.round(tot.c) + 'C ' + Math.round(tot.f) + 'F';
     });
     return ' FOOD LOG HISTORY — every logged day (oldest first), actual items. ' +
-      'Each item shown as name (cal,P,C,F) for the amount eaten; "x2" = 2 servings. ' +
+      'Each item shows PER-SERVING macros: name xN (cal,P,C,F/svg) where xN = servings eaten that day; the day "tot" line is the consumed total. When re-logging a past item, use these exact per-serving values verbatim — NEVER divide the day total or round; state the same numbers in your reply that you put in the LOG action. ' +
       'Section codes: m1=Meal1/Breakfast, m2=Meal2/Lunch, m3=Meal3/Midday, m4=Meal4/Pre-WO(TD)/Afternoon(RD), intra=Intra, m5=Meal5/Post-WO(TD)/Dinner(RD), snack=off-plan. ' +
       'Use this to answer ANY question about what JR ate or his macros on a past day — you DO have this data, never say you lack access to previous days. Days not listed had no food logged. THIS BLOCK IS READ-ONLY REFERENCE — never emit LOGFOOD or any LOG action for items shown here; they are already logged. ' +
       lines.join('  ||  ') + '. ';
