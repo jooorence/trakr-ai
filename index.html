@@ -487,6 +487,26 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .dash-train-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #888; border-bottom: 1px solid #1a1a1a; }
 .dash-train-row:last-child { border-bottom: none; }
 .dash-train-row b { color: #ddd; font-weight: 600; }
+/* Dashboard "Coach read" card — synthesizes the same data the Intelligence Hub
+   shows, but pinned to the dashboard so JR sees "am I on track" at a glance.
+   Reuses hubDayMetrics/hubAggregate/hubSpark2 — single source of truth. */
+.dash-coach-card { background:#101a18; border:1px solid #2f9e85; border-radius:14px; padding:16px 18px; margin:0 0 14px; }
+.dcc-head { display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.dcc-tag { font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:#40ccbb; opacity:.7; font-weight:700; }
+.dcc-hublink { font-size:12px; color:#40ccbb; text-decoration:none; margin-left:auto; cursor:pointer; }
+.dcc-2 { display:flex; gap:24px; align-items:stretch; }
+.dcc-L { flex:1; min-width:0; }
+.dcc-R { flex:1; min-width:0; border-left:1px solid #1f3a34; padding-left:24px; display:flex; flex-direction:column; justify-content:center; }
+.dcc-line { font-size:14px; color:#cfe8e3; line-height:1.55; }
+.dcc-stat { display:flex; gap:20px; margin-top:13px; padding-top:12px; border-top:1px solid #1f3a34; font-size:12px; color:#999; flex-wrap:wrap; }
+.dcc-stat b { color:#e8e8e8; }
+.dcc-glabel { font-size:9px; letter-spacing:.07em; text-transform:uppercase; color:#40ccbb; opacity:.7; font-weight:700; margin-bottom:8px; }
+.dcc-legend { display:flex; gap:14px; font-size:10px; color:#888; margin-top:9px; }
+.dcc-legend i { display:inline-block; width:10px; height:2px; vertical-align:middle; margin-right:5px; }
+@media (max-width:600px) {
+  .dcc-2 { flex-direction:column; gap:14px; }
+  .dcc-R { border-left:none; border-top:1px solid #1f3a34; padding-left:0; padding-top:14px; }
+}
 
 .dash-tile { background: #1a1a1a; border: 1px solid #252525; border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .dash-tile-val { font-size: 22px; font-weight: 700; line-height: 1.1; text-align: center; width: 100%; }
@@ -889,6 +909,8 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           </div>
         </div>
       </div>
+
+      <div id="dash-coach-card" class="dash-coach-card"><div class="dcc-line" style="color:#666;">Loading…</div></div>
 
       <div class="macro-section-label" style="margin-bottom:10px;">Fitness Apps — Integrations</div>
 
@@ -4012,6 +4034,81 @@ function hubSetCustomRange(v) {
   renderHub();
 }
 
+// Dashboard "Coach read" — synthesizes the same trajectory data the Hub shows.
+// Reuses hubDayMetrics / hubAggregate / hubSpark2 plus the same window-aware
+// noise band, directional sentence, and ahead-lean gold cue so the Hub and
+// the dashboard share one source of truth and can never disagree.
+function renderDashCoachCard() {
+  var el = document.getElementById('dash-coach-card');
+  if (!el) return;
+  try {
+    var days = hubDayMetrics(7);
+    var ag = hubAggregate(days);
+    var startW = ag.startW, run = 0;
+    var projSeries = days.map(function(x){ if(x.net!=null) run += x.net; return startW!=null ? +(startW + run/HUB_KCAL_PER_LB).toFixed(2) : null; });
+    var actSeries = days.map(function(x){ return x.weight; });
+    var vBand = 1.5;  // 7d band — matches the Hub
+    var vTxt, vBg, vFg, aheadTag = '';
+    if (ag.variance == null)            { vTxt='TRACKING';      vBg='#1c2c2a'; vFg='#7dd9c8'; }
+    else if (ag.variance <= -vBand)     { vTxt='AHEAD';         vBg='#0d2a1a'; vFg='#4caf7d'; }
+    else if (ag.variance < vBand)       { vTxt='ON TRACK';      vBg='#0a2a26'; vFg='#40ccbb';
+      if (ag.variance < -0.3) aheadTag = ' <span style="color:#f5c44b;font-weight:700;">&middot; &uarr; ahead</span>'; }
+    else                                { vTxt='SCALE LAGGING'; vBg='#2a1f00'; vFg='#f5a623'; }
+    var lb = function(n){ return (n<=0?'−':'+') + Math.abs(n).toFixed(1); };
+    var GOLD = '#f5c44b';
+    var sentence;
+    if (ag.actualChange == null || ag.projChange == null) {
+      sentence = 'Log weight + intake across the week to see your trend.';
+    } else {
+      var aChg = ag.actualChange, mathLbs = ag.projChange;
+      var gap = aChg - mathLbs;
+      var agree = Math.abs(gap) <= vBand;
+      var ahead = gap < -0.3;
+      if (ahead && agree) {
+        sentence = 'Down <b style="color:#4caf7d;">' + Math.abs(aChg).toFixed(1) + ' lbs in 7d</b>. Math predicted ' + lb(mathLbs) + ' — scale\'s running <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b>, within normal noise but the trend\'s in your favor.';
+      } else if (ahead && !agree) {
+        sentence = 'Down <b style="color:#4caf7d;">' + Math.abs(aChg).toFixed(1) + ' lbs in 7d</b>. Math predicted ' + lb(mathLbs) + ' — you\'re <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b> of projection. Outpacing the plan.';
+      } else if (agree) {
+        var dirw = aChg < 0 ? 'Down' : (aChg > 0 ? 'Up' : 'Flat');
+        var dirCol = aChg <= 0 ? '#4caf7d' : '#f5a623';
+        sentence = dirw + ' <b style="color:' + dirCol + ';">' + Math.abs(aChg).toFixed(1) + ' lbs in 7d</b>. Math predicted ' + lb(mathLbs) + ' — scale agrees within ' + Math.abs(gap).toFixed(1) + ' lb, logging trustworthy.';
+      } else {
+        sentence = 'Math predicted ' + lb(mathLbs) + ' lbs but scale moved ' + lb(aChg) + ' — a ' + Math.abs(gap).toFixed(1) + ' lb gap. Trust the scale.';
+      }
+    }
+    var netVal = ag.avgNet;
+    var netCol = netVal <= 0 ? '#4caf7d' : '#f5a623';
+    var netTxt = (netVal <= 0 ? '−' : '+') + Math.abs(netVal).toLocaleString();
+    var wkRate = (netVal * 7) / HUB_KCAL_PER_LB;
+    var wkCol = wkRate <= 0 ? '#4caf7d' : '#f5a623';
+    var wkTxt = (wkRate <= 0 ? '−' : '+') + Math.abs(wkRate).toFixed(1);
+    var actualTxt = ag.endW != null ? ag.endW.toFixed(1) : '—';
+    el.innerHTML =
+      '<div class="dcc-head">' +
+        '<span class="coach-verdict" style="display:inline-block;background:' + vBg + ';color:' + vFg + ';margin-bottom:0;">' + vTxt + aheadTag + '</span>' +
+        '<span class="dcc-tag">Coach read &middot; today</span>' +
+        '<a class="dcc-hublink" onclick="showSection(\'coach\', document.querySelector(\'.coach-tab\'))">Open Intelligence Hub &rarr;</a>' +
+      '</div>' +
+      '<div class="dcc-2">' +
+        '<div class="dcc-L">' +
+          '<div class="dcc-line">' + sentence + '</div>' +
+          '<div class="dcc-stat">' +
+            '<span>net <b style="color:' + netCol + ';">' + netTxt + '/day</b></span>' +
+            '<span>proj <b style="color:' + wkCol + ';">' + wkTxt + ' lb/wk</b></span>' +
+            '<span>actual <b>' + actualTxt + ' lbs</b></span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="dcc-R">' +
+          '<div class="dcc-glabel">Past &rarr; now &middot; 7d</div>' +
+          hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') +
+          '<div class="dcc-legend"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
+        '</div>' +
+      '</div>';
+  } catch(e) {
+    el.innerHTML = '<div class="dcc-line" style="color:#666;">Coach read unavailable.</div>';
+  }
+}
+
 function renderHub() {
   if (!document.getElementById('hub-coach-past')) return;
   var days = hubDayMetrics(HUB_RANGE);
@@ -5927,6 +6024,8 @@ function dashRefresh() {
     if(apEl) apEl.textContent = Math.round(totP2/daysLogged2) + 'g';
     if(acEl) acEl.textContent = Math.round(totCal2/daysLogged2).toLocaleString();
   }
+  // Coach read — synthesizes the same data the Hub shows.
+  try { renderDashCoachCard(); } catch(e) {}
 }
 
 /* WATER TRACKER */
