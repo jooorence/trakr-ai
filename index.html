@@ -4047,6 +4047,25 @@ function renderDashCoachCard() {
     var startW = ag.startW, run = 0;
     var projSeries = days.map(function(x){ if(x.net!=null) run += x.net; return startW!=null ? +(startW + run/HUB_KCAL_PER_LB).toFixed(2) : null; });
     var actSeries = days.map(function(x){ return x.weight; });
+    // Endpoint weight labels for the chart — small overlay pills at the start
+    // and end of the scale line. Positioned using the same min/max range
+    // hubSpark2 uses so the labels sit precisely on the line.
+    var _actNN = actSeries.filter(function(v){ return v != null && !isNaN(v); });
+    var _allNN = projSeries.concat(actSeries).filter(function(v){ return v != null && !isNaN(v); });
+    var _startScale = _actNN.length ? _actNN[0] : null;
+    var _endScale = _actNN.length ? _actNN[_actNN.length - 1] : null;
+    var _chartMin = _allNN.length ? Math.min.apply(null, _allNN) : null;
+    var _chartMax = _allNN.length ? Math.max.apply(null, _allNN) : null;
+    var _chartRng = (_chartMin != null && _chartMax != null) ? ((_chartMax - _chartMin) || 1) : 1;
+    // hubSpark2 viewBox = 0 0 100 46, draws in y=2..44 → top% = (44 − norm*42)/46
+    function _yPct(v) { if (v == null || _chartMin == null) return 50; return Math.round((44 - ((v - _chartMin) / _chartRng) * 42) / 46 * 100); }
+    var _labelPillCss = 'position:absolute;font-size:10px;font-weight:600;color:#e8e8e8;background:#101a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _endpointLabels = '';
+    if (_startScale != null && _endScale != null && _actNN.length >= 2) {
+      _endpointLabels =
+        '<div style="' + _labelPillCss + 'left:0;top:' + _yPct(_startScale) + '%;transform:translateY(-50%);">' + _startScale.toFixed(1) + '</div>' +
+        '<div style="' + _labelPillCss + 'right:0;top:' + _yPct(_endScale) + '%;transform:translateY(-50%);">' + _endScale.toFixed(1) + '</div>';
+    }
     var vBand = 1.5;  // 7d band — matches the Hub
     var vTxt, vBg, vFg, aheadTag = '';
     if (ag.variance == null)            { vTxt='TRACKING';      vBg='#1c2c2a'; vFg='#7dd9c8'; }
@@ -4100,7 +4119,7 @@ function renderDashCoachCard() {
         '</div>' +
         '<div class="dcc-R">' +
           '<div class="dcc-glabel">Past &rarr; now &middot; 7d</div>' +
-          hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') +
+          '<div style="position:relative;">' + hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') + _endpointLabels + '</div>' +
           '<div class="dcc-legend"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
         '</div>' +
       '</div>';
