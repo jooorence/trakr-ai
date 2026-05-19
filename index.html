@@ -3865,19 +3865,26 @@ function hubDayMetrics(n) {
     var hasFood = tot.cal > 0;
     // Intake priority: explicit manual entry wins (even over logged food —
     // logs are often incomplete), else logged food total, else none.
+    // TODAY is actively edited on the dashboard, so live logged food wins
+    // over any stale manual override. Past days keep manual > food (those
+    // were deliberately backfilled by hand).
     var intakeCal, intakeSrc;
-    if (calIntakeManual != null && calIntakeManual > 0)     { intakeCal = calIntakeManual; intakeSrc = 'manual'; }
-    else if (hasFood)                                       { intakeCal = tot.cal;        intakeSrc = 'food'; }
-    else                                                    { intakeCal = 0;              intakeSrc = 'none'; }
+    if (key === todayKey && hasFood)                        { intakeCal = tot.cal;         intakeSrc = 'food'; }
+    else if (calIntakeManual != null && calIntakeManual > 0){ intakeCal = calIntakeManual; intakeSrc = 'manual'; }
+    else if (hasFood)                                       { intakeCal = tot.cal;         intakeSrc = 'food'; }
+    else                                                    { intakeCal = 0;               intakeSrc = 'none'; }
     var logged = intakeCal > 0;
     var isRest = split === 'Rest';
     // Burn priority: explicit manual override > Oura cal-exp > maintenance
     // estimate. A hand-entered value always wins (matches the app's
     // user/logaction > oura source precedence for activity fields).
+    // TODAY: the live burn (Oura/dashboard cal-exp input) wins over a stale
+    // manual override. Past days keep manual > Oura (deliberate backfill).
     var burn, burnSrc;
-    if (calExpManual != null && calExpManual > 0)  { burn = calExpManual;       burnSrc = 'manual'; }
-    else if (calExp != null && calExp > 0)         { burn = calExp;             burnSrc = 'oura'; }
-    else                                           { burn = HUB_MAINT_FALLBACK; burnSrc = 'est'; }
+    if (key === todayKey && calExp != null && calExp > 0) { burn = calExp;             burnSrc = 'oura'; }
+    else if (calExpManual != null && calExpManual > 0)    { burn = calExpManual;       burnSrc = 'manual'; }
+    else if (calExp != null && calExp > 0)                { burn = calExp;             burnSrc = 'oura'; }
+    else                                                  { burn = HUB_MAINT_FALLBACK; burnSrc = 'est'; }
     var net = logged ? Math.round(intakeCal - burn) : null;  // <0 = deficit
     out.push({
       key:key, date:d, dow:dows[d.getDay()],
