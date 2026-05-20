@@ -477,6 +477,14 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 .dash-today { background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
 .dash-today-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #40ccbb; opacity: 0.75; margin-bottom: 10px; }
 .dash-today-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 95px 95px; gap: 10px; }
+/* Integrations — Apple Fitness + Oura as side-by-side square tiles. */
+.integ-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: stretch; }
+.integ-tile { flex: 1; min-width: 0; }
+.integ-toggle { font-size: 11px; color: #40ccbb; cursor: pointer; user-select: none; }
+.oura-2ring { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 8px 0 4px; }
+.o2r-box { flex: 1; text-align: center; }
+.o2r-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px; }
+@media (max-width: 600px) { .integ-row { flex-direction: column; } }
 .dash-train { background: #141414; border: 1px solid #2d2000; border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; }
 .dash-train-name { font-size: 18px; font-weight: 700; color: #f5a623; margin-bottom: 1px; }
 .dash-train-sub { font-size: 10px; color: #888; margin-bottom: 10px; }
@@ -920,13 +928,14 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 
       <div class="macro-section-label" style="margin-bottom:10px;">Fitness Apps — Integrations</div>
 
-      <div style="background:#141414;border:1px solid #222;border-radius:14px;padding:14px 16px;margin-bottom:12px;">
+      <div class="integ-row">
+      <div class="integ-tile" style="background:#141414;border:1px solid #222;border-radius:14px;padding:14px 16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="width:18px;height:18px;background:#1c1c1c;border-radius:4px;display:flex;align-items:center;justify-content:center;"><svg width="11" height="13" viewBox="0 0 11 13" fill="none"><path d="M9 3.8C8.2 3.8 7.6 4.4 7.6 5.1H5.7C5.5 3 4.1 1.4 2.5 1.4 1 1.4 0 2.7 0 4.4c0 3 2.7 7.6 5.5 7.6S11 7.4 11 4.4c0-.5-.1-.9-.2-1.3C10.3 3.4 9.7 3.8 9 3.8z" fill="#ff375f"/></svg></div>
             <span style="font-size:13px;font-weight:600;color:#ddd;">Apple Fitness</span>
           </div>
-          <span style="font-size:10px;color:#444;">Manual entry</span>
+          <span class="integ-toggle" id="apple-edit-toggle" onclick="appleToggleEdit()">edit &rsaquo;</span>
         </div>
         <div style="display:flex;align-items:center;gap:16px;">
           <div style="position:relative;width:110px;height:110px;flex-shrink:0;"><canvas id="dash-rings" width="110" height="110"></canvas></div>
@@ -957,21 +966,24 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
             </div>
           </div>
         </div>
-        <div class="apple-inputs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">
+        <div class="apple-inputs" id="apple-edit" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Move (cal)</div><input id="dash-move-input" type="number" min="0" max="1500" placeholder="467" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setMove(this.value,'user')"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Exercise (min)</div><input id="dash-exercise-input" type="number" min="0" max="180" placeholder="38" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setExercise(this.value,'user')"></div>
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Stand (hrs)</div><input id="dash-stand-input" type="number" min="0" max="16" placeholder="10" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="setStand(this.value,'user')"></div>
         </div>
       </div>
 
-      <div style="background:#141414;border:1px solid #222;border-radius:14px;padding:14px 16px;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="integ-tile" style="background:#141414;border:1px solid #222;border-radius:14px;padding:14px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="width:18px;height:18px;background:#1a1a2d;border-radius:4px;display:flex;align-items:center;justify-content:center;"><div style="width:10px;height:10px;border-radius:50%;background:#8899ff;"></div></div>
             <span style="font-size:13px;font-weight:600;color:#ddd;">Oura Ring</span>
           </div>
-          <span id="oura-sync-status" style="font-size:10px;color:#444;">Manual entry · last night</span>
+          <span class="integ-toggle" id="oura-detail-toggle" onclick="ouraToggleDetail()">expand &rsaquo;</span>
         </div>
+        <div class="oura-2ring" id="oura-2ring"></div>
+        <div id="oura-detail" style="display:none;">
+        <div id="oura-sync-status" style="font-size:10px;color:#444;margin-bottom:10px;">Manual entry · last night</div>
         <div style="display:flex;gap:12px;margin-bottom:14px;">
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:80px;flex-shrink:0;">
             <div style="position:relative;width:72px;height:72px;">
@@ -1056,6 +1068,8 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
           <div style="background:#1a1a1a;border-radius:8px;padding:8px;"><div style="font-size:10px;color:#444;margin-bottom:4px;">Wake time</div><input id="oura-wake" type="text" placeholder="6:18 AM" style="background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;font-size:12px;color:#ddd;width:100%;" oninput="ouraUpdate()"></div>
         </div>
         <button onclick="ouraSyncStart()" style="margin-top:10px;width:100%;background:#0a2a26;border:1px solid #1a4a44;border-radius:10px;padding:10px 0;font-size:12px;font-weight:600;color:#40ccbb;cursor:pointer;letter-spacing:0.04em;">&#8635; Sync Oura</button>
+        </div>
+      </div>
       </div>
 
       <div style="background:#141414;border:1px solid #222;border-radius:14px;padding:14px 16px;margin-bottom:12px;">
@@ -5091,6 +5105,53 @@ function ouraUpdate() {
   _lastOuraBlob = mergedOura;
   try { localStorage.setItem('jr_oura', JSON.stringify(mergedOura)); } catch(e) {}
   dbSaveDay(_sessionDate, { oura: mergedOura });
+  try { renderOura2Ring(); } catch(e) {}
+}
+
+// Two-ring summary for the collapsed Oura tile: Sleep Score + Readiness,
+// each as a progress ring filled to its value out of 100.
+function renderOura2Ring() {
+  var el = document.getElementById('oura-2ring');
+  if (!el) return;
+  var score = parseFloat((document.getElementById('oura-score')||{}).value) || 0;
+  var readiness = parseFloat((document.getElementById('oura-readiness')||{}).value) || 0;
+  // Readiness colour-coded the same way the app does elsewhere.
+  var rCol = readiness >= 85 ? '#4caf7d' : readiness >= 70 ? '#f5a623' : readiness > 0 ? '#e05050' : '#555';
+  function ring(val, col, label) {
+    var C = 226.2;                                  // 2πr, r=36
+    var pct = Math.max(0, Math.min(100, val)) / 100;
+    var dash = (C * pct).toFixed(1) + ' ' + C.toFixed(1);
+    var shown = val > 0 ? Math.round(val) : '—';
+    return '<div class="o2r-box">' +
+      '<svg width="92" height="92" viewBox="0 0 100 100">' +
+        '<circle cx="50" cy="50" r="36" fill="none" stroke="#222" stroke-width="9"/>' +
+        '<circle cx="50" cy="50" r="36" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + dash + '" transform="rotate(-90 50 50)"/>' +
+        '<text x="50" y="58" text-anchor="middle" font-size="27" font-weight="700" fill="' + col + '">' + shown + '</text>' +
+      '</svg>' +
+      '<div class="o2r-lbl">' + label + '</div>' +
+    '</div>';
+  }
+  el.innerHTML = ring(score, '#a07dd9', 'Sleep Score') + ring(readiness, rCol, 'Readiness');
+}
+
+// Collapse/expand the full Oura detail panel (displays + manual-entry inputs).
+function ouraToggleDetail() {
+  var d = document.getElementById('oura-detail');
+  var t = document.getElementById('oura-detail-toggle');
+  if (!d) return;
+  var open = d.style.display === 'none';
+  d.style.display = open ? 'block' : 'none';
+  if (t) t.innerHTML = open ? 'collapse ›' : 'expand ›';
+}
+
+// Collapse/expand the Apple Fitness manual-entry inputs.
+function appleToggleEdit() {
+  var d = document.getElementById('apple-edit');
+  var t = document.getElementById('apple-edit-toggle');
+  if (!d) return;
+  var open = d.style.display === 'none';
+  d.style.display = open ? 'grid' : 'none';
+  if (t) t.innerHTML = open ? 'done ›' : 'edit ›';
 }
 
 // VO2 max — slow-moving longevity metric. Persisted to localStorage and
@@ -6051,6 +6112,8 @@ function dashRefresh() {
   }
   // Coach read — synthesizes the same data the Hub shows.
   try { renderDashCoachCard(); } catch(e) {}
+  // Oura two-ring summary (Sleep Score + Readiness).
+  try { renderOura2Ring(); } catch(e) {}
 }
 
 /* WATER TRACKER */
