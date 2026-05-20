@@ -475,7 +475,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 /* "Today" widget — the 6 stat tiles wrapped in one contained card so they
    read as a cohesive panel instead of 6 floating cards. */
 .dash-today { background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
-.dash-today-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #40ccbb; opacity: 0.75; margin-bottom: 10px; }
+.dash-today-lbl { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #555; margin-bottom: 10px; }
 .dash-today-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 95px 95px; gap: 10px; }
 /* Integrations — Apple Fitness + Oura as side-by-side square tiles. */
 .integ-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: stretch; }
@@ -879,6 +879,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
       <div class="dash-grid">
         <!-- LEFT: Training + Expenditure + Longevity, single tall card -->
         <div class="dash-train">
+          <div class="dash-today-lbl">Today's Training</div>
           <div class="dash-train-name" id="dash-train-name">—</div>
           <div class="dash-train-sub" id="dash-train-sub">—</div>
           <div class="dash-train-list-header">
@@ -903,7 +904,7 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
         <!-- RIGHT: nested 3-col grid for tiles + macro strip -->
         <div class="dash-right">
           <div class="dash-today">
-          <div class="dash-today-lbl">Today</div>
+          <div class="dash-today-lbl">Today's Progress</div>
           <div class="dash-today-grid">
           <div class="dash-tile"><div class="dash-tile-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="dash-tile-lbl">Cal Logged</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="dash-tile-lbl">Steps</div></div>
