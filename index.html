@@ -471,7 +471,12 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
    right block (6 tiles + macro strip) on the right — true 50/50 split.
    Right block uses a nested 3-col grid for the tiles + spanned macro strip. */
 .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-.dash-right { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 95px 95px auto; gap: 10px; }
+.dash-right { display: flex; flex-direction: column; gap: 10px; }
+/* "Today" widget — the 6 stat tiles wrapped in one contained card so they
+   read as a cohesive panel instead of 6 floating cards. */
+.dash-today { background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
+.dash-today-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #40ccbb; opacity: 0.75; margin-bottom: 10px; }
+.dash-today-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 95px 95px; gap: 10px; }
 .dash-train { background: #141414; border: 1px solid #2d2000; border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; }
 .dash-train-name { font-size: 18px; font-weight: 700; color: #f5a623; margin-bottom: 1px; }
 .dash-train-sub { font-size: 10px; color: #888; margin-bottom: 10px; }
@@ -547,13 +552,9 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
 
   .dash-grid { display: flex; flex-direction: column; gap: 14px; }
   .dash-train { order: 2; padding: 18px 16px 14px; }
-  .dash-right {
-    order: 1;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto;
-    gap: 10px;
-  }
-  .dash-macro { grid-column: 1 / span 2; grid-row: auto; padding: 16px 16px 14px; }
+  .dash-right { order: 1; }
+  .dash-today-grid { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+  .dash-macro { padding: 16px 16px 14px; }
 
   /* TILES — hero numbers at 19px for comfortable mobile scale */
   .dash-tile { padding: 22px 12px; }
@@ -893,12 +894,17 @@ body.cs-open .dock-item.active svg { stroke-width: 1.8; }
         </div>
         <!-- RIGHT: nested 3-col grid for tiles + macro strip -->
         <div class="dash-right">
+          <div class="dash-today">
+          <div class="dash-today-lbl">Today</div>
+          <div class="dash-today-grid">
           <div class="dash-tile"><div class="dash-tile-val" style="color:#4caf7d;" id="dash-cal-val">—</div><div class="dash-tile-lbl">Cal Logged</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#f5a623;" id="dash-weight-val">—</div><div class="dash-tile-lbl">Steps</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#e05050;" id="dash-net-val">—</div><div class="dash-tile-lbl">Net Deficit</div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#5aabff;" id="dash-water-val">—</div><div class="dash-tile-lbl">Water (oz)</div></div>
           <div class="dash-tile" style="position:relative;padding-bottom:22px;"><div class="dash-tile-val" style="color:#d4a85c;" id="dash-bw-val">—</div><div class="dash-tile-lbl">Weight (lbs)</div><div id="dash-bw-sub" style="position:absolute;bottom:6px;left:0;right:0;text-align:center;"></div></div>
           <div class="dash-tile"><div class="dash-tile-val" style="color:#a07dd9;" id="dash-goal-val">—</div><div class="dash-tile-lbl">Sleep Score</div></div>
+          </div>
+          </div>
           <div class="dash-macro">
             <div class="dash-macro-lbl">Macro Progress</div>
             <div class="dash-mb-row"><span class="dash-mb-label" style="color:#5aabff;">Protein</span><div class="dash-mb-track"><div class="dash-mb-fill" id="dash-p-bar" style="background:#5aabff;width:0%;"></div></div><span class="dash-mb-val"><b id="dash-p-num">0g</b> · <span id="dash-p-pct">0%</span></span></div>
