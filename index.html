@@ -4075,20 +4075,29 @@ function renderDashCoachCard() {
     // and end of the scale line. Positioned using the same min/max range
     // hubSpark2 uses so the labels sit precisely on the line.
     var _actNN = actSeries.filter(function(v){ return v != null && !isNaN(v); });
+    var _projNN = projSeries.filter(function(v){ return v != null && !isNaN(v); });
     var _allNN = projSeries.concat(actSeries).filter(function(v){ return v != null && !isNaN(v); });
     var _startScale = _actNN.length ? _actNN[0] : null;
     var _endScale = _actNN.length ? _actNN[_actNN.length - 1] : null;
+    var _endProj = _projNN.length ? _projNN[_projNN.length - 1] : null;
     var _chartMin = _allNN.length ? Math.min.apply(null, _allNN) : null;
     var _chartMax = _allNN.length ? Math.max.apply(null, _allNN) : null;
     var _chartRng = (_chartMin != null && _chartMax != null) ? ((_chartMax - _chartMin) || 1) : 1;
     // hubSpark2 viewBox = 0 0 100 46, draws in y=2..44 → top% = (44 − norm*42)/46
     function _yPct(v) { if (v == null || _chartMin == null) return 50; return Math.round((44 - ((v - _chartMin) / _chartRng) * 42) / 46 * 100); }
-    var _labelPillCss = 'position:absolute;font-size:10px;font-weight:600;color:#e8e8e8;background:#101a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _labelPillScale = 'position:absolute;font-size:10px;font-weight:600;color:#e8e8e8;background:#101a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _labelPillMath  = 'position:absolute;font-size:10px;font-weight:600;color:#40ccbb;background:#0d1a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
     var _endpointLabels = '';
     if (_startScale != null && _endScale != null && _actNN.length >= 2) {
       _endpointLabels =
-        '<div style="' + _labelPillCss + 'left:0;top:' + _yPct(_startScale) + '%;transform:translateY(-50%);">' + _startScale.toFixed(1) + '</div>' +
-        '<div style="' + _labelPillCss + 'right:0;top:' + _yPct(_endScale) + '%;transform:translateY(-50%);">' + _endScale.toFixed(1) + '</div>';
+        '<div style="' + _labelPillScale + 'left:0;top:' + _yPct(_startScale) + '%;transform:translateY(-50%);">' + _startScale.toFixed(1) + '</div>' +
+        '<div style="' + _labelPillScale + 'right:0;top:' + _yPct(_endScale) + '%;transform:translateY(-50%);">' + _endScale.toFixed(1) + '</div>';
+    }
+    // Math line's projected current weight — what the calorie math says you
+    // should weigh. Sits in teal so it pairs with the dashed line's colour.
+    if (_endProj != null && _projNN.length >= 2) {
+      _endpointLabels +=
+        '<div style="' + _labelPillMath + 'right:0;top:' + _yPct(_endProj) + '%;transform:translateY(-50%);">' + _endProj.toFixed(1) + '</div>';
     }
     var vBand = 1.5;  // 7d band — matches the Hub
     var vTxt, vBg, vFg, aheadTag = '';
@@ -4306,12 +4315,37 @@ function renderHub() {
     } else {
       pTable = '<div class="hub-mini">Log weight across the window to see the actual change.</div>';
     }
+    // Endpoint weight pills — scale start/end (white) and the math-projected
+    // current weight (teal). Positioned via the same min/max range hubSpark2
+    // uses so the labels sit precisely on each line's endpoint.
+    var _pActNN = actSeries.filter(function(v){ return v != null && !isNaN(v); });
+    var _pProjNN = projSeries.filter(function(v){ return v != null && !isNaN(v); });
+    var _pAllNN = projSeries.concat(actSeries).filter(function(v){ return v != null && !isNaN(v); });
+    var _pStartScale = _pActNN.length ? _pActNN[0] : null;
+    var _pEndScale = _pActNN.length ? _pActNN[_pActNN.length - 1] : null;
+    var _pEndProj = _pProjNN.length ? _pProjNN[_pProjNN.length - 1] : null;
+    var _pMin = _pAllNN.length ? Math.min.apply(null, _pAllNN) : null;
+    var _pMax = _pAllNN.length ? Math.max.apply(null, _pAllNN) : null;
+    var _pRng = (_pMin != null && _pMax != null) ? ((_pMax - _pMin) || 1) : 1;
+    function _pY(v) { if (v == null || _pMin == null) return 50; return Math.round((44 - ((v - _pMin) / _pRng) * 42) / 46 * 100); }
+    var _pPillScale = 'position:absolute;font-size:10px;font-weight:600;color:#e8e8e8;background:#141414;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _pPillMath  = 'position:absolute;font-size:10px;font-weight:600;color:#40ccbb;background:#0d1a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _pLabels = '';
+    if (_pStartScale != null && _pEndScale != null && _pActNN.length >= 2) {
+      _pLabels +=
+        '<div style="' + _pPillScale + 'left:0;top:' + _pY(_pStartScale) + '%;transform:translateY(-50%);">' + _pStartScale.toFixed(1) + '</div>' +
+        '<div style="' + _pPillScale + 'right:0;top:' + _pY(_pEndScale) + '%;transform:translateY(-50%);">' + _pEndScale.toFixed(1) + '</div>';
+    }
+    if (_pEndProj != null && _pProjNN.length >= 2) {
+      _pLabels +=
+        '<div style="' + _pPillMath + 'right:0;top:' + _pY(_pEndProj) + '%;transform:translateY(-50%);">' + _pEndProj.toFixed(1) + '</div>';
+    }
     pastEl.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
         '<div class="hub-card-lbl" style="margin-bottom:0;">Past &rarr; now · ' + rngLbl + '</div>' +
         '<div class="hub-legend" style="margin-top:0;"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
       '</div>' +
-      hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') +
+      '<div style="position:relative;">' + hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') + _pLabels + '</div>' +
       pTable;
   }
 
