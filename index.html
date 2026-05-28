@@ -4012,6 +4012,42 @@ function hubSpark2(a, b, ca, cb) {
   return '<svg style="width:100%;height:46px;display:block;" viewBox="0 0 100 46" preserveAspectRatio="none">' + line(a,ca,true) + line(b,cb,false) + '</svg>';
 }
 
+// 7-day EMA trend helper. alpha=0.25 gives roughly a 7-day half-life and
+// flattens single-day water/glycogen spikes so the headline isn't whipped by
+// one noisy day. Carries the last EMA forward on null days for continuity.
+function _hubTrend(scaleArr, alpha) {
+  alpha = (typeof alpha === 'number') ? alpha : 0.25;
+  var ema = null, out = [];
+  for (var i = 0; i < scaleArr.length; i++) {
+    var v = scaleArr[i];
+    if (v == null || isNaN(v)) { out.push(ema); continue; }
+    ema = (ema == null) ? v : (alpha * v + (1 - alpha) * ema);
+    out.push(+ema.toFixed(2));
+  }
+  return out;
+}
+
+// Three-line spark sharing one scale + x-axis: raw scale (thin dim, behind),
+// math projection (dashed teal), trend (bold white, on top). Same viewBox /
+// y-range as hubSpark2 so the endpoint-label y% math is reusable.
+function _hubSpark3(mathArr, trendArr, rawArr) {
+  var all = mathArr.concat(trendArr).concat(rawArr).filter(function(v){ return v != null && !isNaN(v); });
+  if (all.length < 2) return '<div style="height:46px;display:flex;align-items:center;color:#444;font-size:10px;">not enough data</div>';
+  var mn = Math.min.apply(null, all), mx = Math.max.apply(null, all);
+  var rng = (mx - mn) || 1, W = 100, H = 42, n = Math.max(mathArr.length, trendArr.length, rawArr.length);
+  function line(arr, col, w, dash) {
+    var pts = [];
+    arr.forEach(function(v,i){ if (v != null && !isNaN(v)) { var x=(n<=1?0:(i/(n-1))*W); var y=H-((v-mn)/rng)*H+2; pts.push(x.toFixed(1)+','+y.toFixed(1)); } });
+    if (pts.length < 2) return '';
+    return '<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="'+w+'" stroke-linecap="round" stroke-linejoin="round"'+(dash?' stroke-dasharray="3 3"':'')+'/>';
+  }
+  return '<svg style="width:100%;height:46px;display:block;" viewBox="0 0 100 46" preserveAspectRatio="none">'
+    + line(rawArr, '#3a3a3a', 1.2, false)
+    + line(mathArr, '#40ccbb', 1.6, true)
+    + line(trendArr, '#e8e8e8', 2.2, false)
+    + '</svg>';
+}
+
 // Per-day bars; sign-colored (deficit = green, surplus = amber).
 function hubBars(vals) {
   var present = vals.filter(function(v){ return v != null && !isNaN(v); });
@@ -4071,61 +4107,77 @@ function renderDashCoachCard() {
     var startW = ag.startW, run = 0;
     var projSeries = days.map(function(x){ if(x.net!=null) run += x.net; return startW!=null ? +(startW + run/HUB_KCAL_PER_LB).toFixed(2) : null; });
     var actSeries = days.map(function(x){ return x.weight; });
-    // Endpoint weight labels for the chart — small overlay pills at the start
-    // and end of the scale line. Positioned using the same min/max range
-    // hubSpark2 uses so the labels sit precisely on the line.
+    var trendSeries = _hubTrend(actSeries, 0.25);
+    var _trdNN = trendSeries.filter(function(v){ return v != null && !isNaN(v); });
+    var _firstTrd = _trdNN.length ? _trdNN[0] : null;
+    var _lastTrd  = _trdNN.length ? _trdNN[_trdNN.length - 1] : null;
+    var _trendChg = (_firstTrd != null && _lastTrd != null) ? +(_lastTrd - _firstTrd).toFixed(2) : null;
+    var _rawGap   = (ag.endW != null && _lastTrd != null) ? +(ag.endW - _lastTrd).toFixed(2) : null;
+    // Endpoint labels — trend (prominent white), raw (dim, only if it diverges
+    // from trend by ≥0.5 lb), math (teal). Same y-projection as _hubSpark3.
     var _actNN = actSeries.filter(function(v){ return v != null && !isNaN(v); });
     var _projNN = projSeries.filter(function(v){ return v != null && !isNaN(v); });
-    var _allNN = projSeries.concat(actSeries).filter(function(v){ return v != null && !isNaN(v); });
-    var _startScale = _actNN.length ? _actNN[0] : null;
+    var _allNN = projSeries.concat(trendSeries).concat(actSeries).filter(function(v){ return v != null && !isNaN(v); });
     var _endScale = _actNN.length ? _actNN[_actNN.length - 1] : null;
     var _endProj = _projNN.length ? _projNN[_projNN.length - 1] : null;
     var _chartMin = _allNN.length ? Math.min.apply(null, _allNN) : null;
     var _chartMax = _allNN.length ? Math.max.apply(null, _allNN) : null;
     var _chartRng = (_chartMin != null && _chartMax != null) ? ((_chartMax - _chartMin) || 1) : 1;
-    // hubSpark2 viewBox = 0 0 100 46, draws in y=2..44 → top% = (44 − norm*42)/46
     function _yPct(v) { if (v == null || _chartMin == null) return 50; return Math.round((44 - ((v - _chartMin) / _chartRng) * 42) / 46 * 100); }
-    var _labelPillScale = 'position:absolute;font-size:10px;font-weight:600;color:#e8e8e8;background:#101a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
-    var _labelPillMath  = 'position:absolute;font-size:10px;font-weight:600;color:#40ccbb;background:#0d1a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _pillTrd  = 'position:absolute;font-size:10px;font-weight:700;color:#fff;background:#1a1a1a;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _pillRaw  = 'position:absolute;font-size:10px;font-weight:500;color:#888;background:#101a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _pillMath = 'position:absolute;font-size:10px;font-weight:600;color:#40ccbb;background:#0d1a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
     var _endpointLabels = '';
-    if (_startScale != null && _endScale != null && _actNN.length >= 2) {
-      _endpointLabels =
-        '<div style="' + _labelPillScale + 'left:0;top:' + _yPct(_startScale) + '%;transform:translateY(-50%);">' + _startScale.toFixed(1) + '</div>' +
-        '<div style="' + _labelPillScale + 'right:0;top:' + _yPct(_endScale) + '%;transform:translateY(-50%);">' + _endScale.toFixed(1) + '</div>';
+    if (_firstTrd != null && _lastTrd != null && _trdNN.length >= 2) {
+      _endpointLabels +=
+        '<div style="' + _pillTrd + 'left:0;top:' + _yPct(_firstTrd) + '%;transform:translateY(-50%);">' + _firstTrd.toFixed(1) + '</div>' +
+        '<div style="' + _pillTrd + 'right:0;top:' + _yPct(_lastTrd) + '%;transform:translateY(-50%);">' + _lastTrd.toFixed(1) + '</div>';
     }
-    // Math line's projected current weight — what the calorie math says you
-    // should weigh. Sits in teal so it pairs with the dashed line's colour.
+    if (_endScale != null && _lastTrd != null && Math.abs(_endScale - _lastTrd) >= 0.5) {
+      _endpointLabels +=
+        '<div style="' + _pillRaw + 'right:0;top:' + _yPct(_endScale) + '%;transform:translateY(-50%);">' + _endScale.toFixed(1) + '</div>';
+    }
     if (_endProj != null && _projNN.length >= 2) {
       _endpointLabels +=
-        '<div style="' + _labelPillMath + 'right:0;top:' + _yPct(_endProj) + '%;transform:translateY(-50%);">' + _endProj.toFixed(1) + '</div>';
+        '<div style="' + _pillMath + 'right:0;top:' + _yPct(_endProj) + '%;transform:translateY(-50%);">' + _endProj.toFixed(1) + '</div>';
     }
     var vBand = 1.5;  // 7d band — matches the Hub
+    // Verdict badge uses trend-vs-math (not raw-vs-math) so it's noise-immune.
+    var _var = (_trendChg != null && ag.projChange != null) ? (_trendChg - ag.projChange) : null;
     var vTxt, vBg, vFg, aheadTag = '';
-    if (ag.variance == null)            { vTxt='TRACKING';      vBg='#1c2c2a'; vFg='#7dd9c8'; }
-    else if (ag.variance <= -vBand)     { vTxt='AHEAD';         vBg='#0d2a1a'; vFg='#4caf7d'; }
-    else if (ag.variance < vBand)       { vTxt='ON TRACK';      vBg='#0a2a26'; vFg='#40ccbb';
-      if (ag.variance < -0.3) aheadTag = ' <span style="color:#f5c44b;font-weight:700;">&middot; &uarr; ahead</span>'; }
-    else                                { vTxt='SCALE LAGGING'; vBg='#2a1f00'; vFg='#f5a623'; }
+    if (_var == null)              { vTxt='TRACKING';      vBg='#1c2c2a'; vFg='#7dd9c8'; }
+    else if (_var <= -vBand)       { vTxt='AHEAD';         vBg='#0d2a1a'; vFg='#4caf7d'; }
+    else if (_var < vBand)         { vTxt='ON TRACK';      vBg='#0a2a26'; vFg='#40ccbb';
+      if (_var < -0.3) aheadTag = ' <span style="color:#f5c44b;font-weight:700;">&middot; &uarr; ahead</span>'; }
+    else                           { vTxt='SCALE LAGGING'; vBg='#2a1f00'; vFg='#f5a623'; }
+    if (_rawGap != null && Math.abs(_rawGap) >= 2) {
+      aheadTag += ' <span style="color:#f5c44b;font-weight:700;">&middot; noisy today</span>';
+    }
     var lb = function(n){ return (n<=0?'−':'+') + Math.abs(n).toFixed(1); };
     var GOLD = '#f5c44b';
     var sentence;
-    if (ag.actualChange == null || ag.projChange == null) {
+    if (_trendChg == null || ag.projChange == null) {
       sentence = 'Log weight + intake across the week to see your trend.';
     } else {
-      var aChg = ag.actualChange, mathLbs = ag.projChange;
-      var gap = aChg - mathLbs;
+      var tChg = _trendChg, mathLbs = ag.projChange;
+      var gap = tChg - mathLbs;
       var agree = Math.abs(gap) <= vBand;
       var ahead = gap < -0.3;
+      var dirw = tChg < 0 ? 'Down' : (tChg > 0 ? 'Up' : 'Flat');
+      var dirCol = tChg <= 0 ? '#4caf7d' : '#f5a623';
       if (ahead && agree) {
-        sentence = 'Down <b style="color:#4caf7d;">' + Math.abs(aChg).toFixed(1) + ' lbs in 7d</b>. Math predicted ' + lb(mathLbs) + ' — scale\'s running <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b>, within normal noise but the trend\'s in your favor.';
+        sentence = dirw + ' <b style="color:' + dirCol + ';">' + Math.abs(tChg).toFixed(1) + ' lbs in 7d (trend)</b>. Math predicted ' + lb(mathLbs) + ' — running <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b>, within normal noise but trend\'s in your favor.';
       } else if (ahead && !agree) {
-        sentence = 'Down <b style="color:#4caf7d;">' + Math.abs(aChg).toFixed(1) + ' lbs in 7d</b>. Math predicted ' + lb(mathLbs) + ' — you\'re <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b> of projection. Outpacing the plan.';
+        sentence = dirw + ' <b style="color:' + dirCol + ';">' + Math.abs(tChg).toFixed(1) + ' lbs in 7d (trend)</b>. Math predicted ' + lb(mathLbs) + ' — you\'re <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b> of projection. Outpacing the plan.';
       } else if (agree) {
-        var dirw = aChg < 0 ? 'Down' : (aChg > 0 ? 'Up' : 'Flat');
-        var dirCol = aChg <= 0 ? '#4caf7d' : '#f5a623';
-        sentence = dirw + ' <b style="color:' + dirCol + ';">' + Math.abs(aChg).toFixed(1) + ' lbs in 7d</b>. Math predicted ' + lb(mathLbs) + ' — scale agrees within ' + Math.abs(gap).toFixed(1) + ' lb, logging trustworthy.';
+        sentence = dirw + ' <b style="color:' + dirCol + ';">' + Math.abs(tChg).toFixed(1) + ' lbs in 7d (trend)</b>. Math predicted ' + lb(mathLbs) + ' — agrees within ' + Math.abs(gap).toFixed(1) + ' lb, logging trustworthy.';
       } else {
-        sentence = 'Math predicted ' + lb(mathLbs) + ' lbs but scale moved ' + lb(aChg) + ' — a ' + Math.abs(gap).toFixed(1) + ' lb gap. Trust the scale.';
+        sentence = dirw + ' <b style="color:' + dirCol + ';">' + Math.abs(tChg).toFixed(1) + ' lbs in 7d (trend)</b>. Math predicted ' + lb(mathLbs) + ' — a ' + Math.abs(gap).toFixed(1) + ' lb gap (likely under-logging or your real burn differs).';
+      }
+      if (_rawGap != null && Math.abs(_rawGap) >= 2) {
+        var nDir = _rawGap > 0 ? '+' : '−';
+        var likely = _rawGap > 0 ? 'likely water/glycogen' : 'likely a transient dip';
+        sentence = '<span style="color:#888;">Today\'s raw scale is ' + ag.endW.toFixed(1) + ' (' + nDir + Math.abs(_rawGap).toFixed(1) + ' vs trend, ' + likely + ').</span> ' + sentence;
       }
     }
     var netVal = ag.avgNet;
@@ -4134,7 +4186,7 @@ function renderDashCoachCard() {
     var wkRate = (netVal * 7) / HUB_KCAL_PER_LB;
     var wkCol = wkRate <= 0 ? '#4caf7d' : '#f5a623';
     var wkTxt = (wkRate <= 0 ? '−' : '+') + Math.abs(wkRate).toFixed(1);
-    var actualTxt = ag.endW != null ? ag.endW.toFixed(1) : '—';
+    var trendTxt = _lastTrd != null ? _lastTrd.toFixed(1) : (ag.endW != null ? ag.endW.toFixed(1) : '—');
     el.innerHTML =
       '<div class="dcc-head">' +
         '<span class="coach-verdict" style="display:inline-block;background:' + vBg + ';color:' + vFg + ';margin-bottom:0;">' + vTxt + aheadTag + '</span>' +
@@ -4147,13 +4199,13 @@ function renderDashCoachCard() {
           '<div class="dcc-stat">' +
             '<span>net <b style="color:' + netCol + ';">' + netTxt + '/day</b></span>' +
             '<span>proj <b style="color:' + wkCol + ';">' + wkTxt + ' lb/wk</b></span>' +
-            '<span>actual <b>' + actualTxt + ' lbs</b></span>' +
+            '<span>trend <b>' + trendTxt + ' lbs</b></span>' +
           '</div>' +
         '</div>' +
         '<div class="dcc-R">' +
           '<div class="dcc-glabel">Past &rarr; now &middot; 7d</div>' +
-          '<div style="position:relative;">' + hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') + _endpointLabels + '</div>' +
-          '<div class="dcc-legend"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
+          '<div style="position:relative;">' + _hubSpark3(projSeries, trendSeries, actSeries) + _endpointLabels + '</div>' +
+          '<div class="dcc-legend"><span><i style="background:#40ccbb;"></i>math</span><span><i style="background:#fff;"></i>trend</span><span><i style="background:#444;"></i>raw</span></div>' +
         '</div>' +
       '</div>';
   } catch(e) {
@@ -4251,26 +4303,38 @@ function renderHub() {
   var startW = ag.startW, run = 0;
   var projSeries = days.map(function(x){ if (x.net != null) run += x.net; return startW != null ? +(startW + run / HUB_KCAL_PER_LB).toFixed(2) : null; });
   var actSeries = days.map(function(x){ return x.weight; });
+  // Trend series = 7-day EMA of raw scale. This is the smoothed line that
+  // becomes the headline — immune to single-day water spikes (a binge day
+  // contributes ~25% to today's trend instead of the full raw delta).
+  var trendSeries = _hubTrend(actSeries, 0.25);
+  var trendNN = trendSeries.filter(function(v){ return v != null && !isNaN(v); });
+  var firstTrend = trendNN.length ? trendNN[0] : null;
+  var lastTrend  = trendNN.length ? trendNN[trendNN.length - 1] : null;
+  var trendChange = (firstTrend != null && lastTrend != null) ? +(lastTrend - firstTrend).toFixed(2) : null;
+  // Today's noise = how far raw scale sits above/below the trend right now.
+  // Large positive = recent water/glycogen spike; large negative = recent dip.
+  var rawGap = (ag.endW != null && lastTrend != null) ? +(ag.endW - lastTrend).toFixed(2) : null;
   var vEl = document.getElementById('brief-coach-verdict');
   if (vEl) {
     // Window-aware noise band: a week of weight is dominated by water/glycogen
     // swings (±1–3 lb), so sub-1.5 lb deviation from the projection is noise,
     // not "behind". The band tightens as the window lengthens and noise averages out.
     var vBand = HUB_RANGE <= 7 ? 1.5 : (HUB_RANGE <= 14 ? 1.2 : 1.0);
+    // Compare TREND-vs-math (not raw-vs-math) so the badge isn't flipped by
+    // one noisy day. Adds a "· noisy today" cue when the raw scale is far from trend.
+    var vVar = (trendChange != null && ag.projChange != null) ? (trendChange - ag.projChange) : null;
     var vTxt, vBg, vFg;
-    if (ag.variance == null)            { vTxt='TRACKING';      vBg='#1c2c2a'; vFg='#7dd9c8'; }
-    else if (ag.variance <= -vBand)     { vTxt='AHEAD';         vBg='#0d2a1a'; vFg='#4caf7d'; }
-    else if (ag.variance < vBand)       { vTxt='ON TRACK';      vBg='#0a2a26'; vFg='#40ccbb'; }
-    else                                { vTxt='SCALE LAGGING'; vBg='#2a1f00'; vFg='#f5a623'; }
+    if (vVar == null)              { vTxt='TRACKING';      vBg='#1c2c2a'; vFg='#7dd9c8'; }
+    else if (vVar <= -vBand)       { vTxt='AHEAD';         vBg='#0d2a1a'; vFg='#4caf7d'; }
+    else if (vVar < vBand)         { vTxt='ON TRACK';      vBg='#0a2a26'; vFg='#40ccbb'; }
+    else                           { vTxt='SCALE LAGGING'; vBg='#2a1f00'; vFg='#f5a623'; }
     vEl.style.display = 'inline-block';
     vEl.style.background = vBg; vEl.style.color = vFg;
-    // Within ON TRACK but leaning ahead of the projection — surface it as a
-    // subtle gold tag (don't flip the verdict; it's still inside the noise band).
-    if (vTxt === 'ON TRACK' && ag.variance != null && ag.variance < -0.3) {
-      vEl.innerHTML = vTxt + ' <span style="color:#f5c44b;font-weight:700;">&middot; &uarr; ahead</span>';
-    } else {
-      vEl.textContent = vTxt;
-    }
+    var noisy = (rawGap != null && Math.abs(rawGap) >= 2);
+    var aheadTagH = (vTxt === 'ON TRACK' && vVar != null && vVar < -0.3)
+      ? ' <span style="color:#f5c44b;font-weight:700;">&middot; &uarr; ahead</span>' : '';
+    var noisyTagH = noisy ? ' <span style="color:#f5c44b;font-weight:700;">&middot; noisy today</span>' : '';
+    vEl.innerHTML = vTxt + aheadTagH + noisyTagH;
   }
   // ── LEFT: Past → now (the calorie math reconciling to today's scale) ──
   var pastEl = document.getElementById('hub-coach-past');
@@ -4280,61 +4344,82 @@ function renderHub() {
       var MOp = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       var fmtDp = function(d){ return MOp[d.getMonth()] + ' ' + d.getDate(); };
       var sDp = days[0].date, eDp = days[days.length-1].date;
-      var aChg = ag.actualChange;
-      var aColp = aChg <= 0 ? '#4caf7d' : '#f5a623';
-      // Plain-English read: the headline weight change, the actual dates, and
-      // whether the calorie math agrees with the scale (= is logging trustworthy).
-      var mathLbs = ag.projChange;                                        // what the math predicts
+      // Headline = TREND, not raw scale. A binge day moves trend by ~25% of
+      // raw delta — closer to actual fat change, immune to single-day water.
+      var headW = (lastTrend != null) ? lastTrend : ag.endW;
+      var headDelta = (trendChange != null) ? trendChange : ag.actualChange;
+      var mathLbs = ag.projChange;
       var lb = function(n){ return (n <= 0 ? '−' : '+') + Math.abs(n).toFixed(1); };
-      var dirWord = aChg < 0 ? 'Down' : (aChg > 0 ? 'Up' : 'Flat');
-      var headCol = aChg <= 0 ? '#4caf7d' : '#f5a623';
-      var gap = aChg - mathLbs;            // <0 = scale ahead of math (lost more), >0 = behind
-      // Same window-aware noise band as the verdict badge so they never disagree.
+      var arr = headDelta < 0 ? '&darr;' : (headDelta > 0 ? '&uarr;' : '·');
+      var headCol = headDelta <= 0 ? '#4caf7d' : '#f5a623';
+      // Compare TREND to math (not raw). Add a noise-aware prefix when today's
+      // raw scale is far from the trend (water/glycogen, not real fat change).
+      var gap = (headDelta != null && mathLbs != null) ? (headDelta - mathLbs) : null;
       var gBand = HUB_RANGE <= 7 ? 1.5 : (HUB_RANGE <= 14 ? 1.2 : 1.0);
-      var agree = Math.abs(gap) <= gBand;
-      var ahead = gap < -0.3;              // meaningfully ahead of the projection
+      var agree = (gap != null) && Math.abs(gap) <= gBand;
+      var ahead = (gap != null) && gap < -0.3;
       var GOLD = '#f5c44b';
       var vCol2, verdict;
-      if (ahead && agree) {
+      if (gap == null) {
+        vCol2 = '#888'; verdict = 'Log weight + intake across the window to see how scale and math compare.';
+      } else if (ahead && agree) {
         vCol2 = '#4caf7d';
-        verdict = 'The calorie math predicted ' + lb(mathLbs) + ' lbs — the scale is running <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b>. Still within normal noise, but the trend’s in your favor.';
+        verdict = 'The calorie math predicted ' + lb(mathLbs) + ' lbs — the trend is running <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b>. Within normal noise, but the trend\'s in your favor.';
       } else if (ahead && !agree) {
         vCol2 = '#4caf7d';
-        verdict = 'The math predicted ' + lb(mathLbs) + ' lbs but the scale moved ' + lb(aChg) + ' — you’re <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b> of projection. Some may be water, but you’re outpacing the plan.';
+        verdict = 'The math predicted ' + lb(mathLbs) + ' lbs but the trend moved ' + lb(headDelta) + ' — you\'re <b style="color:' + GOLD + ';">' + Math.abs(gap).toFixed(1) + ' lb ahead</b> of projection. Outpacing the plan.';
       } else if (agree) {
         vCol2 = '#4caf7d';
-        verdict = 'The calorie math predicted ' + lb(mathLbs) + ' lbs — the scale agrees within ' + Math.abs(gap).toFixed(1) + ' lb, so your logging is trustworthy.';
+        verdict = 'The calorie math predicted ' + lb(mathLbs) + ' lbs — the trend agrees within ' + Math.abs(gap).toFixed(1) + ' lb, so your logging is trustworthy.';
       } else {
         vCol2 = '#f5a623';
-        verdict = 'The math predicted ' + lb(mathLbs) + ' lbs but the scale moved ' + lb(aChg) + ' — a ' + Math.abs(gap).toFixed(1) + ' lb gap (likely water, under-logging, or your real burn differs). Trust the scale.';
+        verdict = 'The math predicted ' + lb(mathLbs) + ' lbs but the trend moved ' + lb(headDelta) + ' — a ' + Math.abs(gap).toFixed(1) + ' lb gap (likely under-logging or your real burn differs from estimate).';
       }
+      // Noise-aware prefix: if raw scale today is far from trend, call it out
+      // explicitly so the user doesn't read raw as the truth.
+      if (rawGap != null && Math.abs(rawGap) >= 2) {
+        var nDir = rawGap > 0 ? '+' : '−';
+        var likely = rawGap > 0 ? 'likely water/glycogen from a high-carb day' : 'likely a transient dip (sodium, sweat, fasting)';
+        verdict = 'Today\'s raw scale is <b style="color:#e8e8e8;">' + ag.endW.toFixed(1) + ' (' + nDir + Math.abs(rawGap).toFixed(1) + ' vs trend)</b> — ' + likely + '. ' + verdict + ' Trust the trend; raw will catch up in 3–5 days.';
+      }
+      var sTxt = (firstTrend != null) ? firstTrend.toFixed(1) : ag.startW.toFixed(1);
+      var eTxt = (lastTrend  != null) ? lastTrend.toFixed(1)  : ag.endW.toFixed(1);
       pTable =
-        '<div style="font-size:14px;font-weight:700;color:' + headCol + ';margin-bottom:3px;">' + dirWord + ' ' + Math.abs(aChg).toFixed(1) + ' lbs in ' + rngLbl + '</div>' +
-        '<div class="hub-mini" style="color:#888;">' + fmtDp(sDp) + ' &middot; ' + ag.startW.toFixed(1) + ' lbs &nbsp;&rarr;&nbsp; ' + fmtDp(eDp) + ' &middot; ' + ag.endW.toFixed(1) + ' lbs</div>' +
+        '<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;">Trend: ' + headW.toFixed(1) + ' lbs <span style="color:' + headCol + ';font-weight:600;">&middot; ' + arr + ' ' + Math.abs(headDelta).toFixed(1) + ' lbs in ' + rngLbl + '</span></div>' +
+        '<div class="hub-mini" style="color:#888;">' + fmtDp(sDp) + ' &middot; ' + sTxt + ' &nbsp;&rarr;&nbsp; ' + fmtDp(eDp) + ' &middot; ' + eTxt + ' <span style="color:#666;">(trend)</span></div>' +
         '<div class="hub-mini" style="color:' + vCol2 + ';margin-top:7px;">' + verdict + '</div>';
     } else {
       pTable = '<div class="hub-mini">Log weight across the window to see the actual change.</div>';
     }
-    // Endpoint weight pills — scale start/end (white) and the math-projected
-    // current weight (teal). Positioned via the same min/max range hubSpark2
-    // uses so the labels sit precisely on each line's endpoint.
-    var _pActNN = actSeries.filter(function(v){ return v != null && !isNaN(v); });
+    // Endpoint pills — trend (bold white, prominent), raw scale (dim, only
+    // shown when it diverges from trend), math (teal). All three positioned
+    // against the combined min/max range that _hubSpark3 uses internally.
+    var _pActNN  = actSeries.filter(function(v){ return v != null && !isNaN(v); });
     var _pProjNN = projSeries.filter(function(v){ return v != null && !isNaN(v); });
-    var _pAllNN = projSeries.concat(actSeries).filter(function(v){ return v != null && !isNaN(v); });
-    var _pStartScale = _pActNN.length ? _pActNN[0] : null;
+    var _pTrdNN  = trendSeries.filter(function(v){ return v != null && !isNaN(v); });
+    var _pAllNN  = projSeries.concat(trendSeries).concat(actSeries).filter(function(v){ return v != null && !isNaN(v); });
+    var _pStartTrd = _pTrdNN.length ? _pTrdNN[0] : null;
+    var _pEndTrd   = _pTrdNN.length ? _pTrdNN[_pTrdNN.length - 1] : null;
     var _pEndScale = _pActNN.length ? _pActNN[_pActNN.length - 1] : null;
-    var _pEndProj = _pProjNN.length ? _pProjNN[_pProjNN.length - 1] : null;
+    var _pEndProj  = _pProjNN.length ? _pProjNN[_pProjNN.length - 1] : null;
     var _pMin = _pAllNN.length ? Math.min.apply(null, _pAllNN) : null;
     var _pMax = _pAllNN.length ? Math.max.apply(null, _pAllNN) : null;
     var _pRng = (_pMin != null && _pMax != null) ? ((_pMax - _pMin) || 1) : 1;
     function _pY(v) { if (v == null || _pMin == null) return 50; return Math.round((44 - ((v - _pMin) / _pRng) * 42) / 46 * 100); }
-    var _pPillScale = 'position:absolute;font-size:10px;font-weight:600;color:#e8e8e8;background:#141414;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _pPillTrd   = 'position:absolute;font-size:10px;font-weight:700;color:#fff;background:#1a1a1a;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
+    var _pPillRaw   = 'position:absolute;font-size:10px;font-weight:500;color:#888;background:#141414;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
     var _pPillMath  = 'position:absolute;font-size:10px;font-weight:600;color:#40ccbb;background:#0d1a18;padding:1px 5px;border-radius:3px;line-height:1.3;white-space:nowrap;';
     var _pLabels = '';
-    if (_pStartScale != null && _pEndScale != null && _pActNN.length >= 2) {
+    if (_pStartTrd != null && _pEndTrd != null && _pTrdNN.length >= 2) {
       _pLabels +=
-        '<div style="' + _pPillScale + 'left:0;top:' + _pY(_pStartScale) + '%;transform:translateY(-50%);">' + _pStartScale.toFixed(1) + '</div>' +
-        '<div style="' + _pPillScale + 'right:0;top:' + _pY(_pEndScale) + '%;transform:translateY(-50%);">' + _pEndScale.toFixed(1) + '</div>';
+        '<div style="' + _pPillTrd + 'left:0;top:' + _pY(_pStartTrd) + '%;transform:translateY(-50%);">' + _pStartTrd.toFixed(1) + '</div>' +
+        '<div style="' + _pPillTrd + 'right:0;top:' + _pY(_pEndTrd) + '%;transform:translateY(-50%);">' + _pEndTrd.toFixed(1) + '</div>';
+    }
+    // Show raw-scale label only when it noticeably diverges from trend — else
+    // it just clutters the chart sitting on top of the trend pill.
+    if (_pEndScale != null && _pEndTrd != null && Math.abs(_pEndScale - _pEndTrd) >= 0.5) {
+      _pLabels +=
+        '<div style="' + _pPillRaw + 'right:0;top:' + _pY(_pEndScale) + '%;transform:translateY(-50%);">' + _pEndScale.toFixed(1) + '</div>';
     }
     if (_pEndProj != null && _pProjNN.length >= 2) {
       _pLabels +=
@@ -4343,9 +4428,9 @@ function renderHub() {
     pastEl.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
         '<div class="hub-card-lbl" style="margin-bottom:0;">Past &rarr; now · ' + rngLbl + '</div>' +
-        '<div class="hub-legend" style="margin-top:0;"><span><i style="background:#40ccbb;"></i>calorie math</span><span><i style="background:#e8e8e8;"></i>scale</span></div>' +
+        '<div class="hub-legend" style="margin-top:0;"><span><i style="background:#40ccbb;"></i>math</span><span><i style="background:#fff;"></i>trend</span><span><i style="background:#444;"></i>raw scale</span></div>' +
       '</div>' +
-      '<div style="position:relative;">' + hubSpark2(projSeries, actSeries, '#40ccbb', '#e8e8e8') + _pLabels + '</div>' +
+      '<div style="position:relative;">' + _hubSpark3(projSeries, trendSeries, actSeries) + _pLabels + '</div>' +
       pTable;
   }
 
@@ -4353,7 +4438,9 @@ function renderHub() {
   var futEl = document.getElementById('hub-coach-future');
   if (futEl) {
     var pace = ag.avgNet;          // kcal/day over the selected window; <0 = deficit
-    var baseW = ag.endW;           // latest scale weight = the "now" anchor
+    // Anchor forecast on TREND (not raw scale) so a single noisy day doesn't
+    // whip the projection ±5 lb. Falls back to raw scale if trend unavailable.
+    var baseW = (lastTrend != null) ? lastTrend : ag.endW;
     if (baseW != null && pace != null && ag.loggedCount > 0) {
       // Forecast horizon mirrors the selected lookback window (past Nd · next Nd).
       var horiz = HUB_RANGE;
@@ -4369,11 +4456,15 @@ function renderHub() {
       var paceCol = pace <= 0 ? '#4caf7d' : '#f5a623';
       var paceTxt = (pace <= 0 ? '−' : '+') + Math.abs(pace).toLocaleString();
       var deltaCol = wkRate <= 0 ? '#4caf7d' : '#f5a623';
+      var anchorNote = (lastTrend != null && ag.endW != null && Math.abs(ag.endW - lastTrend) >= 0.5)
+        ? '<div class="hub-mini" style="margin-top:6px;color:#666;">Anchored on trend (' + lastTrend.toFixed(1) + '), not today\'s raw scale (' + ag.endW.toFixed(1) + ') — so a noisy day doesn\'t whip the forecast.</div>'
+        : '';
       futEl.innerHTML =
         '<div class="hub-card-lbl">Now &rarr; +' + rngLbl + ' · forecast</div>' +
         hubSpark(fSpark, '#5aabff') +
-        '<div style="font-size:14px;color:#cfd8d6;margin-top:8px;">Hold this pace and you\'ll be about <b style="color:#5aabff;">' + futW.toFixed(1) + ' lbs</b> by ' + fmtD(tEnd) + '.</div>' +
-        '<div class="hub-mini" style="margin-top:5px;">That\'s <b style="color:' + deltaCol + ';">' + (wkRate <= 0 ? '−' : '+') + Math.abs(wkRate).toFixed(1) + ' lbs/week</b> at your current ' + paceTxt + ' kcal/day net.</div>';
+        '<div style="font-size:14px;color:#cfd8d6;margin-top:8px;">Hold this pace and your trend will be about <b style="color:#5aabff;">' + futW.toFixed(1) + ' lbs</b> by ' + fmtD(tEnd) + '.</div>' +
+        '<div class="hub-mini" style="margin-top:5px;">That\'s <b style="color:' + deltaCol + ';">' + (wkRate <= 0 ? '−' : '+') + Math.abs(wkRate).toFixed(1) + ' lbs/week</b> at your current ' + paceTxt + ' kcal/day net.</div>' +
+        anchorNote;
     } else {
       futEl.innerHTML =
         '<div class="hub-card-lbl">Now &rarr; +' + rngLbl + ' · forecast</div>' +
