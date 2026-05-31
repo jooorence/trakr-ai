@@ -3030,7 +3030,7 @@ function flAdd(name, cal, p, c, f, servings, section) {
   log.push({
     name: name,
     cal: cal, p: p, c: c, f: f,
-    servings: Math.max(1, Math.min(10, parseInt(servings) || 1)),
+    servings: Math.max(0.25, Math.min(10, parseFloat(servings) || 1)),
     section: section || flClassifyByName(name) || flClassifyByTime()
   });
   flSaveAll(); flRender();
@@ -3039,7 +3039,7 @@ function flAdd(name, cal, p, c, f, servings, section) {
 function flSetServings(idx, n) {
   var log = flCurrentLog();
   if (idx < 0 || idx >= log.length) return;
-  log[idx].servings = Math.max(1, Math.min(10, parseInt(n)||1));
+  log[idx].servings = Math.max(0.25, Math.min(10, parseFloat(n)||1));
   flSaveAll(); flRender();
 }
 
@@ -3174,7 +3174,7 @@ function flSaveEdit() {
   item.p        = parseFloat(document.getElementById('fl-edit-p').value)   || 0;
   item.c        = parseFloat(document.getElementById('fl-edit-c').value)   || 0;
   item.f        = parseFloat(document.getElementById('fl-edit-f').value)   || 0;
-  item.servings = Math.max(1, Math.min(10, parseInt(document.getElementById('fl-edit-servings').value)||1));
+  item.servings = Math.max(0.25, Math.min(10, parseFloat(document.getElementById('fl-edit-servings').value)||1));
   var secEl = document.getElementById('fl-edit-section');
   if (secEl && secEl.value) item.section = secEl.value;
   // Persist measure so re-editing scales from the right base.
@@ -6316,7 +6316,7 @@ setInterval(function() {
       </div>
       <div class="fl-edit-field" id="fl-edit-amount-wrap"><div class="fl-edit-label">Amount</div><input id="fl-edit-amount" class="fl-edit-input" type="number" step="0.1" oninput="flEditRecalc()"></div>
       <div class="fl-edit-field"><div class="fl-edit-label">Calories</div><input id="fl-edit-cal" class="fl-edit-input" type="number" step="0.1" oninput="flEditMacroTouched()"></div>
-      <div class="fl-edit-field"><div class="fl-edit-label">Servings</div><input id="fl-edit-servings" class="fl-edit-input" type="number" min="1" max="10" step="1"></div>
+      <div class="fl-edit-field"><div class="fl-edit-label">Servings</div><input id="fl-edit-servings" class="fl-edit-input" type="number" min="0.25" max="10" step="0.25"></div>
       <div class="fl-edit-field"><div class="fl-edit-label">Protein (g)</div><input id="fl-edit-p" class="fl-edit-input" type="number" step="0.1" oninput="flEditMacroTouched()"></div>
       <div class="fl-edit-field"><div class="fl-edit-label">Carbs (g)</div><input id="fl-edit-c" class="fl-edit-input" type="number" step="0.1" oninput="flEditMacroTouched()"></div>
       <div class="fl-edit-field"><div class="fl-edit-label">Fat (g)</div><input id="fl-edit-f" class="fl-edit-input" type="number" step="0.1" oninput="flEditMacroTouched()"></div>
